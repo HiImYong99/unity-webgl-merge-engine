@@ -11,6 +11,19 @@ public class GameManager : MonoBehaviour
         public int highScore;
         public int lastDiscoveryLevel;
         public SettingsModel settings;
+
+        public int currentScore;
+        public bool hasSavedGame;
+        public List<DessertSaveData> activeDesserts = new List<DessertSaveData>();
+    }
+
+    [System.Serializable]
+    private class DessertSaveData
+    {
+        public int level;
+        public Vector2 position;
+        public Vector2 velocity;
+        public float rotation;
     }
 
     public enum GameState
@@ -38,6 +51,8 @@ public class GameManager : MonoBehaviour
 
     public bool IsSfxEnabled { get; private set; } = true;
     public bool IsVibrationEnabled { get; private set; } = true;
+
+    private SaveDataModel loadedSaveData;
 
     public DessertEvolutionData EvolutionData;
 
@@ -120,9 +135,22 @@ public class GameManager : MonoBehaviour
 
     public void StartGame()
     {
-        Score = 0;
         CurrentState = GameState.Playing;
         HasRevived = false;
+
+        // Clean up any existing desserts first (if restarting)
+        GameObject[] existingDesserts = GameObject.FindGameObjectsWithTag("Dessert");
+        foreach (GameObject go in existingDesserts) Destroy(go);
+
+        if (loadedSaveData != null && loadedSaveData.hasSavedGame)
+        {
+            Score = loadedSaveData.currentScore;
+            RestoreSavedDesserts(loadedSaveData.activeDesserts);
+        }
+        else
+        {
+            Score = 0;
+        }
 
         if (UIManager.Instance != null)
         {
@@ -136,6 +164,33 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void RestoreSavedDesserts(List<DessertSaveData> savedDesserts)
+    {
+        if (savedDesserts == null || EvolutionData == null) return;
+
+        foreach (var data in savedDesserts)
+        {
+            if (data.level > 0 && data.level <= EvolutionData.Levels.Length)
+            {
+                GameObject prefab = EvolutionData.Levels[data.level - 1].Prefab;
+                if (prefab != null)
+                {
+                    GameObject newDessert = Instantiate(prefab, data.position, Quaternion.Euler(0, 0, data.rotation));
+                    Dessert dessertScript = newDessert.GetComponent<Dessert>();
+                    if (dessertScript != null)
+                    {
+                        dessertScript.Initialize(data.level, true); // True because it's already dropped/active in the playfield
+                    }
+                    Rigidbody2D rb = newDessert.GetComponent<Rigidbody2D>();
+                    if (rb != null)
+                    {
+                        rb.velocity = data.velocity;
+                    }
+                }
+            }
+        }
+    }
+
     public void TriggerGameOver()
     {
         if (CurrentState == GameState.GameOver) return;
@@ -144,12 +199,24 @@ public class GameManager : MonoBehaviour
         if (Score > HighScore)
         {
             HighScore = Score;
-            SaveData();
         }
+
+        ClearSavedGame(); // Delete saved state since game is over
+        SaveData();
 
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowGameOver();
+        }
+    }
+
+    public void ClearSavedGame()
+    {
+        if (loadedSaveData != null)
+        {
+            loadedSaveData.hasSavedGame = false;
+            loadedSaveData.activeDesserts.Clear();
+            loadedSaveData.currentScore = 0;
         }
     }
 
@@ -186,16 +253,16 @@ public class GameManager : MonoBehaviour
         if (PlayerPrefs.HasKey("GameData"))
         {
             string json = PlayerPrefs.GetString("GameData");
-            SaveDataModel data = JsonUtility.FromJson<SaveDataModel>(json);
-            if (data != null)
+            loadedSaveData = JsonUtility.FromJson<SaveDataModel>(json);
+            if (loadedSaveData != null)
             {
-                HighScore = data.highScore;
-                LastDiscoveryLevel = data.lastDiscoveryLevel;
+                HighScore = loadedSaveData.highScore;
+                LastDiscoveryLevel = loadedSaveData.lastDiscoveryLevel;
 
-                if (data.settings != null)
+                if (loadedSaveData.settings != null)
                 {
-                    IsSfxEnabled = data.settings.sfx;
-                    IsVibrationEnabled = data.settings.vibration;
+                    IsSfxEnabled = loadedSaveData.settings.sfx;
+                    IsVibrationEnabled = loadedSaveData.settings.vibration;
                 }
                 return;
             }
@@ -253,17 +320,72 @@ public class GameManager : MonoBehaviour
         SaveData();
     }
 
-    private void SaveData()
+    public void SaveCurrentBoardState()
     {
+        if (CurrentState != GameState.Playing) return;
+
         SaveDataModel data = new SaveDataModel
         {
             highScore = HighScore,
             lastDiscoveryLevel = LastDiscoveryLevel,
-            settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled }
+            settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled },
+            hasSavedGame = true,
+            currentScore = Score,
+            activeDesserts = new List<DessertSaveData>()
         };
+
+        GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
+        foreach (GameObject go in desserts)
+        {
+            Dessert d = go.GetComponent<Dessert>();
+            if (d != null && d.IsDropped && !d.IsMerged)
+            {
+                Rigidbody2D rb = go.GetComponent<Rigidbody2D>();
+                Vector2 vel = rb != null ? rb.velocity : Vector2.zero;
+
+                data.activeDesserts.Add(new DessertSaveData
+                {
+                    level = d.Level,
+                    position = go.transform.position,
+                    velocity = vel,
+                    rotation = go.transform.eulerAngles.z
+                });
+            }
+        }
+
+        loadedSaveData = data; // Keep a reference
+        string json = JsonUtility.ToJson(data);
+        PlayerPrefs.SetString("GameData", json);
+        PlayerPrefs.Save();
+    }
+
+    private void SaveData()
+    {
+        SaveDataModel data = loadedSaveData ?? new SaveDataModel();
+
+        data.highScore = HighScore;
+        data.lastDiscoveryLevel = LastDiscoveryLevel;
+        data.settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
+        // currentScore and hasSavedGame and activeDesserts properties remain whatever they were.
 
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString("GameData", json);
         PlayerPrefs.Save();
+    }
+
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus && CurrentState == GameState.Playing)
+        {
+            SaveCurrentBoardState();
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (CurrentState == GameState.Playing)
+        {
+            SaveCurrentBoardState();
+        }
     }
 }

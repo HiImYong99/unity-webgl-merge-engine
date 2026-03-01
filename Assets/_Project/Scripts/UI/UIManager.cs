@@ -151,6 +151,11 @@ public class UIManager : MonoBehaviour
 
     private void OnConfirmExitClicked()
     {
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameManager.GameState.Playing)
+        {
+            GameManager.Instance.SaveCurrentBoardState();
+        }
+
         if (BridgeManager.Instance != null)
         {
             BridgeManager.Instance.RequestExitApp();
