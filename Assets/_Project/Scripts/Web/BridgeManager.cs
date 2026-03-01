@@ -14,11 +14,15 @@ public class BridgeManager : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void ExitApp();
+
+    [DllImport("__Internal")]
+    private static extern void AppLogin();
 #else
     // Editor Fallbacks
     private static void ShowAd() { Debug.Log("[Bridge] ShowAd called in Editor. Simulating Ad Complete."); Instance.OnReviveSuccess(); }
     private static void ShareResult(int score, int level, string imageBase64) { Debug.Log($"[Bridge] ShareResult: Score={score}, Level={level}, Image length={imageBase64.Length}"); }
     private static void ExitApp() { Debug.Log("[Bridge] ExitApp called in Editor."); }
+    private static void AppLogin() { Debug.Log("[Bridge] AppLogin called in Editor. Simulating Success."); Instance.OnLoginSuccess("editor_user_key_777"); }
 #endif
 
     private void Awake()
@@ -49,7 +53,31 @@ public class BridgeManager : MonoBehaviour
         ExitApp();
     }
 
+    public void RequestAppLogin()
+    {
+        AppLogin();
+    }
+
     // Called from JSlib
+    public void OnLoginSuccess(string userKey)
+    {
+        Debug.Log("[Bridge] Login Success. UserKey: " + userKey);
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnUserLogin(userKey);
+        }
+    }
+
+    public void OnLoginFailed(string error)
+    {
+        Debug.LogError("[Bridge] Login Failed: " + error);
+        // Fallback for game flow if login fails
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnUserLogin("guest_" + System.Guid.NewGuid().ToString().Substring(0, 8));
+        }
+    }
+
     public void OnReviveSuccess()
     {
         if (GameManager.Instance != null)

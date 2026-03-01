@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
     public Text ScoreText;
     public Text HighScoreText;
     public Text LandingHighScoreText;
+    public Text LoginStatusText; // 토스 계정 로그인 상태 표시
     public Button ApplicationStartButton; // 랜딩 페이지 내 게임 시작 버튼
     public Text NextGuideText;
     public Button AdReviveButton;
@@ -65,6 +66,14 @@ public class UIManager : MonoBehaviour
         if (show && LandingHighScoreText != null && GameManager.Instance != null)
         {
             LandingHighScoreText.text = "최고 점수: " + GameManager.Instance.HighScore;
+        }
+    }
+
+    public void UpdateLoginStatus(string status)
+    {
+        if (LoginStatusText != null)
+        {
+            LoginStatusText.text = status;
         }
     }
 

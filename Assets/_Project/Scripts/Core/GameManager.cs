@@ -33,6 +33,9 @@ public class GameManager : MonoBehaviour
     public GameState CurrentState { get; private set; }
     public bool HasRevived { get; private set; }
 
+    public string UserIdentifier { get; private set; }
+    public bool IsLoggedIn { get; private set; }
+
     public bool IsSfxEnabled { get; private set; } = true;
     public bool IsVibrationEnabled { get; private set; } = true;
 
@@ -218,7 +221,28 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateScore(Score);
+            // Don't show landing page immediately, wait for login to finish or timeout
+            // For MVP purposes, trigger login here.
+            if (BridgeManager.Instance != null && !IsLoggedIn)
+            {
+                BridgeManager.Instance.RequestAppLogin();
+            }
+            else
+            {
+                UIManager.Instance.ShowLandingPage(true);
+            }
+        }
+    }
+
+    public void OnUserLogin(string userKey)
+    {
+        IsLoggedIn = true;
+        UserIdentifier = userKey;
+
+        if (UIManager.Instance != null && CurrentState == GameState.Landing)
+        {
             UIManager.Instance.ShowLandingPage(true);
+            UIManager.Instance.UpdateLoginStatus("토스 계정 연결 완료");
         }
     }
 

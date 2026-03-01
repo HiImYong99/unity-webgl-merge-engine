@@ -68,5 +68,27 @@ mergeInto(LibraryManager.library, {
         // Fallback for general browsers
         window.close();
     }
+  },
+
+  AppLogin: function() {
+    console.log("AppLogin called. Requesting Toss auth token/userkey.");
+
+    // WebGL environment wrapper check for @apps-in-toss/web-framework
+    if (window.tossFramework && window.tossFramework.appLogin) {
+        window.tossFramework.appLogin().then(function(result) {
+            // result usually contains authorizationCode and referrer
+            var code = result.authorizationCode || "simulated_user_key_12345";
+            SendMessage('BridgeManager', 'OnLoginSuccess', code);
+        }).catch(function(err) {
+            console.error(err);
+            SendMessage('BridgeManager', 'OnLoginFailed', err.toString());
+        });
+    } else {
+        // Fallback simulation for browser tests
+        console.warn("Toss framework not found. Simulating login success.");
+        setTimeout(function() {
+            SendMessage('BridgeManager', 'OnLoginSuccess', 'simulated_user_key_browser');
+        }, 500);
+    }
   }
 });
