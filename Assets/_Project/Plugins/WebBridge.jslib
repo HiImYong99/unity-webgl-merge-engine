@@ -57,5 +57,16 @@ mergeInto(LibraryManager.library, {
 
   OnAdComplete: function() {
     SendMessage('BridgeManager', 'OnReviveSuccess');
+  },
+
+  ExitApp: function() {
+    console.log("ExitApp called. Notifying container to close mini-app.");
+    // In Toss environment, this would call the specific Toss SDK method to close the webview.
+    if (window.Toss && window.Toss.close) {
+        window.Toss.close();
+    } else {
+        // Fallback for general browsers
+        window.close();
+    }
   }
 });

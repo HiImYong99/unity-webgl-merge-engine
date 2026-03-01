@@ -26,6 +26,9 @@ public class GameManager : MonoBehaviour
     public bool IsGameOver { get; private set; }
     public bool HasRevived { get; private set; }
 
+    public bool IsSfxEnabled { get; private set; } = true;
+    public bool IsVibrationEnabled { get; private set; } = true;
+
     public DessertEvolutionData EvolutionData;
 
     private float maxDeadlineTimer = 0f;
@@ -42,17 +45,6 @@ public class GameManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
-        }
-    }
-
-    private void Start()
-    {
-        Score = 0;
-        IsGameOver = false;
-        HasRevived = false;
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.UpdateScore(Score);
         }
     }
 
@@ -171,12 +163,44 @@ public class GameManager : MonoBehaviour
             {
                 HighScore = data.highScore;
                 LastDiscoveryLevel = data.lastDiscoveryLevel;
+
+                if (data.settings != null)
+                {
+                    IsSfxEnabled = data.settings.sfx;
+                    IsVibrationEnabled = data.settings.vibration;
+                }
                 return;
             }
         }
 
         HighScore = 0;
         LastDiscoveryLevel = 1;
+        IsSfxEnabled = true;
+        IsVibrationEnabled = true;
+    }
+
+    private void Start()
+    {
+        Score = 0;
+        IsGameOver = false;
+        HasRevived = false;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.SetMute(!IsSfxEnabled);
+        }
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UpdateScore(Score);
+        }
+    }
+
+    public void UpdateSettings(bool sfx, bool vibration)
+    {
+        IsSfxEnabled = sfx;
+        IsVibrationEnabled = vibration;
+        SaveData();
     }
 
     private void SaveData()
@@ -185,7 +209,7 @@ public class GameManager : MonoBehaviour
         {
             highScore = HighScore,
             lastDiscoveryLevel = LastDiscoveryLevel,
-            settings = new SettingsModel { sfx = true, vibration = true }
+            settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled }
         };
 
         string json = JsonUtility.ToJson(data);

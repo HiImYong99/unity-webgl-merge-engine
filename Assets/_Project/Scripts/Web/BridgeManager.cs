@@ -11,10 +11,14 @@ public class BridgeManager : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void ShareResult(int score, int level, string imageBase64);
+
+    [DllImport("__Internal")]
+    private static extern void ExitApp();
 #else
     // Editor Fallbacks
     private static void ShowAd() { Debug.Log("[Bridge] ShowAd called in Editor. Simulating Ad Complete."); Instance.OnReviveSuccess(); }
     private static void ShareResult(int score, int level, string imageBase64) { Debug.Log($"[Bridge] ShareResult: Score={score}, Level={level}, Image length={imageBase64.Length}"); }
+    private static void ExitApp() { Debug.Log("[Bridge] ExitApp called in Editor."); }
 #endif
 
     private void Awake()
@@ -38,6 +42,11 @@ public class BridgeManager : MonoBehaviour
     public void RequestShare(int score, int level, string imageBase64)
     {
         ShareResult(score, level, imageBase64);
+    }
+
+    public void RequestExitApp()
+    {
+        ExitApp();
     }
 
     // Called from JSlib
