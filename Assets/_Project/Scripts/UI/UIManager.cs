@@ -41,7 +41,7 @@ public class UIManager : MonoBehaviour
     {
         if (ScoreText != null)
         {
-            ScoreText.text = "Score: " + score;
+            ScoreText.text = "점수: " + score;
         }
     }
 
@@ -49,7 +49,7 @@ public class UIManager : MonoBehaviour
     {
         if (NextGuideText != null)
         {
-            NextGuideText.text = "Next: Level " + nextLevel;
+            NextGuideText.text = "다음 디저트: 레벨 " + nextLevel;
         }
     }
 
@@ -58,7 +58,7 @@ public class UIManager : MonoBehaviour
         if (GameOverPanel != null) GameOverPanel.SetActive(true);
         if (HighScoreText != null && GameManager.Instance != null)
         {
-            HighScoreText.text = "High Score: " + GameManager.Instance.HighScore;
+            HighScoreText.text = "최고 점수: " + GameManager.Instance.HighScore;
         }
     }
 

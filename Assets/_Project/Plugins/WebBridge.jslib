@@ -21,8 +21,8 @@ mergeInto(LibraryManager.library, {
 
     if (navigator.share) {
         var shareData = {
-            title: 'Dessert Pop!',
-            text: 'I reached level ' + levelStr + ' with a score of ' + scoreStr + ' in Dessert Pop!',
+            title: '디저트 팝!',
+            text: '제가 디저트 팝에서 점수 ' + scoreStr + '점, 레벨 ' + levelStr + '에 도달했어요!',
         };
 
         if (imgStr && imgStr.startsWith('data:image/')) {
