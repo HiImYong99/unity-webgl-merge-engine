@@ -13,6 +13,13 @@ public class GameManager : MonoBehaviour
         public SettingsModel settings;
     }
 
+    public enum GameState
+    {
+        Landing,
+        Playing,
+        GameOver
+    }
+
     [System.Serializable]
     private class SettingsModel
     {
@@ -23,7 +30,7 @@ public class GameManager : MonoBehaviour
     public int Score { get; private set; }
     public int HighScore { get; private set; }
     public int LastDiscoveryLevel { get; private set; }
-    public bool IsGameOver { get; private set; }
+    public GameState CurrentState { get; private set; }
     public bool HasRevived { get; private set; }
 
     public bool IsSfxEnabled { get; private set; } = true;
@@ -50,7 +57,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (IsGameOver) return;
+        if (CurrentState != GameState.Playing) return;
 
         bool isAnyOverDeadline = false;
         GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
@@ -93,7 +100,7 @@ public class GameManager : MonoBehaviour
 
     public void AddScore(int amount, int mergedLevel)
     {
-        if (IsGameOver) return;
+        if (CurrentState != GameState.Playing) return;
 
         Score += amount;
         if (mergedLevel > LastDiscoveryLevel)
@@ -108,10 +115,28 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void StartGame()
+    {
+        Score = 0;
+        CurrentState = GameState.Playing;
+        HasRevived = false;
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UpdateScore(Score);
+            UIManager.Instance.ShowLandingPage(false);
+        }
+
+        if (SpawnManager.Instance != null)
+        {
+            SpawnManager.Instance.PrepareNextDessert();
+        }
+    }
+
     public void TriggerGameOver()
     {
-        if (IsGameOver) return;
-        IsGameOver = true;
+        if (CurrentState == GameState.GameOver) return;
+        CurrentState = GameState.GameOver;
 
         if (Score > HighScore)
         {
@@ -127,9 +152,9 @@ public class GameManager : MonoBehaviour
 
     public void Revive()
     {
-        if (HasRevived) return; // 1-time Undo limit
+        if (HasRevived || CurrentState != GameState.GameOver) return; // 1-time Undo limit
 
-        IsGameOver = false;
+        CurrentState = GameState.Playing;
         HasRevived = true;
 
         // Clean up items near deadline
@@ -182,7 +207,7 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         Score = 0;
-        IsGameOver = false;
+        CurrentState = GameState.Landing;
         HasRevived = false;
 
         if (AudioManager.Instance != null)
@@ -193,6 +218,7 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateScore(Score);
+            UIManager.Instance.ShowLandingPage(true);
         }
     }
 

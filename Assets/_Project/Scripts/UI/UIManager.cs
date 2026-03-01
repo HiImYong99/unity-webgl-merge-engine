@@ -10,8 +10,11 @@ public class UIManager : MonoBehaviour
     public GameObject DeadlineWarningPanel;
     public GameObject EvolutionEncyclopediaPanel; // 진화 도감 UI
     public GameObject ExitModalPanel; // 미니앱 종료 모달
+    public GameObject LandingPanel; // 랜딩 페이지 패널
     public Text ScoreText;
     public Text HighScoreText;
+    public Text LandingHighScoreText;
+    public Button ApplicationStartButton; // 랜딩 페이지 내 게임 시작 버튼
     public Text NextGuideText;
     public Button AdReviveButton;
     public Button ShareButton;
@@ -28,15 +31,16 @@ public class UIManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
-    }
 
-    private void Start()
-    {
         HideGameOver();
         ShowDeadlineWarning(false);
         ShowEncyclopedia(false);
         ShowExitModal(false);
+        ShowLandingPage(false); // Init specifically handled by GameManager later
+    }
 
+    private void Start()
+    {
         if (AdReviveButton != null) AdReviveButton.onClick.AddListener(OnAdReviveClicked);
         if (ShareButton != null) ShareButton.onClick.AddListener(OnShareClicked);
         if (RestartButton != null) RestartButton.onClick.AddListener(OnRestartClicked);
@@ -49,7 +53,27 @@ public class UIManager : MonoBehaviour
 
         if (SoundToggleButton != null) SoundToggleButton.onClick.AddListener(OnSoundToggleClicked);
 
+        if (ApplicationStartButton != null) ApplicationStartButton.onClick.AddListener(OnApplicationStartClicked);
+
         UpdateSoundToggleUI();
+    }
+
+    public void ShowLandingPage(bool show)
+    {
+        if (LandingPanel != null) LandingPanel.SetActive(show);
+
+        if (show && LandingHighScoreText != null && GameManager.Instance != null)
+        {
+            LandingHighScoreText.text = "최고 점수: " + GameManager.Instance.HighScore;
+        }
+    }
+
+    private void OnApplicationStartClicked()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.StartGame();
+        }
     }
 
     public void UpdateScore(int score)

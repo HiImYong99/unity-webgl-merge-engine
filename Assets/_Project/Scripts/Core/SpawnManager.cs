@@ -29,24 +29,24 @@ public class SpawnManager : MonoBehaviour
             evolutionData = GameManager.Instance.EvolutionData;
         }
 
-        PrepareNextDessert();
+        // Delay preparing the first dessert until the game actually starts.
+        // PrepareNextDessert() will be called by GameManager.StartGame()
     }
 
     private void Update()
     {
-        if (GameManager.Instance != null && GameManager.Instance.IsGameOver) return;
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameManager.GameState.Playing) return;
         if (!CanSpawn || currentDessert == null) return;
 
         // Follow Touch or Mouse
         Vector3 inputPos = Vector3.zero;
         bool isInput = false;
+        bool isOverUI = false;
 
-        // Check UI interaction
+        // Check UI interaction for mouse
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
-            // Ignore if touching UI, except if we are releasing the mouse we might still want to clear the state without dropping.
-            // A simple implementation for MVP: ignore inputs over UI.
-            return;
+            isOverUI = true;
         }
 
         if (Input.touchCount > 0)
@@ -56,27 +56,29 @@ public class SpawnManager : MonoBehaviour
             // For touches, IsPointerOverGameObject needs fingerId
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
             {
-                return;
+                isOverUI = true;
             }
-
-            inputPos = Camera.main.ScreenToWorldPoint(touch.position);
-            isInput = true;
 
             if (touch.phase == TouchPhase.Ended)
             {
                 DropDessert();
                 isInput = false;
             }
-        }
-        else if (Input.GetMouseButton(0))
-        {
-            inputPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            isInput = true;
+            else if (!isOverUI)
+            {
+                inputPos = Camera.main.ScreenToWorldPoint(touch.position);
+                isInput = true;
+            }
         }
         else if (Input.GetMouseButtonUp(0))
         {
             DropDessert();
             isInput = false;
+        }
+        else if (Input.GetMouseButton(0) && !isOverUI)
+        {
+            inputPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            isInput = true;
         }
 
         if (isInput && currentDessert != null)
@@ -86,7 +88,7 @@ public class SpawnManager : MonoBehaviour
         }
     }
 
-    private void PrepareNextDessert()
+    public void PrepareNextDessert()
     {
         if (evolutionData == null || evolutionData.Levels == null || evolutionData.Levels.Length == 0) return;
 
