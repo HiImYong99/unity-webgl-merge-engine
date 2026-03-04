@@ -1,13 +1,28 @@
 mergeInto(LibraryManager.library, {
-  ShowAd: function() {
-    // In a real scenario, this calls the Toss Ad SDK.
-    // Simulating ad completion immediately for this MVP.
-    // Call OnAdComplete or directly SendMessage.
-    console.log("Showing Ad...");
 
-    // Simulate async ad view
+  // ── 인게임 HUD 업데이트 (Unity → JS) ──
+  updateScoreFromUnity: function(score) {
+    if (typeof window.updateScoreFromUnity === 'function') {
+      window.updateScoreFromUnity(score);
+    }
+  },
+
+  updateNextFromUnity: function(level) {
+    if (typeof window.updateNextFromUnity === 'function') {
+      window.updateNextFromUnity(level);
+    }
+  },
+
+  showGameOverFromUnity: function(score, best, adWatched, spareLives) {
+    if (typeof window.showGameOverFromUnity === 'function') {
+      window.showGameOverFromUnity(score, best, adWatched, spareLives);
+    }
+  },
+
+  ShowAd: function() {
+    console.log("[WebBridge] Showing Ad...");
     setTimeout(function() {
-        console.log("Ad Complete!");
+        console.log("[WebBridge] Ad Complete!");
         SendMessage('BridgeManager', 'OnReviveSuccess');
     }, 1000);
   },
@@ -17,41 +32,32 @@ mergeInto(LibraryManager.library, {
     var levelStr = typeof level === "number" ? level.toString() : UTF8ToString(level);
     var imgStr = typeof imageBase64 === "string" ? imageBase64 : UTF8ToString(imageBase64);
 
-    console.log("ShareResult called. Score: " + scoreStr + ", Level: " + levelStr);
+    console.log("[WebBridge] ShareResult: Score=" + scoreStr + ", Level=" + levelStr);
 
     if (navigator.share) {
         var shareData = {
             title: '디저트 팝!',
-            text: '제가 디저트 팝에서 점수 ' + scoreStr + '점, 레벨 ' + levelStr + '에 도달했어요!',
+            text: '디저트 팝에서 ' + scoreStr + '점을 달성했어요! 🍩',
         };
 
         if (imgStr && imgStr.startsWith('data:image/')) {
             try {
-                // Convert base64 to File object
                 var arr = imgStr.split(',');
                 var mime = arr[0].match(/:(.*?);/)[1];
                 var bstr = atob(arr[1]);
                 var n = bstr.length;
                 var u8arr = new Uint8Array(n);
-                while (n--) {
-                    u8arr[n] = bstr.charCodeAt(n);
-                }
+                while (n--) { u8arr[n] = bstr.charCodeAt(n); }
                 var file = new File([u8arr], 'result.png', { type: mime });
-
-                // Add to share data if files are supported
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     shareData.files = [file];
                 }
             } catch (e) {
-                console.error('Failed to convert base64 image', e);
+                console.error('[WebBridge] base64 변환 실패', e);
             }
         }
 
-        navigator.share(shareData).then(() => {
-            console.log('Shared successfully');
-        }).catch(console.error);
-    } else {
-        console.log('Web Share API not supported in this browser.');
+        navigator.share(shareData).catch(function(err) { console.error(err); });
     }
   },
 
@@ -60,35 +66,45 @@ mergeInto(LibraryManager.library, {
   },
 
   ExitApp: function() {
-    console.log("ExitApp called. Notifying container to close mini-app.");
-    // In Toss environment, this would call the specific Toss SDK method to close the webview.
-    if (window.Toss && window.Toss.close) {
+    console.log("[WebBridge] ExitApp called.");
+    if (window.AppsInToss && typeof window.AppsInToss.close === 'function') {
+        window.AppsInToss.close();
+    } else if (window.Toss && window.Toss.close) {
         window.Toss.close();
     } else {
-        // Fallback for general browsers
         window.close();
     }
   },
 
-  AppLogin: function() {
-    console.log("AppLogin called. Requesting Toss auth token/userkey.");
+  // ── Unity → JS: 도감 발견 알림 ──
+  onDessertDiscoveredFromUnity: function(level) {
+    if (typeof window.onDessertDiscoveredFromUnity === 'function') {
+      window.onDessertDiscoveredFromUnity(level);
+    }
+  },
 
-    // WebGL environment wrapper check for @apps-in-toss/web-framework
-    if (window.tossFramework && window.tossFramework.appLogin) {
-        window.tossFramework.appLogin().then(function(result) {
-            // result usually contains authorizationCode and referrer
-            var code = result.authorizationCode || "simulated_user_key_12345";
+  AppLogin: function() {
+    console.log("[WebBridge] AppLogin called.");
+    if (window.AppsInToss && typeof window.AppsInToss.appLogin === 'function') {
+        window.AppsInToss.appLogin().then(function(result) {
+            var code = (result && result.authorizationCode) ? result.authorizationCode : 'ait_user_' + Date.now();
             SendMessage('BridgeManager', 'OnLoginSuccess', code);
         }).catch(function(err) {
             console.error(err);
             SendMessage('BridgeManager', 'OnLoginFailed', err.toString());
         });
+    } else if (window.tossFramework && window.tossFramework.appLogin) {
+        window.tossFramework.appLogin().then(function(result) {
+            var code = result.authorizationCode || 'legacy_user_' + Date.now();
+            SendMessage('BridgeManager', 'OnLoginSuccess', code);
+        }).catch(function(err) {
+            SendMessage('BridgeManager', 'OnLoginFailed', err.toString());
+        });
     } else {
-        // Fallback simulation for browser tests
-        console.warn("Toss framework not found. Simulating login success.");
+        console.warn("[WebBridge] Toss SDK not found. Simulating login.");
         setTimeout(function() {
-            SendMessage('BridgeManager', 'OnLoginSuccess', 'simulated_user_key_browser');
-        }, 500);
+            SendMessage('BridgeManager', 'OnLoginSuccess', 'local_browser_' + Date.now());
+        }, 300);
     }
   }
 });

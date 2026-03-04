@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "audiogen": {
+      "command": "/Users/yong/.audiogen-env/bin/python",
+      "args": [
+        "-m",
+        "audiogen_mcp.server"
+      ],
+      "env": {
+        "HF_TOKEN": "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",
+        "PYTHONPATH": "/Users/yong/.audiogen-env"
+      }
+    }
+  }
+}

@@ -8,10 +8,13 @@ public class DessertEvolutionData : ScriptableObject
     {
         public int Level;
         public string Name;
+        public string NameKR;      // Korean Display Name
+        public string FlavorText;   // Korean Description
         public float ScaleMultiplier;
         public int ScorePoint;
         public GameObject Prefab;
     }
 
+    public string Version = "1.0";
     public DessertLevelData[] Levels;
 }

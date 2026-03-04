@@ -44,7 +44,9 @@ public class GameManager : MonoBehaviour
     public int HighScore { get; private set; }
     public int LastDiscoveryLevel { get; private set; }
     public GameState CurrentState { get; private set; }
-    public bool HasRevived { get; private set; }
+    public bool HasRevived { get; private set; } // Legacy - keeping for compat
+    public bool AdWatched { get; private set; } = false;
+    public int SpareLives { get; private set; } = 0;
 
     public string UserIdentifier { get; private set; }
     public bool IsLoggedIn { get; private set; }
@@ -56,9 +58,12 @@ public class GameManager : MonoBehaviour
 
     public DessertEvolutionData EvolutionData;
 
-    private float maxDeadlineTimer = 0f;
-    private const float DEADLINE_LIMIT = 3f;
-    private const float DEADLINE_Y = 3.5f;
+    // ===== Fallout 시스템 (Kill Zone) =====
+    // 타이머 방식을 제거하고, 오브젝트가 용기 수평 범위 밖으로 나가서
+    // Kill Zone Y 임계값 아래로 떨어질 때만 게임 오버를 발생시킵니다.
+    private const float CONTAINER_MIN_X = -2.0f;  // 용기 좌측 경계 (halfWidth 1.6 + 마진)
+    private const float CONTAINER_MAX_X = 2.0f;   // 용기 우측 경계
+    private const float KILL_ZONE_Y = -4f;         // 이 Y값 아래로 떨어지면 게임 오버
 
     private void Awake()
     {
@@ -77,45 +82,39 @@ public class GameManager : MonoBehaviour
     {
         if (CurrentState != GameState.Playing) return;
 
-        bool isAnyOverDeadline = false;
+        // ===== Fallout 게임 오버 판정 =====
+        // 오브젝트가 용기의 수평 범위(X축)를 벗어난 후
+        // Kill Zone Y값 아래로 떨어질 때만 게임 오버를 발생시킵니다.
+        // (용기 내부에서 쌓인 오브젝트는 판정 대상 아님)
         GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
 
         foreach (GameObject go in desserts)
         {
+            if (go == null) continue;
+
             Dessert dessert = go.GetComponent<Dessert>();
-            if (dessert != null && dessert.IsDropped)
-            {
-                if (go.transform.position.y >= DEADLINE_Y)
-                {
-                    isAnyOverDeadline = true;
-                    break;
-                }
-            }
-        }
+            if (dessert == null) continue;
 
-        if (isAnyOverDeadline)
-        {
-            maxDeadlineTimer += Time.deltaTime;
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowDeadlineWarning(true);
-            }
+            // 조작 중이거나 병합 중인 오브젝트 제외
+            if (!dessert.IsDropped) continue;
+            if (dessert.IsMerged) continue;
 
-            if (maxDeadlineTimer >= DEADLINE_LIMIT)
+            float x = go.transform.position.x;
+            float y = go.transform.position.y;
+
+            // 용기 수평 범위 밖이고 Kill Zone 아래로 떨어진 경우
+            bool outsideContainer = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
+            if (outsideContainer && y < KILL_ZONE_Y)
             {
                 TriggerGameOver();
-            }
-        }
-        else
-        {
-            maxDeadlineTimer = 0f;
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowDeadlineWarning(false);
+                return;
             }
         }
     }
 
+    /// <summary>
+    /// 점수 추가. Score += Tier × Multiplier 방식.
+    /// </summary>
     public void AddScore(int amount, int mergedLevel)
     {
         if (CurrentState != GameState.Playing) return;
@@ -137,31 +136,27 @@ public class GameManager : MonoBehaviour
     {
         CurrentState = GameState.Playing;
         HasRevived = false;
+        AdWatched = false;
+        SpareLives = 0;
 
-        // Clean up any existing desserts first (if restarting)
+        // 기존 디저트 정리
         GameObject[] existingDesserts = GameObject.FindGameObjectsWithTag("Dessert");
         foreach (GameObject go in existingDesserts) Destroy(go);
 
-        if (loadedSaveData != null && loadedSaveData.hasSavedGame)
-        {
-            Score = loadedSaveData.currentScore;
-            RestoreSavedDesserts(loadedSaveData.activeDesserts);
-        }
-        else
-        {
-            Score = 0;
-        }
+        if (SpawnManager.Instance != null) SpawnManager.Instance.FullReset();
+
+        // 항상 빈 보드에서 시작 (스펙: Initial state is empty)
+        Score = 0;
+        ClearSavedGame();
 
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateScore(Score);
             UIManager.Instance.ShowLandingPage(false);
+            UIManager.Instance.ShowHUD(true);
         }
 
-        if (SpawnManager.Instance != null)
-        {
-            SpawnManager.Instance.PrepareNextDessert();
-        }
+        if (SpawnManager.Instance != null) SpawnManager.Instance.PrepareNextDessert();
     }
 
     private void RestoreSavedDesserts(List<DessertSaveData> savedDesserts)
@@ -179,7 +174,7 @@ public class GameManager : MonoBehaviour
                     Dessert dessertScript = newDessert.GetComponent<Dessert>();
                     if (dessertScript != null)
                     {
-                        dessertScript.Initialize(data.level, true); // True because it's already dropped/active in the playfield
+                        dessertScript.Initialize(data.level, true);
                     }
                     Rigidbody2D rb = newDessert.GetComponent<Rigidbody2D>();
                     if (rb != null)
@@ -201,7 +196,7 @@ public class GameManager : MonoBehaviour
             HighScore = Score;
         }
 
-        ClearSavedGame(); // Delete saved state since game is over
+        ClearSavedGame();
         SaveData();
 
         if (UIManager.Instance != null)
@@ -222,29 +217,43 @@ public class GameManager : MonoBehaviour
 
     public void Revive()
     {
-        if (HasRevived || CurrentState != GameState.GameOver) return; // 1-time Undo limit
+        // 광고 시청 후 호출됨
+        if (AdWatched || CurrentState != GameState.GameOver) return;
 
         CurrentState = GameState.Playing;
-        HasRevived = true;
+        AdWatched = true;
+        SpareLives = 1; // 첫 번째 복구는 지금 즉시 하고, 추가로 1회 더 가능
 
-        // Clean up items near deadline
+        ClearFallingDesserts();
+
+        if (UIManager.Instance != null) UIManager.Instance.HideGameOver();
+        if (SpawnManager.Instance != null) SpawnManager.Instance.CanSpawn = true;
+    }
+
+    public void UseSpareLife()
+    {
+        // 남은 여분의 생명 사용
+        if (SpareLives <= 0 || CurrentState != GameState.GameOver) return;
+
+        CurrentState = GameState.Playing;
+        SpareLives--;
+
+        ClearFallingDesserts();
+
+        if (UIManager.Instance != null) UIManager.Instance.HideGameOver();
+        if (SpawnManager.Instance != null) SpawnManager.Instance.CanSpawn = true;
+    }
+
+    private void ClearFallingDesserts()
+    {
         GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
         foreach (GameObject go in desserts)
         {
-            if (go.transform.position.y > 3.0f) // Adjust magic number 3.0f based on actual deadline Y
+            // Kill Zone 아래로 떨어졌거나 너무 높이 쌓인(게임오버 유발) 오브젝트들 정리
+            if (go.transform.position.y < KILL_ZONE_Y || go.transform.position.y > 4.5f)
             {
                 Destroy(go);
             }
-        }
-
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.HideGameOver();
-        }
-
-        if (SpawnManager.Instance != null)
-        {
-            SpawnManager.Instance.CanSpawn = true;
         }
     }
 
@@ -276,6 +285,11 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        // 프리미엄 용기 디자인 적용 루틴 실행
+        GameObject container = GameObject.Find("GameContainer");
+        if (container != null && container.GetComponent<VesselVisualEnhancer>() == null)
+            container.AddComponent<VesselVisualEnhancer>();
+
         Score = 0;
         CurrentState = GameState.Landing;
         HasRevived = false;
@@ -288,11 +302,14 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateScore(Score);
-            // Don't show landing page immediately, wait for login to finish or timeout
-            // For MVP purposes, trigger login here.
-            if (BridgeManager.Instance != null && !IsLoggedIn)
+            if (!IsLoggedIn)
             {
-                BridgeManager.Instance.RequestAppLogin();
+                if (TossBridgeManager.Instance != null)
+                    TossBridgeManager.Instance.RequestLogin();
+                else if (BridgeManager.Instance != null)
+                    BridgeManager.Instance.RequestAppLogin();
+                else
+                    UIManager.Instance.ShowLandingPage(true);
             }
             else
             {
@@ -309,7 +326,7 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null && CurrentState == GameState.Landing)
         {
             UIManager.Instance.ShowLandingPage(true);
-            UIManager.Instance.UpdateLoginStatus("토스 계정 연결 완료");
+            UIManager.Instance.UpdateLoginStatus("토스 계정이 연결됐어요");
         }
     }
 
@@ -317,7 +334,24 @@ public class GameManager : MonoBehaviour
     {
         IsSfxEnabled = sfx;
         IsVibrationEnabled = vibration;
+        
+        if (AudioManager.Instance != null)
+        {
+            // BGM은 SFX 설정과 별개로 관리되거나, 필요에 따라 같이 처리
+            AudioManager.Instance.SetSfxMute(!sfx);
+        }
         SaveData();
+    }
+
+    public void ForcePlayBGM()
+    {
+        if (AudioManager.Instance != null && AudioManager.Instance.BGMSource != null)
+        {
+            if (AudioManager.Instance.BGMSource.clip != null && !AudioManager.Instance.BGMSource.isPlaying)
+            {
+                AudioManager.Instance.BGMSource.Play();
+            }
+        }
     }
 
     public void SaveCurrentBoardState()
@@ -353,7 +387,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        loadedSaveData = data; // Keep a reference
+        loadedSaveData = data;
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString("GameData", json);
         PlayerPrefs.Save();
@@ -366,7 +400,6 @@ public class GameManager : MonoBehaviour
         data.highScore = HighScore;
         data.lastDiscoveryLevel = LastDiscoveryLevel;
         data.settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
-        // currentScore and hasSavedGame and activeDesserts properties remain whatever they were.
 
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString("GameData", json);

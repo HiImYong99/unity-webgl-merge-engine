@@ -22,7 +22,13 @@ public class BridgeManager : MonoBehaviour
     private static void ShowAd() { Debug.Log("[Bridge] ShowAd called in Editor. Simulating Ad Complete."); Instance.OnReviveSuccess(); }
     private static void ShareResult(int score, int level, string imageBase64) { Debug.Log($"[Bridge] ShareResult: Score={score}, Level={level}, Image length={imageBase64.Length}"); }
     private static void ExitApp() { Debug.Log("[Bridge] ExitApp called in Editor."); }
-    private static void AppLogin() { Debug.Log("[Bridge] AppLogin called in Editor. Simulating Success."); Instance.OnLoginSuccess("editor_user_key_777"); }
+    private static void AppLogin() 
+    { 
+        Debug.Log("[Bridge] AppLogin called in Editor. Simulating Success."); 
+        // We use a small delay or invoke to simulate the async nature if needed, 
+        // but for local testing, immediate is fine.
+        Instance.OnLoginSuccess("local_dev_user_" + Random.Range(1000, 9999)); 
+    }
 #endif
 
     private void Awake()
