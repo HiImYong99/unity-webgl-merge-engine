@@ -1,69 +1,76 @@
 using UnityEngine;
 using System.Collections;
 
+/// <summary>
+/// 병합 시 나타나는 "+점수" 팝업 텍스트 연출
+/// </summary>
 public class FloatingScore : MonoBehaviour
 {
-    private static Font cachedFont;
-    private TextMesh textMesh;
-    private float duration = 0.8f;
-    private float floatSpeed = 1.2f;
+    private static Font _cachedFont;
+    private TextMesh _textMesh;
+    private readonly float _duration = 0.9f;
+    private readonly float _floatSpeed = 1.5f;
 
-    public void Initialize(int score)
+    /// <summary>점수 및 색상 초기화</summary>
+    public void Initialize(int score, Color color)
     {
-        if (cachedFont == null)
-            cachedFont = Resources.Load<Font>("Fonts/LilitaOne-Regular");
+        if (_cachedFont == null)
+            _cachedFont = Resources.Load<Font>("Fonts/LilitaOne-Regular");
 
-        textMesh = gameObject.AddComponent<TextMesh>();
-        textMesh.text = "+" + score.ToString();
-        textMesh.characterSize = 0.08f;
-        textMesh.fontSize = 32;
-        textMesh.anchor = TextAnchor.MiddleCenter;
-        textMesh.alignment = TextAlignment.Center;
-        textMesh.color = new Color(1.0f, 0.45f, 0.55f);
-        textMesh.fontStyle = FontStyle.Bold;
-        if (cachedFont != null)
+        _textMesh = gameObject.AddComponent<TextMesh>();
+        _textMesh.text = "+" + score.ToString("N0");
+        _textMesh.characterSize = 0.07f;
+        _textMesh.fontSize = 36;
+        _textMesh.anchor = TextAnchor.MiddleCenter;
+        _textMesh.alignment = TextAlignment.Center;
+        _textMesh.fontStyle = FontStyle.Bold;
+        _textMesh.color = color;
+
+        if (_cachedFont != null)
         {
-            textMesh.font = cachedFont;
-            GetComponent<MeshRenderer>().material = cachedFont.material;
+            _textMesh.font = _cachedFont;
+            GetComponent<MeshRenderer>().material = _cachedFont.material;
         }
 
         MeshRenderer mr = GetComponent<MeshRenderer>();
-        mr.sortingOrder = 300;
+        if (mr != null) mr.sortingOrder = 300;
 
-        StartCoroutine(Animate());
+        StartCoroutine(Co_Animate());
     }
 
-    private IEnumerator Animate()
+    private IEnumerator Co_Animate()
     {
         float elapsed = 0f;
         Vector3 startPos = transform.position;
-        // 약간의 랜덤 X 오프셋으로 더 자연스러운 효과
-        Vector3 targetPos = startPos + new Vector3(Random.Range(-0.3f, 0.3f), floatSpeed, 0);
-        
-        while (elapsed < duration)
+        float randomX = Random.Range(-0.25f, 0.25f);
+        Vector3 targetPos = startPos + new Vector3(randomX, _floatSpeed, 0f);
+
+        transform.localScale = Vector3.zero;
+
+        while (elapsed < _duration)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / duration;
+            float t = Mathf.Clamp01(elapsed / _duration);
 
-            // 1. 위치: 부드러운 가속 후 감속 (Out-Quart)
-            float moveT = 1.0f - Mathf.Pow(1.0f - t, 4);
+            // 위치 이동
+            float moveT = 1f - Mathf.Pow(1f - t, 3f);
             transform.position = Vector3.Lerp(startPos, targetPos, moveT);
 
-            // 2. 스케일: 쫀득한 팝 효과 (1.2배까지만)
-            float scale = 0f;
-            if (t < 0.2f) {
-                scale = Mathf.Lerp(0.6f, 1.0f, t / 0.2f);
-            } else {
-                scale = Mathf.Lerp(1.0f, 0.7f, (t - 0.2f) / 0.8f);
-            }
+            // 쫀득한 스케일 애니메이션
+            float scale;
+            if (t < 0.15f) scale = Mathf.Lerp(0f, 1.3f, t / 0.15f);
+            else if (t < 0.30f) scale = Mathf.Lerp(1.3f, 0.9f, (t - 0.15f) / 0.15f);
+            else if (t < 0.42f) scale = Mathf.Lerp(0.9f, 1.05f, (t - 0.30f) / 0.12f);
+            else scale = Mathf.Lerp(1.05f, 0.85f, (t - 0.42f) / 0.58f);
+            
             transform.localScale = Vector3.one * scale;
 
-            // 3. 알파/페이드: 자연스럽게 사라짐
-            if (t > 0.5f)
+            // 페이드 아웃
+            if (_textMesh != null && t > 0.45f)
             {
-                Color c = textMesh.color;
-                c.a = Mathf.SmoothStep(1f, 0f, (t - 0.5f) / 0.5f);
-                textMesh.color = c;
+                Color c = _textMesh.color;
+                c.a = Mathf.SmoothStep(1f, 0f, (t - 0.45f) / 0.55f);
+                _textMesh.color = c;
             }
 
             yield return null;

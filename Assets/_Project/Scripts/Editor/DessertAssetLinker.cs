@@ -4,7 +4,7 @@ using System.IO;
 
 public class DessertAssetLinker : EditorWindow
 {
-    private const string SPRITE_PATH = "Assets/_Project/Sprites/Desserts/";
+    private const string SPRITE_PATH = "Assets/_Project/Resources/Desserts/";
     private const string PREFAB_PATH = "Assets/_Project/Prefabs/Desserts/";
     private const string DATA_PATH = "Assets/_Project/Data/DessertEvolutionData.asset";
 
@@ -26,44 +26,30 @@ public class DessertAssetLinker : EditorWindow
             
             if (!File.Exists(fullSpritePath)) continue;
 
-            // 1. Prepare Importer for Processing
+            // 1. Importer 설정 - 완전한 원형 PNG (투명 배경 포함)
             TextureImporter importer = AssetImporter.GetAtPath(fullSpritePath) as TextureImporter;
             if (importer != null)
             {
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
                 importer.alphaIsTransparency = true;
-                importer.isReadable = true;
-                importer.spritePixelsPerUnit = 200f; // 사이즈 전체적으로 축소 (100 -> 200)
-                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.spritePixelsPerUnit = 512f;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.textureCompression = TextureImporterCompression.CompressedHQ;
+
+                // 피벗을 이미지 정중앙(Custom 0.5,0.5)으로 명시 — alignment:Center(0)는
+                // 불투명 픽셀의 bounds.center를 pivot으로 써서 투명 여백이 있으면 어긋남
+                TextureImporterSettings settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)SpriteAlignment.Custom;
+                settings.spritePivot = new Vector2(0.5f, 0.5f);
+                settings.spriteMeshType = SpriteMeshType.FullRect;
+                importer.SetTextureSettings(settings);
+
                 importer.SaveAndReimport();
             }
 
-            // 2. Load and Remove White Background
-            byte[] bytes = File.ReadAllBytes(fullSpritePath);
-            Texture2D tex = new Texture2D(2, 2);
-            tex.LoadImage(bytes);
-            
-            Color[] colors = tex.GetPixels();
-            bool modified = false;
-            for (int j = 0; j < colors.Length; j++)
-            {
-                // If it's pure white or very close to it, make it transparent
-                if (colors[j].r > 0.97f && colors[j].g > 0.97f && colors[j].b > 0.97f)
-                {
-                    colors[j] = new Color(0, 0, 0, 0);
-                    modified = true;
-                }
-            }
-
-            if (modified)
-            {
-                tex.SetPixels(colors);
-                tex.Apply();
-                File.WriteAllBytes(fullSpritePath, tex.EncodeToPNG());
-                AssetDatabase.ImportAsset(fullSpritePath, ImportAssetOptions.ForceUpdate);
-            }
-
+            // 2. 스프라이트 로드 (흰색 배경 제거 불필요 - 원형 PNG는 이미 투명 배경)
             Sprite newSprite = AssetDatabase.LoadAssetAtPath<Sprite>(fullSpritePath);
             if (newSprite == null) continue;
 

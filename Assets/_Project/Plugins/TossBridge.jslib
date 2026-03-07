@@ -3,14 +3,15 @@
  */
 mergeInto(LibraryManager.library, {
 
-  // ── HTML 랜딩 오버레이 다시 표시 (게임 오버 후)
+  // ── HTML 랜딩 오버레이 표시 (Unity 준비 완료 시 호출)
   _ShowHtmlLanding: function(bestScore) {
     var score = bestScore || 0;
     console.log('[TossBridge] ShowHtmlLanding, best:', score);
-    if (typeof showLandingFromUnity === 'function') {
-      showLandingFromUnity(score);
+    // index.html의 window._ShowHtmlLanding 호출
+    if (typeof window._ShowHtmlLanding === 'function') {
+      window._ShowHtmlLanding(score);
     }
-    // localStorage에 최고점수 저장
+    // localStorage에 최고점수 동기화
     try { localStorage.setItem('dessertpop_best', score.toString()); } catch(e) {}
   },
 

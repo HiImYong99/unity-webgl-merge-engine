@@ -5,7 +5,7 @@ using UnityEngine.UI;
 /// 앱인토스(AppsInToss) 환경의 Safe Area를 처리하는 컴포넌트.
 /// 
 /// 동작 방식:
-/// 1. 게임 시작 시 TossBridgeManager를 통해 실제 토스 앱의 Safe Area Insets 를 요청합니다.
+/// 1. 게임 시작 시 TossBridgeMgr를 통해 실제 토스 앱의 Safe Area Insets 를 요청합니다.
 /// 2. 인셋 값을 수신하면 Canvas RectTransform의 padding에 반영합니다.
 /// 3. 앱인토스 SDK가 없는 환경(로컬/일반 브라우저)에서는 Unity의 Screen.safeArea 를 폴백으로 사용합니다.
 /// 
@@ -32,23 +32,23 @@ public class TossSafeArea : MonoBehaviour
     private void Start()
     {
         // 앱인토스 SDK로부터 실제 Safe Area 요청
-        if (TossBridgeManager.Instance != null)
+        if (TossBridgeMgr.Instance != null)
         {
-            TossBridgeManager.Instance.OnSafeAreaReceivedEvent += OnTossInsetsReceived;
-            TossBridgeManager.Instance.RequestSafeArea();
+            TossBridgeMgr.Instance.OnSafeAreaReceivedEvent += OnTossInsetsReceived;
+            TossBridgeMgr.Instance.RequestSafeArea();
         }
         else
         {
-            // TossBridgeManager가 없으면 Unity Screen.safeArea 폴백
-            Debug.LogWarning("[TossSafeArea] TossBridgeManager not found, using Screen.safeArea fallback.");
+            // TossBridgeMgr가 없으면 Unity Screen.safeArea 폴백
+            Debug.LogWarning("[TossSafeArea] TossBridgeMgr not found, using Screen.safeArea fallback.");
             ApplyUnityScreenSafeArea();
         }
     }
 
     private void OnDestroy()
     {
-        if (TossBridgeManager.Instance != null)
-            TossBridgeManager.Instance.OnSafeAreaReceivedEvent -= OnTossInsetsReceived;
+        if (TossBridgeMgr.Instance != null)
+            TossBridgeMgr.Instance.OnSafeAreaReceivedEvent -= OnTossInsetsReceived;
     }
 
     private void Update()

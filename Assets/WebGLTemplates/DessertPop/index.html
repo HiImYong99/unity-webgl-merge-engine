@@ -5,32 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>디저트 팝 🍩</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        /* ════════════════════════════════════════════════
+           RESET & CSS VARIABLES
+        ════════════════════════════════════════════════ */
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
         :root {
-            /* ── Toss & Modern Pastel Palette ── */
-            --toss-blue: #3182f6;
-            --toss-grey: #f2f4f6;
-            --text-primary: #191f28;
-            --text-secondary: #4e5968;
-            --text-tertiary: #8b95a1;
-            
-            /* Enhanced Premium Backgrounds */
-            --bg-main: #fffafb; /* Very light pink/warm base */
-            --bg-stage: rgba(255, 255, 255, 0.4); 
-            
-            --radius-sm: 12px;
-            --radius-md: 20px;
-            --radius-lg: 32px;
-            --shadow-pearl: 0 10px 40px rgba(255, 182, 193, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.5);
-            --safe-top: env(safe-area-inset-top, 0px);
+            /* Toss Design System */
+            --toss-blue:        #3182f6;
+            --toss-blue-dark:   #1b64da;
+            --toss-blue-light:  #ebf3fe;
+            --text-primary:     #191f28;
+            --text-secondary:   #4e5968;
+            --text-tertiary:    #8b95a1;
+            --bg-surface:       #ffffff;
+            --bg-surface-02:    #f9fafb;
+            --line-01:          #e5e8eb;
+
+            /* Premium Pastel Palette */
+            --pastel-pink:   #ffe4ed;
+            --pastel-purple: #f0e6ff;
+            --pastel-blue:   #e3f0ff;
+            --pastel-gold:   #fff4d6;
+
+            --radius-sm:  10px;
+            --radius-md:  16px;
+            --radius-lg:  24px;
+            --radius-xl:  32px;
+
+            --shadow-sm:  0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md:  0 8px 24px rgba(0,0,0,0.08);
+            --shadow-lg:  0 20px 60px rgba(0,0,0,0.10);
+            --shadow-glow-pink:   0 0 24px rgba(255,100,150,0.3);
+            --shadow-glow-blue:   0 0 24px rgba(49,130,246,0.35);
+
+            --safe-top:    env(safe-area-inset-top,    0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --safe-left:   env(safe-area-inset-left, 0px);
-            --safe-right:  env(safe-area-inset-right, 0px);
+            --safe-left:   env(safe-area-inset-left,   0px);
+            --safe-right:  env(safe-area-inset-right,  0px);
         }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: transparent;
             color: var(--text-primary);
             overflow: hidden;
@@ -39,500 +57,673 @@
             -webkit-user-select:none; user-select:none;
         }
 
-        /* ── Premium Mesh Background ── */
+        /* ════════════════════════════════════════════════
+           PREMIUM MESH BACKGROUND
+        ════════════════════════════════════════════════ */
         .bg-mesh {
             position: fixed; inset: 0; z-index: -2;
-            background: 
-                radial-gradient(at 0% 0%, #ff527b 0px, transparent 60%),
-                radial-gradient(at 100% 0%, #0066ff 0px, transparent 60%),
-                radial-gradient(at 100% 100%, #ffcc00 0px, transparent 60%),
-                radial-gradient(at 0% 100%, #00ff8c 0px, transparent 60%);
-            filter: blur(40px); opacity: 0.8;
+            background:
+                radial-gradient(ellipse at 15% 10%, rgba(255, 182, 193, 0.55) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 5%,  rgba(179, 197, 255, 0.50) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 90%, rgba(255, 223, 160, 0.45) 0%, transparent 55%),
+                radial-gradient(ellipse at 5%  80%, rgba(180, 255, 210, 0.40) 0%, transparent 55%),
+                #fff9fb;
         }
 
-        /* Animated Blobs */
+        /* 애니메이션 블롭 (성능 최적화: will-change) */
         .blob {
-            position: fixed; border-radius: 50%; z-index: -1; filter: blur(60px); opacity: 0.5;
-            animation: float 20s infinite alternate ease-in-out;
+            position: fixed; border-radius: 50%; z-index: -1;
+            filter: blur(70px); opacity: 0.45;
+            animation: blobFloat 28s infinite alternate ease-in-out;
+            will-change: transform;
         }
-        .blob-1 { width: 400px; height: 400px; background: #ffe4e6; top: -10%; left: -10%; animation-duration: 25s; }
-        .blob-2 { width: 350px; height: 350px; background: #e0e7ff; bottom: 10%; right: -5%; animation-duration: 30s; }
-        .blob-3 { width: 300px; height: 300px; background: #fef3c7; top: 40%; left: 60%; animation-duration: 22s; }
+        .blob-1 { width: 380px; height: 380px; background: #ffd6e0; top: -8%;  left: -8%;  animation-duration: 26s; }
+        .blob-2 { width: 320px; height: 320px; background: #dde8ff; bottom: 5%; right: -5%; animation-duration: 32s; animation-delay: -8s; }
+        .blob-3 { width: 260px; height: 260px; background: #fef3c7; top: 38%;  left: 55%;  animation-duration: 22s; animation-delay: -4s; }
 
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1.0); }
-            50% { transform: translate(30px, 40px) scale(1.1); }
-            100% { transform: translate(-20px, 20px) scale(0.9); }
+        @keyframes blobFloat {
+            0%   { transform: translate(0,   0  ) scale(1.00); }
+            33%  { transform: translate(20px, 30px) scale(1.08); }
+            66%  { transform: translate(-15px, 20px) scale(0.96); }
+            100% { transform: translate(10px, -15px) scale(1.04); }
         }
 
-        /* ── Unity Canvas Area ── */
-        #unity-container { 
+        /* ════════════════════════════════════════════════
+           UNITY CANVAS
+        ════════════════════════════════════════════════ */
+        #unity-container {
             width: 100%; height: 100%; position: relative; z-index: 10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         }
-        #unity-canvas { 
-            width: 100%; height: 100%; background: transparent !important; 
-            display: block; 
+        #unity-canvas {
+            width: 100%; height: 100%; background: transparent !important; display: block;
         }
 
-        /* ── Premium Visual Game Box ── */
+        /* 게임 프레임 테두리 (포인터 이벤트 없음 — 장식용) */
         .game-frame {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 96vw; height: 92vh; max-width: 440px; max-height: 840px;
-            background: var(--bg-stage);
-            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-            border: 2px solid rgba(255, 255, 255, 0.7);
-            border-radius: 48px;
-            box-shadow: 
-                0 20px 60px rgba(0,0,0,0.08),
-                0 0 0 1px rgba(255, 192, 203, 0.2), /* Subtle pink outer stroke */
-                inset 0 0 40px rgba(255,255,255,0.4);
-            z-index: 1; pointer-events: none;
-            overflow: hidden;
+            width: 96vw; height: 92vh; max-width: 440px; max-height: 860px;
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(32px) saturate(1.3);
+            -webkit-backdrop-filter: blur(32px) saturate(1.3);
+            border: 1.5px solid rgba(255,255,255,0.75);
+            border-radius: 52px;
+            box-shadow:
+                0 24px 72px rgba(0,0,0,0.07),
+                0 0 0 1px rgba(255,200,220,0.18),
+                inset 0 0 48px rgba(255,255,255,0.35);
+            z-index: 1; pointer-events: none; overflow: hidden;
         }
         .game-frame::before {
             content: ""; position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.1) 100%);
+            background: linear-gradient(135deg,
+                rgba(255,255,255,0.5) 0%, transparent 35%,
+                transparent 65%, rgba(255,255,255,0.12) 100%);
             pointer-events: none;
         }
 
-        /* ── HUD (인게임) ── */
-        #game-hud {
-            position:fixed;
-            top:calc(var(--safe-top) + 24px);
-            left:20px; right:20px;
-            z-index:50;
-            display:flex; justify-content:space-between; align-items:flex-start;
-            pointer-events:none;
-            opacity:0; transform:translateY(-10px);
-            transition:opacity .3s, transform .3s;
+        /* ════════════════════════════════════════════════
+           LOADING OVERLAY
+        ════════════════════════════════════════════════ */
+        #loading-overlay {
+            position:fixed; inset:0; z-index:300;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:16px;
+            opacity:1; transition:opacity .5s;
+            pointer-events:auto;
         }
-        #game-hud.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
-        #game-hud > * { pointer-events:auto; }
+        #loading-overlay.hidden { opacity:0; pointer-events:none; }
 
-        .hud-score-box {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-            border-radius:var(--radius-md);
-            padding:12px 20px;
-            box-shadow:var(--shadow-pearl);
-            border:1px solid rgba(255, 255, 255, 0.5);
-            text-align:left;
-            min-width:120px;
+        .load-icon {
+            font-size: 52px;
+            animation: loadBounce 1.4s ease-in-out infinite;
+            filter: drop-shadow(0 4px 12px rgba(255,100,150,0.3));
         }
-        .hud-label { font-size:12px; font-weight:700; color:var(--text-tertiary); margin-bottom: 2px; }
-        .hud-value { font-size:28px; font-weight:800; color:var(--text-primary); line-height:1.1; }
-
-        .hud-next-box {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-            border-radius:var(--radius-md);
-            padding:12px;
-            box-shadow:var(--shadow-pearl);
-            border:1px solid rgba(255, 255, 255, 0.5);
-            text-align:center;
-            min-width:84px;
+        @keyframes loadBounce {
+            0%,100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-14px) scale(1.05); }
         }
-        .hud-next-img { 
-            width:40px; height:40px; object-fit:contain; 
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-            mix-blend-mode: multiply;
+        .load-bar-bg {
+            width: 160px; height: 3px;
+            background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
+        }
+        .load-bar-fill {
+            height: 100%; width: 0%; background: var(--toss-blue);
+            border-radius: 99px; transition: width .25s ease;
+        }
+        .load-text {
+            font-size: 13px; font-weight: 700; color: var(--text-tertiary);
         }
 
-        .hud-center { display:flex; gap:8px; }
-        .hud-icon-btn {
-            width:56px; height:56px; border-radius:50%;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-            border:2px solid #fff;
-            display:flex; align-items:center; justify-content:center;
-            font-size:24px; cursor:pointer;
-            box-shadow: var(--shadow-pearl);
-            transition:transform .15s, box-shadow .15s;
-        }
-        .hud-icon-btn:active { transform:scale(0.9); box-shadow: 0 2px 8px rgba(255,192,203,0.3); }
-
-        /* ── 도감 바 (하단) ── */
-        #dex-bar {
-            position:fixed; bottom:calc(var(--safe-bottom) + 84px);
-            left:20px; right:20px; height:64px; z-index:40;
-            background:rgba(255, 255, 255, 0.7);
-            backdrop-filter:blur(15px); -webkit-backdrop-filter:blur(15px);
-            border-radius:var(--radius-md);
-            border:1px solid rgba(255, 255, 255, 0.5);
-            padding:6px 12px;
-            display:flex; align-items:center;
-            box-shadow:var(--shadow-pearl);
-            opacity:0; transform:translateY(10px);
-            transition:opacity .3s, transform .3s;
-        }
-        #dex-bar.visible { opacity:1; transform:translateY(0); }
-        #dex-inner { display:flex; align-items:center; justify-content:center; gap:8px; overflow-x:auto; width:100%; scrollbar-width:none; }
-        #dex-inner::-webkit-scrollbar { display:none; }
-        .dex-item { display:flex; align-items:center; flex-shrink:0; }
-        .dex-circle { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255, 255, 255, 0.5); }
-        .dex-circle img { 
-            width:28px; height:28px; object-fit:contain; 
-            mix-blend-mode: multiply;
-        }
-        .dex-circle.locked { opacity:0.3; filter:grayscale(1); }
-
-        /* ── Overlay Base ── */
-        .overlay {
-            position:fixed; inset:0;
-            display:flex; align-items:center; justify-content:center;
-            transition:opacity .4s;
-            opacity:0; pointer-events:none;
-        }
-        .overlay.visible { opacity:1; pointer-events:auto; }
-
-        /* ── Loading ── */
-        #loading-overlay { z-index:300; background:transparent; flex-direction:column; }
-        #loading-overlay.visible { opacity:1; pointer-events:auto; }
-        .load-emoji { font-size:48px; margin-bottom:20px; animation:bounce 1.5s ease-in-out infinite; }
-        @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
-        .load-bar-bg { width:180px; height:4px; background:rgba(0,0,0,0.05); border-radius:99px; overflow:hidden; }
-        .load-bar-fill { height:100%; width:0%; background:var(--toss-blue); border-radius:99px; transition:width .2s; }
-        .load-pct { font-size:13px; color:var(--text-tertiary); margin-top:10px; font-weight:700; }
-
-        /* ── Landing ── */
+        /* ════════════════════════════════════════════════
+           LANDING OVERLAY
+        ════════════════════════════════════════════════ */
         #landing-overlay {
-            z-index:200;
-            background:transparent;
-            padding:24px; flex-direction:column;
+            position:fixed; inset:0; z-index:200;
+            display:flex; align-items:center; justify-content:center;
+            padding: 24px;
+            opacity:0; pointer-events:none;
+            transition: opacity .4s;
         }
-        .lg-card { width:100%; max-width:360px; text-align:center; }
+        #landing-overlay.visible { opacity:1; pointer-events:auto; }
 
-        /* ── 타이틀 영역 ── */
-        .lg-title-area {
-            margin-bottom:32px;
+        .lg-card {
+            width: 100%; max-width: 360px;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border-radius: var(--radius-xl);
+            border: 1.5px solid rgba(255,255,255,0.8);
+            box-shadow: var(--shadow-lg), var(--shadow-glow-pink);
+            padding: 36px 28px 28px;
+            text-align: center;
+            animation: cardIn .5s cubic-bezier(.22,1,.36,1) both;
         }
-        .lg-title-badge {
-            display:inline-block;
-            background:linear-gradient(135deg, #ffb6c1, #ff69b4);
-            color:#fff; font-size:12px; font-weight:800;
-            padding:5px 14px; border-radius:99px;
-            margin-bottom:16px; letter-spacing:0.05em;
-            box-shadow:0 4px 12px rgba(255,107,157,0.3);
+        @keyframes cardIn {
+            from { transform: translateY(32px) scale(0.95); opacity: 0; }
+            to   { transform: translateY(0)    scale(1);    opacity: 1; }
         }
+
+        .lg-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff9ab8, #ff5988);
+            color: #fff; font-size: 11px; font-weight: 800;
+            padding: 4px 14px; border-radius: 99px;
+            margin-bottom: 20px; letter-spacing: 0.08em;
+            box-shadow: 0 4px 12px rgba(255,89,136,0.35);
+        }
+
+        .lg-title-wrap { margin-bottom: 28px; }
         .lg-title {
-            font-size:46px; font-weight:900;
-            line-height:1.1; margin-bottom:4px;
-            background:linear-gradient(180deg, #704040 0%, #a8325c 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-            background-clip:text;
-            filter:drop-shadow(0 2px 4px rgba(0,0,0,0.15));
-            text-align:center;
+            font-family: 'Nunito', sans-serif;
+            font-size: 48px; font-weight: 900; line-height: 1.1;
+            background: linear-gradient(160deg, #b84070 0%, #7b1fa2 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .lg-title-pop {
-            font-size:60px;
-            background:linear-gradient(180deg, #ff69b4 0%, #ff1493 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-            background-clip:text;
-            filter:drop-shadow(0 2px 6px rgba(255,20,147,0.25));
+        .lg-title-accent {
+            font-family: 'Nunito', sans-serif;
+            font-size: 62px; font-weight: 900;
+            background: linear-gradient(160deg, #ff5988 0%, #ff9800 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 6px rgba(255,89,136,0.25));
         }
         .lg-sub {
-            font-size:15px; font-weight:700; color:#704040;
-            margin-top:10px;
+            font-size: 14px; font-weight: 600;
+            color: var(--text-secondary); margin-top: 10px;
         }
 
-        /* ── 하단 영역 ── */
-        .lg-best-card {
-            background: rgba(255,255,255,0.6);
-            border-radius:var(--radius-md); padding:20px;
-            margin-bottom:24px;
-            box-shadow:var(--shadow-pearl);
-            border:1px solid rgba(255,255,255,0.5);
-            display:flex; align-items:center; justify-content:center; gap:10px;
+        .lg-best-row {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            background: rgba(49,130,246,0.08);
+            border-radius: var(--radius-md); padding: 14px 20px;
+            margin-bottom: 20px;
         }
-        .lg-best-icon { font-size:20px; }
-        .lg-best-lbl { font-size:13px; color:var(--text-tertiary); font-weight:700; }
-        .lg-best-val { font-size:28px; font-weight:900; color:var(--toss-blue); }
+        .lg-best-lbl { font-size: 13px; font-weight: 700; color: var(--text-tertiary); }
+        .lg-best-val { font-size: 28px; font-weight: 900; color: var(--toss-blue); }
 
-        .lg-btn {
-            font-family:inherit; font-size:17px; font-weight:700; color:#fff;
-            background:#3182f6; border:none; border-radius:12px;
-            padding:16px 0; width:100%; cursor:pointer;
-            box-shadow:0 8px 20px rgba(49,130,246,0.25);
-            transition:all .15s; display:block;
+        .lg-start-btn {
+            font-family: inherit; font-size: 17px; font-weight: 700; color: #fff;
+            background: var(--toss-blue); border: none; border-radius: var(--radius-md);
+            padding: 18px 0; width: 100%; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(49,130,246,0.30), var(--shadow-glow-blue);
+            transition: all .15s;
         }
-        .lg-btn:active { background:#1b64da; transform:scale(0.98); }
+        .lg-start-btn:active { background: var(--toss-blue-dark); transform: scale(0.98); }
 
         .lg-howto {
-            font-size:13px; color:var(--text-tertiary);
-            margin-top:16px; line-height:1.5;
+            font-size: 12px; color: var(--text-tertiary);
+            margin-top: 14px; line-height: 1.6;
         }
 
-        /* ── Game Over ── */
-        #gameover-overlay {
-            z-index:150;
-            background: rgba(255, 255, 255, 0.4);
-            backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+        /* ════════════════════════════════════════════════
+           GAME HUD
+        ════════════════════════════════════════════════ */
+        #game-hud {
+            position: fixed;
+            top:  calc(var(--safe-top) + 20px);
+            left: 20px; right: 20px;
+            z-index: 50;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            pointer-events: none;
+            opacity: 0; transform: translateY(-12px);
+            transition: opacity .35s, transform .35s;
         }
-        .go-card {
-            background: rgba(255, 255, 255, 0.85); border-radius:var(--radius-lg);
-            padding:32px 24px; width:calc(100% - 48px); max-width:360px;
-            text-align:center; box-shadow:var(--shadow-pearl);
+        #game-hud.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        #game-hud > * { pointer-events: auto; }
+
+        /* 점수 박스 */
+        .hud-score-box {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius-md); padding: 12px 20px;
+            box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.6);
+            min-width: 130px;
+            position: relative; overflow: hidden;
+        }
+        .hud-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); letter-spacing: .04em; }
+        .hud-score-val {
+            font-size: 30px; font-weight: 900; color: var(--text-primary);
+            line-height: 1.1; transition: transform .1s;
+        }
+        .hud-score-val.bump {
+            animation: scoreBump .2s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes scoreBump {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.18); color: #ff5988; }
+            100% { transform: scale(1); }
+        }
+
+        /* 신기록 배지 */
+        .hud-new-best {
+            position: absolute; top: 6px; right: 8px;
+            font-size: 9px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, #ff5988, #ff9800);
+            padding: 2px 7px; border-radius: 99px;
+            opacity: 0; transform: scale(0.7);
+            transition: opacity .3s, transform .3s;
+        }
+        .hud-new-best.show { opacity: 1; transform: scale(1); }
+
+        /* 다음 디저트 박스 */
+        .hud-next-box {
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius-md); padding: 10px 14px;
+            box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.6);
+            text-align: center; min-width: 84px;
+        }
+        .hud-next-img {
+            width: 46px; height: 46px; object-fit: contain; display: block; margin: 4px auto 0;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+            transition: transform .2s cubic-bezier(.22,1,.36,1);
+        }
+        .hud-next-img.pop { animation: nextPop .25s cubic-bezier(.22,1,.36,1); }
+        @keyframes nextPop {
+            from { transform: scale(0.6) rotate(-10deg); }
+            to   { transform: scale(1)   rotate(0deg); }
+        }
+
+        /* ════════════════════════════════════════════════
+           위험 구역 경고 배너 (데드라인)
+        ════════════════════════════════════════════════ */
+        #danger-banner {
+            position: fixed;
+            left: 20px; right: 20px;
+            top: calc(var(--safe-top) + 100px);
+            z-index: 55;
+            background: linear-gradient(135deg,
+                rgba(255,80,80,0.92) 0%,
+                rgba(255,140,0,0.92) 100%);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
+            padding: 10px 18px;
+            display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 4px 16px rgba(255,80,80,0.4);
+            color: #fff;
+            opacity: 0; transform: translateY(-8px) scale(0.97);
+            pointer-events: none;
+            transition: opacity .3s, transform .3s;
+        }
+        #danger-banner.visible {
+            opacity: 1; transform: translateY(0) scale(1);
+            animation: dangerPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes dangerPulse {
+            0%,100% { box-shadow: 0 4px 16px rgba(255,80,80,0.35); }
+            50%      { box-shadow: 0 4px 28px rgba(255,80,80,0.65); }
+        }
+        .danger-icon { font-size: 20px; flex-shrink: 0; }
+        .danger-text { font-size: 13px; font-weight: 700; line-height: 1.3; }
+
+        /* ════════════════════════════════════════════════
+           도감 바 (하단)
+        ════════════════════════════════════════════════ */
+        #dex-bar {
+            position: fixed; bottom: calc(var(--safe-bottom) + 88px);
+            left: 20px; right: 20px; height: 62px; z-index: 40;
+            background: rgba(255,255,255,0.80);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius-md);
             border: 1px solid rgba(255,255,255,0.6);
-            animation:slideUp .4s ease;
+            padding: 6px 14px;
+            display: flex; align-items: center;
+            box-shadow: var(--shadow-md);
+            opacity: 0; transform: translateY(10px);
+            transition: opacity .35s, transform .35s;
         }
-        @keyframes slideUp { from{transform:translateY(24px);opacity:0;} to{transform:translateY(0);opacity:1;} }
-        .go-emoji { font-size:48px; margin-bottom:12px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1)); }
-        .go-title { font-size:24px; font-weight:800; color:var(--text-primary); margin-bottom:20px; }
-        .go-score-section { margin-bottom:24px; }
-        .go-score-lbl { font-size:12px; color:var(--text-tertiary); font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
-        .go-score-val { font-size:48px; font-weight:900; color:var(--text-primary); line-height:1.1; }
-        .go-best-val { font-size:16px; font-weight:700; color:var(--toss-blue); margin-top:6px; }
-        .go-divider { width:80%; height:1px; background:rgba(0,0,0,0.05); margin:20px auto; }
+        #dex-bar.visible { opacity: 1; transform: translateY(0); }
+        #dex-inner {
+            display: flex; align-items: center;
+            justify-content: flex-start; /* 'center' can hide start items when content overflows */
+            gap: 8px; overflow-x: auto; width: 100%; scrollbar-width: none;
+            padding: 0 16px; /* give some room for scrolling */
+        }
+        #dex-inner::-webkit-scrollbar { display: none; }
+        .dex-circle {
+            width: 38px; height: 38px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.45);
+            border: 1.5px solid rgba(255,255,255,0.7);
+            transition: transform .15s;
+        }
+        .dex-circle:active { transform: scale(0.9); }
+        .dex-circle img {
+            width: 100%; height: 100%;
+            max-width: 36px; max-height: 36px;
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            flex-shrink: 0;
+        }
+        .dex-circle.locked { opacity: 0.22; filter: grayscale(1) brightness(0.6); }
+        .dex-circle.new-unlock {
+            animation: unlockPop .5s cubic-bezier(.22,1,.36,1);
+            border-color: rgba(255,180,0,0.8);
+            box-shadow: 0 0 0 3px rgba(255,180,0,0.25);
+        }
+        @keyframes unlockPop {
+            0%   { transform: scale(0); }
+            60%  { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
 
+        /* ════════════════════════════════════════════════
+           설정 버튼 (우하단)
+        ════════════════════════════════════════════════ */
+        #settings-fab {
+            position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
+            z-index: 45;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: rgba(255,255,255,0.90);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; cursor: pointer;
+            box-shadow: var(--shadow-md);
+            transition: transform .15s, box-shadow .15s, opacity .3s;
+            opacity: 0; pointer-events: none;
+        }
+        #settings-fab.visible { opacity: 1; pointer-events: auto; }
+        #settings-fab:active { transform: scale(0.88); }
+
+        /* ════════════════════════════════════════════════
+           GAME OVER OVERLAY
+        ════════════════════════════════════════════════ */
+        #gameover-overlay {
+            position: fixed; inset: 0; z-index: 150;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(20,20,30,0.55);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            opacity: 0; pointer-events: none;
+            transition: opacity .4s;
+        }
+        #gameover-overlay.visible { opacity: 1; pointer-events: auto; }
+
+        .go-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: var(--radius-xl);
+            padding: 32px 24px 24px;
+            width: calc(100% - 48px); max-width: 360px;
+            text-align: center;
+            box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.7);
+            animation: cardIn .4s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        .go-emoji { font-size: 48px; margin-bottom: 10px; display: block; }
+        .go-title { font-size: 22px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+        .go-sub   { font-size: 13px; color: var(--text-tertiary); margin-bottom: 20px; }
+
+        .go-scores {
+            background: var(--bg-surface-02); border-radius: var(--radius-md);
+            padding: 16px; margin-bottom: 20px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        .go-score-block { text-align: center; }
+        .go-score-lbl { font-size: 11px; font-weight: 700; color: var(--text-tertiary); letter-spacing:.05em; }
+        .go-score-val { font-size: 36px; font-weight: 900; color: var(--text-primary); line-height: 1.1; }
+        .go-score-val.is-best { color: var(--toss-blue); }
+        .go-best-badge {
+            font-size: 10px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, #ff5988, #ff9800);
+            padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px;
+        }
+
+        .go-btn-stack { display: flex; flex-direction: column; gap: 8px; }
         .go-btn {
-            font-family:inherit; width:100%; padding:14px;
-            border:none; border-radius:12px;
-            font-size:15px; font-weight:700; cursor:pointer;
-            margin-top:8px; transition:transform .1s;
+            font-family: inherit; width: 100%; padding: 15px;
+            border: none; border-radius: var(--radius-md);
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: transform .1s, opacity .1s;
         }
-        .go-btn:active { transform:scale(0.98); }
-        .go-btn-primary { background:#3182f6; color:#fff; }
-        .go-btn-secondary { background:rgba(0,0,0,0.05); color:var(--text-primary); }
-        .go-btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid rgba(0,0,0,0.1); }
+        .go-btn:active { transform: scale(0.97); opacity: 0.85; }
+        .go-btn-primary   { background: var(--toss-blue); color: #fff; box-shadow: 0 6px 16px rgba(49,130,246,0.28); }
+        .go-btn-secondary { background: var(--bg-surface-02); color: var(--text-primary); border: 1px solid var(--line-01); }
+        .go-btn-ghost     { background: transparent; color: var(--text-secondary); }
 
-        /* ── Settings Sheet (TDS Style) ── */
+        /* ════════════════════════════════════════════════
+           SETTINGS BOTTOM SHEET (TDS Style)
+        ════════════════════════════════════════════════ */
         #settings-overlay {
-            z-index: 160;
-            background: rgba(0, 0, 0, 0.4);
-            align-items: flex-end;
+            position: fixed; inset: 0; z-index: 160;
+            background: rgba(0,0,0,0.45);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s;
         }
+        #settings-overlay.visible { opacity: 1; pointer-events: auto; }
+
         .sht {
-            background: #ffffff; 
+            background: var(--bg-surface);
             border-radius: 20px 20px 0 0;
             width: 100%; max-width: 480px;
             padding: 12px 24px calc(var(--safe-bottom) + 24px);
-            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
             transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: transform .35s cubic-bezier(.22,1,.36,1);
         }
         #settings-overlay.visible .sht { transform: translateY(0); }
-        .sht-handle { width: 36px; height: 4px; border-radius: 2px; background: #e5e8eb; margin: 0 auto 24px; }
-        .sht-title { font-size: 20px; font-weight: 700; color: #191f28; margin-bottom: 24px; }
-        .sht-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
-        .sht-left { display: flex; align-items: center; gap: 16px; }
-        .sht-icon { font-size: 24px; }
-        .sht-lbl { font-size: 16px; font-weight: 600; color: #191f28; margin-bottom: 2px; }
-        .sht-sub { font-size: 13px; color: #8b95a1; }
-        
-        .sht-btn {
-            font-family: inherit; width: 100%; padding: 16px;
-            border: none; border-radius: 12px;
-            font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 12px;
-            transition: background 0.2s;
-        }
-        .sht-primary { background: #3182f6; color: #ffffff; }
-        .sht-primary:active { background: #1b64da; }
-        .sht-ghost { background: transparent; color: #4e5968; }
-        .sht-ghost:active { background: #f2f4f6; }
 
+        .sht-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--line-01); margin: 0 auto 20px; }
+        .sht-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .sht-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line-01); }
+        .sht-row:last-of-type { border-bottom: none; }
+        .sht-left { display: flex; align-items: center; gap: 14px; }
+        .sht-icon { font-size: 22px; }
+        .sht-lbl { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .sht-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+        /* TDS 토글 */
         .tog { position: relative; width: 48px; height: 28px; cursor: pointer; flex-shrink: 0; }
         .tog-input { display: none; }
-        .tog-track { position: absolute; inset: 0; background: #e5e8eb; border-radius: 99px; transition: 0.2s; }
-        .tog-input:checked + .tog-track { background: #3182f6; }
-        .tog-thumb { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; }
+        .tog-track {
+            position: absolute; inset: 0;
+            background: var(--line-01); border-radius: 99px;
+            transition: background .2s;
+        }
+        .tog-input:checked + .tog-track { background: var(--toss-blue); }
+        .tog-thumb {
+            position: absolute; top: 2px; left: 2px;
+            width: 24px; height: 24px;
+            background: #fff; border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: left .2s cubic-bezier(.22,1,.36,1);
+        }
         .tog-input:checked ~ .tog-thumb { left: 22px; }
+
+        .sht-btn {
+            font-family: inherit; width: 100%; padding: 16px;
+            border: none; border-radius: var(--radius-md);
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            margin-top: 10px; transition: background .15s;
+        }
+        .sht-primary { background: var(--toss-blue); color: #fff; }
+        .sht-primary:active { background: var(--toss-blue-dark); }
+        .sht-ghost   { background: transparent; color: var(--text-secondary); }
+        .sht-ghost:active { background: var(--bg-surface-02); }
     </style>
 </head>
 
 <body>
-    <!-- Premium Background Effects -->
+    <!-- Premium Background -->
     <div class="bg-mesh"></div>
     <div class="blob blob-1"></div>
     <div class="blob blob-2"></div>
     <div class="blob blob-3"></div>
 
+    <!-- Unity Canvas -->
     <div id="unity-container">
         <canvas id="unity-canvas" data-pixel-art="true"></canvas>
     </div>
 
-    <!-- Visual Game Box -->
+    <!-- 장식용 게임 프레임 -->
     <div class="game-frame"></div>
 
-<!-- 로딩 -->
-<div id="loading-overlay" class="overlay visible">
-    <div class="load-emoji">🧁</div>
-    <div class="load-bar-bg"><div class="load-bar-fill" id="loading-fill"></div></div>
-    <div class="load-pct" id="loading-pct">준비 중이에요...</div>
-</div>
-
-<!-- Landing -->
-<div id="landing-overlay" class="overlay">
-    <div class="lg-card go-card">
-        <div class="lg-title-area">
-            <div class="lg-title-badge">SWEET DREAM</div>
-            <h1 class="lg-title">디저트</h1>
-            <h1 class="lg-title lg-title-pop">팝!</h1>
-            <p class="lg-sub">더 큰 디저트로 합쳐보세요</p>
-        </div>
-
-        <div class="lg-best-card" style="background: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.5);">
-            <span class="lg-best-icon">✨</span>
-            <span class="lg-best-lbl">최고 점수</span>
-            <span class="lg-best-val" id="html-best-score">0</span>
-        </div>
-
-        <button class="lg-btn" onclick="onHtmlStartClicked()" style="background: #3182f6; border-radius: 12px;">게임 시작</button>
-        <div class="lg-howto">디저트를 합쳐 커다란 홀케이크를 만들어보세요</div>
+    <!-- ── 로딩 ── -->
+    <div id="loading-overlay">
+        <div class="load-icon">🧁</div>
+        <div class="load-bar-bg"><div class="load-bar-fill" id="loading-fill"></div></div>
+        <div class="load-text" id="loading-text">준비 중이에요...</div>
     </div>
-</div>
 
-<!-- HUD (인게임) -->
-<div id="game-hud">
-    <div class="hud-score-box">
-        <div class="hud-label">점수</div>
-        <div class="hud-value" id="score">0</div>
-    </div>
-    <div class="hud-center"></div>
-    <div class="hud-next-box">
-        <div class="hud-label">다음</div>
-        <img class="hud-next-img" id="next-img" src="" alt="">
-    </div>
-</div>
-
-<!-- 도감 바 -->
-<div id="dex-bar">
-    <div id="dex-inner"></div>
-</div>
-
-<!-- 설정 버튼 (우하단) -->
-<div id="settings-btn" class="hud-icon-btn" onclick="openSettings()" style="
-    position:fixed; bottom:calc(var(--safe-bottom) + 16px); right:20px;
-    z-index:45; opacity:0; pointer-events:none; transition:opacity .3s;
-    color: var(--text-primary); font-size: 28px;
-    background:rgba(255,255,255,0.8); width:56px; height:56px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:var(--shadow-pearl); border:1px solid rgba(255,255,255,0.5);
-">⚙️</div>
-
-<!-- 게임 오버 -->
-<div id="gameover-overlay" class="overlay">
-    <div class="go-card">
-        <div class="go-emoji">🍩</div>
-        <div class="go-title">게임이 끝났어요!</div>
-        <div class="go-score-section">
-            <div class="go-score-lbl">점수</div>
-            <div class="go-score-val" id="go-score">0</div>
-            <div class="go-best-val" id="go-best">최고 기록: 0</div>
-        </div>
-        <div class="go-divider"></div>
-        <button id="go-btn-revive" class="go-btn go-btn-primary" onclick="onReviveClicked()"></button>
-        <button id="go-btn-restart" class="go-btn go-btn-secondary" onclick="onRestartClicked()">처음부터 다시하기</button>
-        <button class="go-btn go-btn-ghost" onclick="onShareClicked()">결과 공유하기</button>
-    </div>
-</div>
-
-<!-- 설정 패널 -->
-<div id="settings-overlay" class="overlay" onclick="closeSettingsIfOutside(event)">
-    <div class="sht">
-        <div class="sht-handle"></div>
-        <h2 class="sht-title">설정</h2>
-        <div class="sht-row">
-            <div class="sht-left">
-                <div class="sht-icon">🎵</div>
-                <div><div class="sht-lbl">배경음악</div><div class="sht-sub">BGM을 켜거나 끌 수 있어요</div></div>
+    <!-- ── 랜딩 ── -->
+    <div id="landing-overlay">
+        <div class="lg-card">
+            <div class="lg-badge">LUXURY DESSERT BOUTIQUE</div>
+            <div class="lg-title-wrap">
+                <div class="lg-title">디저트</div>
+                <div class="lg-title-accent">팝!</div>
+                <div class="lg-sub">같은 디저트를 합쳐 더 크게 만들어보세요</div>
             </div>
-            <label class="tog">
-                <input type="checkbox" class="tog-input" id="toggle-bgm" checked onchange="onBgmToggle(this)">
-                <div class="tog-track"></div><div class="tog-thumb"></div>
-            </label>
-        </div>
-        <div class="sht-row">
-            <div class="sht-left">
-                <div class="sht-icon">🔊</div>
-                <div><div class="sht-lbl">효과음</div><div class="sht-sub">효과음을 켜거나 끌 수 있어요</div></div>
+            <div class="lg-best-row">
+                <span style="font-size:18px">✨</span>
+                <span class="lg-best-lbl">최고 기록</span>
+                <span class="lg-best-val" id="html-best-score">0</span>
             </div>
-            <label class="tog">
-                <input type="checkbox" class="tog-input" id="toggle-sfx" checked onchange="onSfxToggle(this)">
-                <div class="tog-track"></div><div class="tog-thumb"></div>
-            </label>
+            <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
+            <div class="lg-howto">디저트를 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
         </div>
-        <button class="sht-btn sht-primary" onclick="onRestartFromSettings()">처음부터 다시 할게요</button>
-        <button class="sht-btn sht-ghost" onclick="closeSettings()">닫기</button>
     </div>
-</div>
 
-<script src="Build/{{{ LOADER_FILENAME }}}"></script>
-<script>
-    /* ── DOM refs ── */
-    var canvas      = document.getElementById('unity-canvas');
-    var loadFill    = document.getElementById('loading-fill');
-    var loadPct     = document.getElementById('loading-pct');
-    var loadOverlay = document.getElementById('loading-overlay');
-    var landingDiv  = document.getElementById('landing-overlay');
-    var gameHud     = document.getElementById('game-hud');
-    var scoreValue  = document.getElementById('score');
-    var nextImg     = document.getElementById('next-img');
-    var goOverlay   = document.getElementById('gameover-overlay');
-    var goScore     = document.getElementById('go-score');
-    var goBest      = document.getElementById('go-best');
-    var dexBar      = document.getElementById('dex-bar');
+    <!-- ── HUD ── -->
+    <div id="game-hud">
+        <div class="hud-score-box">
+            <div class="hud-label">점수</div>
+            <div class="hud-score-val" id="score">0</div>
+            <div class="hud-new-best" id="new-best-badge">신기록!</div>
+        </div>
+        <div></div>
+        <div class="hud-next-box">
+            <div class="hud-label">다음</div>
+            <img class="hud-next-img" id="next-img" src="" alt="다음 디저트">
+        </div>
+    </div>
+
+    <!-- ── 위험 구역 경고 배너 ── -->
+    <div id="danger-banner">
+        <span class="danger-icon">⚠️</span>
+        <div class="danger-text">
+            위험! 디저트가 너무 높이 쌓였어요<br>
+            <span style="font-size:11px;opacity:.85">빨리 합쳐서 공간을 만들어요!</span>
+        </div>
+    </div>
+
+    <!-- ── 도감 바 ── -->
+    <div id="dex-bar"><div id="dex-inner"></div></div>
+
+    <!-- ── 설정 FAB ── -->
+    <div id="settings-fab" onclick="openSettings()">⚙️</div>
+
+    <!-- ── 게임 오버 ── -->
+    <div id="gameover-overlay">
+        <div class="go-card">
+            <span class="go-emoji">🍩</span>
+            <div class="go-title">게임이 끝났어요!</div>
+            <div class="go-sub" id="go-sub-text">수고했어요 😊</div>
+            <div class="go-scores">
+                <div class="go-score-block">
+                    <div class="go-score-lbl">점수</div>
+                    <div class="go-score-val" id="go-score">0</div>
+                </div>
+                <div class="go-score-block">
+                    <div class="go-score-lbl">최고 기록</div>
+                    <div class="go-score-val" id="go-best">0</div>
+                    <div class="go-best-badge" id="go-best-badge" style="display:none">NEW!</div>
+                </div>
+            </div>
+            <div class="go-btn-stack">
+                <button id="go-btn-revive" class="go-btn go-btn-primary" onclick="onReviveClicked()" style="display:none">광고 보고 2회 더 도전</button>
+                <button class="go-btn go-btn-secondary" onclick="onRestartClicked()">처음부터 다시하기</button>
+                <button class="go-btn go-btn-ghost" onclick="onShareClicked()">결과 공유하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 설정 패널 ── -->
+    <div id="settings-overlay" onclick="closeSettingsIfOutside(event)">
+        <div class="sht">
+            <div class="sht-handle"></div>
+            <h2 class="sht-title">설정</h2>
+            <div class="sht-row">
+                <div class="sht-left">
+                    <div class="sht-icon">🎵</div>
+                    <div>
+                        <div class="sht-lbl">배경음악</div>
+                        <div class="sht-sub">BGM을 켜거나 끌 수 있어요</div>
+                    </div>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" class="tog-input" id="toggle-bgm" checked onchange="onBgmToggle(this)">
+                    <div class="tog-track"></div><div class="tog-thumb"></div>
+                </label>
+            </div>
+            <div class="sht-row">
+                <div class="sht-left">
+                    <div class="sht-icon">🔊</div>
+                    <div>
+                        <div class="sht-lbl">효과음</div>
+                        <div class="sht-sub">효과음을 켜거나 끌 수 있어요</div>
+                    </div>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" class="tog-input" id="toggle-sfx" checked onchange="onSfxToggle(this)">
+                    <div class="tog-track"></div><div class="tog-thumb"></div>
+                </label>
+            </div>
+            <button class="sht-btn sht-primary" onclick="onRestartFromSettings()">처음부터 다시 할게요</button>
+            <button class="sht-btn sht-ghost" onclick="closeSettings()">닫기</button>
+        </div>
+    </div>
+
+    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script>
+    // ════════════════════════════════════════════════════
+    //  DOM References
+    // ════════════════════════════════════════════════════
+    var canvas       = document.getElementById('unity-canvas');
+    var loadFill     = document.getElementById('loading-fill');
+    var loadText     = document.getElementById('loading-text');
+    var loadOverlay  = document.getElementById('loading-overlay');
+    var landingDiv   = document.getElementById('landing-overlay');
+    var gameHud      = document.getElementById('game-hud');
+    var scoreEl      = document.getElementById('score');
+    var nextImg      = document.getElementById('next-img');
+    var goOverlay    = document.getElementById('gameover-overlay');
+    var goScoreEl    = document.getElementById('go-score');
+    var goBestEl     = document.getElementById('go-best');
+    var goBestBadge  = document.getElementById('go-best-badge');
+    var goSubText    = document.getElementById('go-sub-text');
+    var dexBar       = document.getElementById('dex-bar');
+    var dangerBanner = document.getElementById('danger-banner');
+    var settingsFab  = document.getElementById('settings-fab');
+    var newBestBadge = document.getElementById('new-best-badge');
 
     var unityInstance = null;
-    var gameReady = false;
-    var bgmMuted = false;
-    var sfxMuted = false;
+    var gameReady     = false;
+    var bgmMuted      = false;
+    var sfxMuted      = false;
+    var _lastAdWatched  = false;
+    var _lastSpareLives = 0;
 
-    /* ── WebGL AudioContext 자동 Resume ──
-     * 브라우저 Autoplay Policy: 사용자 제스처 없이는 AudioContext가 suspended 상태.
-     * HTML 오버레이 클릭이 Unity의 AudioContext에 전달되지 않으므로,
-     * 첫 사용자 상호작용 시 강제로 resume 해줘야 합니다.
-     */
-    var _audioContextResumed = false;
+    // 로컬 점수 추적
+    var _currentDisplayScore = 0;
+
+    // ════════════════════════════════════════════════════
+    //  WebGL AudioContext 자동 Resume
+    // ════════════════════════════════════════════════════
+    var _audioResumed = false;
     function resumeWebGLAudio() {
-        if (_audioContextResumed) return;
-        // Unity WebGL은 내부적으로 window.AudioContext 인스턴스를 사용
-        var ctx = window.AudioContext || window.webkitAudioContext;
-        if (ctx) {
-            // Unity가 생성한 AudioContext 인스턴스 찾기
-            try {
-                // Unity 2021+ 에서는 WEBAudio.audioContext 에 저장
-                if (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext) {
-                    var ac = Module.WEBAudio.audioContext;
-                    if (ac.state === 'suspended') {
-                        ac.resume().then(function() {
-                            console.log('[Audio] AudioContext resumed successfully');
-                            _audioContextResumed = true;
-                        });
-                    } else {
-                        _audioContextResumed = true;
-                    }
-                }
-            } catch(e) { console.warn('[Audio] AudioContext resume failed:', e); }
-        }
-        // fallback: 모든 AudioContext 인스턴스를 순회 (일부 Unity 버전 호환)
-        if (!_audioContextResumed) {
-            try {
-                var allContexts = window._audioContextList || [];
-                allContexts.forEach(function(c) {
-                    if (c && c.state === 'suspended') c.resume();
-                });
-            } catch(e) {}
-        }
+        if (_audioResumed) return;
+        try {
+            if (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext) {
+                var ac = Module.WEBAudio.audioContext;
+                if (ac.state === 'suspended') {
+                    ac.resume().then(function() { _audioResumed = true; });
+                } else { _audioResumed = true; }
+            }
+        } catch(e) {}
     }
-    document.addEventListener('click', resumeWebGLAudio, { once: false });
-    document.addEventListener('touchend', resumeWebGLAudio, { once: false });
+    document.addEventListener('click',    resumeWebGLAudio, { passive: true });
+    document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
 
-    /* ── 도감 데이터 ── */
+    // ════════════════════════════════════════════════════
+    //  도감 데이터
+    // ════════════════════════════════════════════════════
     var DESSERTS = [
-        { lv:1,  emoji:'🍬', name:'젤리빈' },
-        { lv:2,  emoji:'🍪', name:'파스텔 마카롱' },
-        { lv:3,  emoji:'🍩', name:'글레이즈드 도넛' },
-        { lv:4,  emoji:'🧁', name:'베리 컵케이크' },
-        { lv:5,  emoji:'🥐', name:'버터 소금빵' },
-        { lv:6,  emoji:'🍰', name:'딸기 조각케이크' },
-        { lv:7,  emoji:'🥧', name:'샤인머스캣 타르트' },
-        { lv:8,  emoji:'🍧', name:'눈꽃 딸기 빙수' },
-        { lv:9,  emoji:'🎂', name:'프리미엄 홀케이크' },
-        { lv:10, emoji:'🗼', name:'애프터눈 티 세트' },
-        { lv:11, emoji:'👑', name:'로열 디저트 파라다이스' },
+        { lv:1,  name:'젤리빈' },
+        { lv:2,  name:'파스텔 마카롱' },
+        { lv:3,  name:'글레이즈드 도넛' },
+        { lv:4,  name:'베리 컵케이크' },
+        { lv:5,  name:'버터 소금빵' },
+        { lv:6,  name:'딸기 조각케이크' },
+        { lv:7,  name:'샤인머스캣 타르트' },
+        { lv:8,  name:'눈꽃 딸기 빙수' },
+        { lv:9,  name:'프리미엄 홀케이크' },
+        { lv:10, name:'애프터눈 티 세트' },
+        { lv:11, name:'로열 디저트 파라다이스' },
     ];
 
     var discoveredMax = 0;
@@ -542,49 +733,33 @@
         if (lv > discoveredMax) {
             discoveredMax = lv;
             try { localStorage.setItem('dessertpop_discovered', String(lv)); } catch(e){}
-            renderDexBar();
+            renderDexBar(lv); // 새 발견 레벨 전달
         }
     }
 
-    function renderDexBar() {
+    function renderDexBar(newlyUnlockedLv) {
         var inner = document.getElementById('dex-inner');
         if (!inner) return;
         inner.innerHTML = '';
         DESSERTS.forEach(function(d) {
-            var item = document.createElement('div');
-            item.className = 'dex-item';
-            item.innerHTML =
-                '<div class="dex-circle">' +
-                    '<img src="sprites/Dessert_' + d.lv + '.png" alt="Lv.' + d.lv + '">' +
-                '</div>';
-            inner.appendChild(item);
+            var circle = document.createElement('div');
+            var isLocked = d.lv > discoveredMax;
+            circle.className = 'dex-circle' + (isLocked ? ' locked' : '');
+            if (d.lv === newlyUnlockedLv) circle.classList.add('new-unlock');
+            var img = document.createElement('img');
+            img.src   = 'sprites/Dessert_' + d.lv + '.png';
+            img.alt   = d.name;
+            img.title = 'Lv.' + d.lv + ' ' + d.name;
+            // 크기는 CSS(.dex-circle img)로만 제어 — HTML width/height 속성 미사용
+            circle.appendChild(img);
+            inner.appendChild(circle);
         });
     }
     renderDexBar();
 
-    /* ── Unity 스플래시 대기 ── */
-    function waitForSplashEnd(callback) {
-        // Unity 스플래시 화면(Made with Unity)이 사라질 때까지 폴링
-        // 스플래시는 #unity-canvas 위에 별도 div로 렌더링되거나,
-        // 캔버스에 직접 그려짐. 안전하게 3초 대기 후 콜백 실행.
-        var splashTimeout = 3000;
-        var checkInterval = 200;
-        var elapsed = 0;
-
-        var checker = setInterval(function() {
-            elapsed += checkInterval;
-            // Unity 스플래시 요소 확인 (일부 버전에서 사용)
-            var splashEl = document.querySelector('.unity-splash');
-            var splashGone = !splashEl || splashEl.style.display === 'none' || splashEl.style.opacity === '0';
-
-            if ((splashGone && elapsed >= 1000) || elapsed >= splashTimeout) {
-                clearInterval(checker);
-                callback();
-            }
-        }, checkInterval);
-    }
-
-    /* ── Unity 초기화 ── */
+    // ════════════════════════════════════════════════════
+    //  Unity 초기화
+    // ════════════════════════════════════════════════════
     var config = {
         dataUrl:            "Build/{{{ DATA_FILENAME }}}",
         frameworkUrl:       "Build/{{{ FRAMEWORK_FILENAME }}}",
@@ -594,93 +769,140 @@
         productName:        "{{{ PRODUCT_NAME }}}",
         productVersion:     "{{{ PRODUCT_VERSION }}}",
         matchWebGLToCanvasSize: true,
-        webglContextAttributes: { alpha: true }, // 투명 배경 지원 필수
+        webglContextAttributes: { alpha: true },
     };
 
     createUnityInstance(canvas, config, function(progress) {
         var pct = Math.round(progress * 100);
         loadFill.style.width = pct + '%';
-        loadPct.textContent  = pct + '%';
+        loadText.textContent = pct < 100 ? pct + '%' : '거의 다 됐어요!';
     }).then(function(instance) {
         unityInstance = instance;
         window.unityInstance = instance;
         gameReady = true;
         loadFill.style.width = '100%';
-        loadPct.textContent = '준비 완료!';
-        
-        // Unity 내부에서 _ShowHtmlLanding을 호출할 때까지 로딩 화면을 유지합니다.
-        // 단, 8초 이상 응답이 없으면 안전을 위해 강제로 로딩을 치웁니다.
+        loadText.textContent = '준비 완료!';
+
+        // 8초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
         setTimeout(function() {
-            if (loadOverlay.classList.contains('visible')) {
-                console.warn('[Loading] Unity took too long to call Landing. Forcing hide.');
-                loadOverlay.classList.remove('visible');
-                if (!gameHud.classList.contains('visible')) landingDiv.classList.add('visible');
+            if (!loadOverlay.classList.contains('hidden')) {
+                console.warn('[Loading] Timeout — forcing landing.');
+                hideLoading();
+                if (!gameHud.classList.contains('visible')) showLanding();
             }
         }, 8000);
 
-        updateBestScore();
+        updateLocalBestScore();
     }).catch(function(err) {
-        loadPct.textContent = '로딩에 실패했어요 😢';
+        loadText.textContent = '로딩에 실패했어요 😢';
         console.error(err);
     });
 
-    /* ── 랜딩 → 게임 ── */
-    function onHtmlStartClicked() {
-        if (!gameReady || !unityInstance) return;
-        resumeWebGLAudio(); // AudioContext resume (브라우저 정책 대응)
-        landingDiv.classList.remove('visible');
-        setTimeout(function() {
+    // ════════════════════════════════════════════════════
+    //  HUD / 상태 유틸
+    // ════════════════════════════════════════════════════
+    function showHUD(show) {
+        if (show) {
             gameHud.classList.add('visible');
             dexBar.classList.add('visible');
-            var sb = document.getElementById('settings-btn');
-            if (sb) { sb.style.opacity='1'; sb.style.pointerEvents='auto'; }
-        }, 200);
+            settingsFab.classList.add('visible');
+        } else {
+            gameHud.classList.remove('visible');
+            dexBar.classList.remove('visible');
+            settingsFab.classList.remove('visible');
+            hideDangerBanner();
+        }
+    }
+
+    function showLanding() {
+        landingDiv.classList.add('visible');
+    }
+
+    function hideLanding() {
+        landingDiv.classList.remove('visible');
+    }
+
+    function hideLoading() {
+        loadOverlay.classList.add('hidden');
+    }
+
+    function hideDangerBanner() {
+        dangerBanner.classList.remove('visible');
+    }
+
+    // ════════════════════════════════════════════════════
+    //  랜딩 → 게임 시작
+    // ════════════════════════════════════════════════════
+    function onHtmlStartClicked() {
+        if (!gameReady || !unityInstance) return;
+        resumeWebGLAudio();
+        hideLanding();
+        showHUD(false); // 짧은 딜레이 후 HUD 표시
+        setTimeout(function() { showHUD(true); }, 200);
         unityInstance.SendMessage('GameManager', 'StartGame');
     }
 
-    /* ── 게임 오버 버튼 ── */
+    // ════════════════════════════════════════════════════
+    //  게임 오버 버튼
+    // ════════════════════════════════════════════════════
     function onReviveClicked() {
         if (!unityInstance) return;
         resumeWebGLAudio();
-        
         if (!_lastAdWatched) {
-            // First time: watch ad
             unityInstance.SendMessage('BridgeManager', 'RequestAd');
         } else if (_lastSpareLives > 0) {
-            // Second time: use spare life (from first ad)
             unityInstance.SendMessage('GameManager', 'UseSpareLife');
-        } else {
-            return;
-        }
-
+        } else { return; }
         goOverlay.classList.remove('visible');
-        gameHud.classList.add('visible');
+        showHUD(true);
     }
+
     function onShareClicked() {
         if (unityInstance) unityInstance.SendMessage('ResultCard', 'CaptureAndShare');
     }
     function onRestartClicked() { restartGame(); }
 
-    /* ── Unity → JS 콜백 ── */
-    window.updateScoreFromUnity = function(score) {
-        if (scoreValue) scoreValue.textContent = Number(score).toLocaleString();
-    };
+    // ════════════════════════════════════════════════════
+    //  Unity → JS 콜백
+    // ════════════════════════════════════════════════════
 
-    window.updateNextFromUnity = function(level) {
-        if (nextImg) {
-            nextImg.src = 'sprites/Dessert_' + level + '.png';
+    // 점수 업데이트 (애니메이션 포함)
+    window.updateScoreFromUnity = function(score) {
+        var num = Number(score);
+        if (num === _currentDisplayScore) return;
+        _currentDisplayScore = num;
+        if (scoreEl) {
+            scoreEl.textContent = num.toLocaleString('ko-KR');
+            scoreEl.classList.remove('bump');
+            void scoreEl.offsetWidth; // reflow for re-trigger
+            scoreEl.classList.add('bump');
         }
     };
 
-    var _lastAdWatched = false;
-    var _lastSpareLives = 0;
+    // 다음 디저트 업데이트
+    window.updateNextFromUnity = function(level) {
+        if (nextImg) {
+            nextImg.src = 'sprites/Dessert_' + level + '.png';
+            nextImg.classList.remove('pop');
+            void nextImg.offsetWidth;
+            nextImg.classList.add('pop');
+        }
+    };
 
+    // 게임 오버
     window.showGameOverFromUnity = function(score, best, adWatched, spareLives) {
-        goScore.textContent = Number(score).toLocaleString();
-        goBest.textContent  = '최고 기록: ' + Number(best).toLocaleString();
-        
-        _lastAdWatched = adWatched;
+        var scoreNum = Number(score);
+        var bestNum  = Number(best);
+        _lastAdWatched  = adWatched;
         _lastSpareLives = spareLives;
+
+        if (goScoreEl) goScoreEl.textContent = scoreNum.toLocaleString('ko-KR');
+        if (goBestEl)  goBestEl.textContent  = bestNum.toLocaleString('ko-KR');
+
+        var isNewBest = (scoreNum >= bestNum && bestNum > 0);
+        if (goBestBadge) goBestBadge.style.display = isNewBest ? 'inline-block' : 'none';
+        if (goBestEl)    goBestEl.className = 'go-score-val' + (isNewBest ? ' is-best' : '');
+        if (goSubText)   goSubText.textContent = isNewBest ? '🎉 신기록 달성!' : '수고했어요 😊';
 
         var reviveBtn = document.getElementById('go-btn-revive');
         if (reviveBtn) {
@@ -689,52 +911,57 @@
                 reviveBtn.textContent = '광고 보고 2회 더 도전';
             } else if (_lastSpareLives > 0) {
                 reviveBtn.style.display = 'block';
-                reviveBtn.textContent = '한 번 더 도전하기 (' + _lastSpareLives + '회 기회 남음)';
+                reviveBtn.textContent = '한 번 더 도전하기 (' + _lastSpareLives + '회 남음)';
             } else {
                 reviveBtn.style.display = 'none';
             }
         }
 
-        gameHud.classList.remove('visible');
-        dexBar.classList.remove('visible');
-        var sb = document.getElementById('settings-btn');
-        if (sb) { sb.style.opacity='0'; sb.style.pointerEvents='none'; }
-        
+        showHUD(false);
         goOverlay.classList.add('visible');
-        
+
         try {
             var prev = parseInt(localStorage.getItem('dessertpop_best') || '0');
-            if (best > prev) localStorage.setItem('dessertpop_best', String(best));
+            if (bestNum > prev) localStorage.setItem('dessertpop_best', String(bestNum));
         } catch(e){}
     };
 
+    // 랜딩 표시 (Unity 준비 완료 시 호출)
     window._ShowHtmlLanding = function(bestScore) {
-        if (bestScore !== undefined) document.getElementById('html-best-score').textContent = Number(bestScore).toLocaleString();
-        
-        // Unity가 준비되었으므로 로딩 화면을 제거합니다.
-        if (loadOverlay) loadOverlay.classList.remove('visible');
-        
-        gameHud.classList.remove('visible');
+        if (bestScore !== undefined) {
+            var n = Number(bestScore);
+            document.getElementById('html-best-score').textContent = n.toLocaleString('ko-KR');
+        }
+        hideLoading();
+        showHUD(false);
         goOverlay.classList.remove('visible');
-        dexBar.classList.remove('visible');
-        var sb = document.getElementById('settings-btn');
-        if (sb) { sb.style.opacity='0'; sb.style.pointerEvents='none'; }
-        landingDiv.classList.add('visible');
+        showLanding();
     };
 
-    function updateBestScore() {
-        try {
-            var s = parseInt(localStorage.getItem('dessertpop_best') || '0');
-            document.getElementById('html-best-score').textContent = s.toLocaleString();
-        } catch(e){}
-    }
-
-    /* 도감 발견 이벤트 */
+    // 도감 발견
     window.onDessertDiscoveredFromUnity = function(level) {
         saveDiscoveredMax(parseInt(level));
     };
 
-    /* ── 설정 패널 ── */
+    // 위험 구역 경고
+    window.notifyDangerZoneFromUnity = function(active) {
+        if (active) {
+            dangerBanner.classList.add('visible');
+        } else {
+            dangerBanner.classList.remove('visible');
+        }
+    };
+
+    // 신기록 갱신 인라인 알림
+    window.notifyNewHighScoreFromUnity = function(score) {
+        if (newBestBadge) {
+            newBestBadge.classList.add('show');
+        }
+    };
+
+    // ════════════════════════════════════════════════════
+    //  설정 패널
+    // ════════════════════════════════════════════════════
     function openSettings() {
         document.getElementById('toggle-bgm').checked = !bgmMuted;
         document.getElementById('toggle-sfx').checked = !sfxMuted;
@@ -764,29 +991,37 @@
         restartGame();
     }
 
+    // ════════════════════════════════════════════════════
+    //  게임 재시작
+    // ════════════════════════════════════════════════════
     function restartGame() {
         if (!unityInstance) { location.reload(); return; }
-        // HTML UI 초기화
         goOverlay.classList.remove('visible');
-        gameHud.classList.remove('visible');
-        dexBar.classList.remove('visible');
-        var sb = document.getElementById('settings-btn');
-        if (sb) { sb.style.opacity='0'; sb.style.pointerEvents='none'; }
-        // 랜딩 없이 바로 게임 재시작
+        hideDangerBanner();
+        showHUD(false);
+        if (newBestBadge) newBestBadge.classList.remove('show');
+        _currentDisplayScore = 0;
+        if (scoreEl) scoreEl.textContent = '0';
         unityInstance.SendMessage('GameManager', 'StartGame');
-        // HUD 다시 표시
-        setTimeout(function() {
-            gameHud.classList.add('visible');
-            dexBar.classList.add('visible');
-            if (sb) { sb.style.opacity='1'; sb.style.pointerEvents='auto'; }
-        }, 200);
+        setTimeout(function() { showHUD(true); }, 200);
     }
 
-    /* 설정 초기화 */
+    // ════════════════════════════════════════════════════
+    //  로컬 스토리지 유틸
+    // ════════════════════════════════════════════════════
+    function updateLocalBestScore() {
+        try {
+            var s = parseInt(localStorage.getItem('dessertpop_best') || '0');
+            var el = document.getElementById('html-best-score');
+            if (el) el.textContent = s.toLocaleString('ko-KR');
+        } catch(e){}
+    }
+
+    // 설정 초기값 로드
     try {
         bgmMuted = localStorage.getItem('dessertpop_bgm') === '0';
         sfxMuted = localStorage.getItem('dessertpop_sfx') === '0';
     } catch(e){}
-</script>
+    </script>
 </body>
 </html>

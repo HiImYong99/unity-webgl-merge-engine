@@ -83,6 +83,20 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // ── Unity → JS: 위험 구역 경고 (데드라인 근처) ──
+  notifyDangerZoneFromUnity: function(active) {
+    if (typeof window.notifyDangerZoneFromUnity === 'function') {
+      window.notifyDangerZoneFromUnity(active ? 1 : 0);
+    }
+  },
+
+  // ── Unity → JS: 신기록 갱신 알림 ──
+  notifyNewHighScoreFromUnity: function(score) {
+    if (typeof window.notifyNewHighScoreFromUnity === 'function') {
+      window.notifyNewHighScoreFromUnity(score);
+    }
+  },
+
   AppLogin: function() {
     console.log("[WebBridge] AppLogin called.");
     if (window.AppsInToss && typeof window.AppsInToss.appLogin === 'function') {
