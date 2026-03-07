@@ -543,41 +543,29 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
         }
 
-        /* 모바일(480px 이하)에서는 숨김 — 공간 부족 */
+        /* 모바일(480px 이하): 캔버스 폭 줄이고 사이드 패널 표시 */
         @media (max-width: 480px) {
-            .side-panel { display: none; }
+            .game-frame {
+                width: 78vw;
+            }
+            #unity-canvas {
+                width: 78vw !important;
+                max-width: 440px;
+            }
+            #side-left  { left:  calc(50% - 39vw - 46px); }
+            #side-right { right: calc(50% - 39vw - 46px); }
+            .sp-card { width: 40px; padding: 8px 4px; }
+            .sp-icon { font-size: 14px; }
+            .sp-label { font-size: 7px; }
+            .sp-value { font-size: 13px; }
+            .sp-best-img { width: 28px; height: 28px; }
         }
 
         /* ════════════════════════════════════════════════
-           모바일 미니 스탯 바 (480px 이하 전용)
+           모바일 미니 스탯 바 (480px 이하 전용) — 사이드로 대체됨
         ════════════════════════════════════════════════ */
         #mobile-stat-bar {
-            display: none; /* 기본 숨김 */
-        }
-        @media (max-width: 480px) {
-            #mobile-stat-bar {
-                display: flex;
-                position: fixed;
-                bottom: calc(var(--safe-bottom) + 130px);
-                left: 12px; right: 12px;
-                z-index: 46;
-                background: rgba(255,255,255,0.82);
-                backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-                border: 1px solid rgba(255,255,255,0.65);
-                border-radius: var(--radius-md);
-                box-shadow: var(--shadow-sm);
-                padding: 6px 4px;
-                align-items: center;
-                justify-content: space-around;
-                gap: 4px;
-                opacity: 0; pointer-events: none;
-                transition: opacity .35s, transform .35s;
-                transform: translateY(8px);
-            }
-            #mobile-stat-bar.visible {
-                opacity: 1; pointer-events: auto;
-                transform: translateY(0);
-            }
+            display: none;
         }
 
         .msb-item {
