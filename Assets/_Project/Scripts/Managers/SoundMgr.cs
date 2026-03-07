@@ -72,13 +72,31 @@ public class SoundMgr : MonoBehaviour
     {
         _isMuted = mute;
         if (BGMSource != null) BGMSource.mute = mute;
-        if (SFXSource != null) SFXSource.mute = mute || _isSfxMuted;
     }
 
     public void SetSfxMute(bool mute)
     {
         _isSfxMuted = mute;
-        if (SFXSource != null) SFXSource.mute = _isMuted || _isSfxMuted;
+        if (SFXSource != null) SFXSource.mute = mute;
+    }
+
+    // JS SendMessage 전용 (문자열 인자)
+    public void SetBgmMuteFromJS(string mute)
+    {
+        SetMute(mute == "1");
+    }
+
+    public void SetSfxMuteFromJS(string mute)
+    {
+        SetSfxMute(mute == "1");
+    }
+
+    public void ForcePlayBGM()
+    {
+        if (BGMSource != null && !BGMSource.isPlaying && BgmClip != null)
+        {
+            BGMSource.Play();
+        }
     }
 
     /// <summary>병합 효과음 재생</summary>
@@ -100,9 +118,7 @@ public class SoundMgr : MonoBehaviour
     /// <summary>낙하 효과음 재생</summary>
     public void PlayDrop()
     {
-        if (_isMuted || _isSfxMuted) return;
-        if (DropClip != null)
-            SFXSource.PlayOneShot(DropClip, 0.6f);
+        // 사용하지 않음 (요청에 따라 비활성화)
     }
 
     public void PlayScoreTick()

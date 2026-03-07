@@ -1320,13 +1320,6 @@
         _dropCount++;
         if (spDrop)  spDrop.textContent  = _dropCount;
         if (msbDrop) msbDrop.textContent = _dropCount;
-        // 콤보 타이머 리셋 (3초 이내 병합 없으면 콤보 초기화)
-        clearTimeout(_comboTimer);
-        _comboTimer = setTimeout(function() {
-            _combo = 0;
-            if (spCombo)  spCombo.textContent  = '0';
-            if (msbCombo) msbCombo.textContent = '0';
-        }, 3000);
     };
 
     // 병합 이벤트 (Unity에서 호출)
@@ -1353,7 +1346,7 @@
             _combo = 0;
             if (spCombo)  spCombo.textContent  = '0';
             if (msbCombo) msbCombo.textContent = '0';
-        }, 3000);
+        }, 1000);
         // 최고 레벨 갱신
         var lv = parseInt(level);
         if (lv > _bestLevel) {
@@ -1454,14 +1447,14 @@
     function onBgmToggle(cb) {
         bgmMuted = !cb.checked;
         if (unityInstance) {
-            unityInstance.SendMessage('AudioManager', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
             if (!bgmMuted) unityInstance.SendMessage('GameManager', 'ForcePlayBGM');
         }
         try { localStorage.setItem('dessertpop_bgm', bgmMuted ? '0' : '1'); } catch(e){}
     }
     function onSfxToggle(cb) {
         sfxMuted = !cb.checked;
-        if (unityInstance) unityInstance.SendMessage('AudioManager', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
+        if (unityInstance) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
         try { localStorage.setItem('dessertpop_sfx', sfxMuted ? '0' : '1'); } catch(e){}
     }
     function onRestartFromSettings() {

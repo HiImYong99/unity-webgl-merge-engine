@@ -35,7 +35,7 @@ public class SpawnMgr : MonoBehaviour
 
     [Header("Dynamic Spawn Point")]
     public LayerMask DessertLayer;
-    private float _spawnBaseY = 5.5f;
+    private float _spawnBaseY = 7.0f;
     private const float SPAWN_MAX_Y = 8.5f;
     private const float DANGER_ZONE_H = 1.6f;
     private const float DANGER_ZONE_W = 3.4f; // 3.0 -> 3.4

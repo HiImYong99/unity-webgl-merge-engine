@@ -381,7 +381,12 @@ public class GameMgr : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    private void SaveData()
+    public void ForcePlayBGM()
+    {
+        if (SoundMgr.Instance != null) SoundMgr.Instance.ForcePlayBGM();
+    }
+
+    public void SaveData()
     {
         SaveDataModel data = _loadedSaveData ?? new SaveDataModel();
 

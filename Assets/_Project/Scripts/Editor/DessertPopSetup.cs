@@ -155,7 +155,7 @@ public class DessertPopSetup : EditorWindow
         GameObject goSpawn = new GameObject("SpawnManager");
         SpawnMgr sm = goSpawn.AddComponent<SpawnMgr>();
         GameObject sp = new GameObject("SpawnPoint");
-        sp.transform.position = new Vector3(0, 5.5f, 0);
+        sp.transform.position = new Vector3(0, 7.0f, 0);
         sp.transform.SetParent(goSpawn.transform);
         sm.SpawnPoint = sp.transform;
 

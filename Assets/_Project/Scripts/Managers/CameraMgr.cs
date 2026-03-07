@@ -19,6 +19,13 @@ public class CameraMgr : MonoBehaviour
         _originalPos = transform.localPosition;
     }
 
+    /// <summary>CameraScaler가 위치를 변경한 후 기준점을 갱신합니다.</summary>
+    public void SyncOrigin()
+    {
+        if (!_isShaking)
+            _originalPos = transform.localPosition;
+    }
+
     /// <summary>감쇠 진동 효과 (강도가 서서히 줄어듦)</summary>
     public void Shake(float duration = 0.15f, float magnitude = 0.05f)
     {
