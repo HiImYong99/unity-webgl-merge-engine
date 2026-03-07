@@ -220,19 +220,26 @@ public class GameMgr : MonoBehaviour
     /// <summary>
     /// 광고 시청 후 부활 처리
     /// </summary>
+    private const int MAX_REVIVES = 2;
+
     public void Revive()
     {
-        if (AdWatched || CurrentState != GameState.GameOver) return;
+        if (CurrentState != GameState.GameOver) return;
+        if (SpareLives >= MAX_REVIVES) return;
 
         CurrentState = GameState.Playing;
         AdWatched = true;
-        SpareLives = 1; 
+        SpareLives++;
 
-        _gameOverDetectionCooldown = 1.5f; 
+        _gameOverDetectionCooldown = 1.5f;
         ClearFallingDesserts();
 
         if (UIMgr.Instance != null) UIMgr.Instance.HideGameOver();
-        if (SpawnMgr.Instance != null) SpawnMgr.Instance.CanSpawn = true;
+        if (SpawnMgr.Instance != null)
+        {
+            SpawnMgr.Instance.CanSpawn = true;
+            SpawnMgr.Instance.PrepareNextDessert();
+        }
     }
 
     private void ClearFallingDesserts()

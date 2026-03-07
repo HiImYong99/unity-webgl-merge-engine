@@ -306,6 +306,34 @@
             to   { transform: scale(1)   rotate(0deg); }
         }
 
+        /* 플레이 타임 박스 (하단 중앙으로 이동) */
+        .hud-timer-box {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 20px);
+            left: 50%;
+            transform: translate(-50%, 12px);
+            z-index: 155;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius-md); padding: 8px 14px;
+            box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.6);
+            text-align: center; min-width: 80px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s, transform .35s;
+        }
+        .hud-timer-box.visible {
+            opacity: 1; transform: translate(-50%, 0); pointer-events: auto;
+        }
+        .hud-timer-box .hud-label { 
+            font-size: 9px; font-weight: 700; color: var(--text-tertiary); 
+            line-height: 1; margin-bottom: 2px;
+        }
+        .hud-timer-val {
+            font-size: 18px; font-weight: 800; color: var(--text-primary);
+            line-height: 1.1; font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
         /* ════════════════════════════════════════════════
            위험 구역 경고 배너 (데드라인)
         ════════════════════════════════════════════════ */
@@ -355,13 +383,31 @@
             transition: opacity .35s, transform .35s;
         }
         #dex-bar.visible { opacity: 1; transform: translateY(0); }
+
+        /* 아이패드 등 넓은 화면: 바 너비 제한 + 중앙 정렬 */
+        @media (min-width: 600px) {
+            #dex-bar {
+                left: 50%; right: auto;
+                transform: translateX(-50%) translateY(10px);
+                width: min(560px, calc(100vw - 40px));
+            }
+            #dex-bar.visible { transform: translateX(-50%) translateY(0); }
+        }
+
         #dex-inner {
             display: flex; align-items: center;
-            justify-content: flex-start; /* 'center' can hide start items when content overflows */
+            justify-content: flex-start;
             gap: 8px; overflow-x: auto; width: 100%; scrollbar-width: none;
-            padding: 0 16px; /* give some room for scrolling */
+            padding: 0 4px;
+            scroll-behavior: smooth;
         }
         #dex-inner::-webkit-scrollbar { display: none; }
+
+        /* 아이패드: 11개 모두 보이면 중앙 정렬 */
+        @media (min-width: 600px) {
+            #dex-inner { justify-content: center; overflow-x: visible; }
+        }
+
         .dex-circle {
             width: 38px; height: 38px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
@@ -369,7 +415,15 @@
             background: rgba(255,255,255,0.45);
             border: 1.5px solid rgba(255,255,255,0.7);
             transition: transform .15s;
+            cursor: pointer;
         }
+
+        /* 아이패드: 아이콘 살짝 크게 */
+        @media (min-width: 600px) {
+            .dex-circle { width: 44px; height: 44px; }
+            #dex-bar { height: 70px; }
+        }
+
         .dex-circle:active { transform: scale(0.9); }
         .dex-circle img {
             width: 100%; height: 100%;
@@ -379,6 +433,10 @@
             display: block;
             flex-shrink: 0;
         }
+        @media (min-width: 600px) {
+            .dex-circle img { max-width: 42px; max-height: 42px; }
+        }
+
         .dex-circle.locked { opacity: 0.22; filter: grayscale(1) brightness(0.6); }
         .dex-circle.new-unlock {
             animation: unlockPop .5s cubic-bezier(.22,1,.36,1);
@@ -392,21 +450,62 @@
         }
 
         /* ════════════════════════════════════════════════
+           도감 툴팁
+        ════════════════════════════════════════════════ */
+        #dex-tooltip {
+            position: fixed;
+            z-index: 80;
+            pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.8);
+            border-radius: 10px;
+            padding: 6px 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+            opacity: 0;
+            transition: opacity .15s ease;
+            white-space: nowrap;
+        }
+        #dex-tooltip.show {
+            opacity: 1;
+        }
+        #dex-tooltip .tip-lv {
+            font-size: 10px; font-weight: 700;
+            color: var(--toss-blue); letter-spacing: 0.02em;
+            line-height: 1;
+        }
+        #dex-tooltip .tip-name {
+            font-size: 12px; font-weight: 700;
+            color: var(--text-primary); line-height: 1;
+        }
+        /* 아래 꼭짓점 화살표 */
+        #dex-tooltip::after {
+            content: '';
+            position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid rgba(255,255,255,0.92);
+        }
+
+        /* ════════════════════════════════════════════════
            설정 버튼 (우하단)
         ════════════════════════════════════════════════ */
         #settings-fab {
             position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
-            z-index: 45;
+            z-index: 155;
             width: 52px; height: 52px; border-radius: 50%;
-            background: rgba(255,255,255,0.90);
+            background: rgba(255,255,255,0.3); /* 더욱 투명하게 조정 */
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1.5px solid rgba(255,255,255,0.7);
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; cursor: pointer;
+            cursor: pointer;
             box-shadow: var(--shadow-md);
             transition: transform .15s, box-shadow .15s, opacity .3s;
             opacity: 0; pointer-events: none;
         }
+        #settings-fab img { width: 38px; height: 38px; object-fit: contain; }
         #settings-fab.visible { opacity: 1; pointer-events: auto; }
         #settings-fab:active { transform: scale(0.88); }
 
@@ -575,11 +674,16 @@
             <div class="hud-score-val" id="score">0</div>
             <div class="hud-new-best" id="new-best-badge">신기록!</div>
         </div>
-        <div></div>
         <div class="hud-next-box">
             <div class="hud-label">다음</div>
             <img class="hud-next-img" id="next-img" src="" alt="다음 디저트">
         </div>
+    </div>
+
+    <!-- ── 플레이 타임 (하단 중앙) ── -->
+    <div id="hud-timer" class="hud-timer-box">
+        <div class="hud-label">시간</div>
+        <div class="hud-timer-val" id="play-timer">00:00</div>
     </div>
 
     <!-- ── 위험 구역 경고 배너 ── -->
@@ -594,8 +698,16 @@
     <!-- ── 도감 바 ── -->
     <div id="dex-bar"><div id="dex-inner"></div></div>
 
+    <!-- ── 도감 툴팁 ── -->
+    <div id="dex-tooltip">
+        <span class="tip-lv" id="tip-lv-text"></span>
+        <span class="tip-name" id="tip-name-text"></span>
+    </div>
+
     <!-- ── 설정 FAB ── -->
-    <div id="settings-fab" onclick="openSettings()">⚙️</div>
+    <div id="settings-fab" onclick="openSettings()">
+        <img src="sprites/SettingsIcon.png" alt="설정">
+    </div>
 
     <!-- ── 게임 오버 ── -->
     <div id="gameover-overlay">
@@ -680,12 +792,45 @@
     var dangerBanner = document.getElementById('danger-banner');
     var settingsFab  = document.getElementById('settings-fab');
     var newBestBadge = document.getElementById('new-best-badge');
+    var hudTimer     = document.getElementById('hud-timer');
 
     var unityInstance = null;
     var gameReady     = false;
     var bgmMuted      = false;
     var sfxMuted      = false;
     var _lastAdWatched  = false;
+
+    // 플레이 타이머
+    var _timerEl      = document.getElementById('play-timer');
+    var _timerStart   = 0;
+    var _timerPaused  = 0;
+    var _timerRafId   = null;
+
+    function _timerFmt(ms) {
+        var s = Math.floor(ms / 1000);
+        var m = Math.floor(s / 60);
+        s = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function _timerTick() {
+        if (_timerEl) _timerEl.textContent = _timerFmt(Date.now() - _timerStart);
+        _timerRafId = requestAnimationFrame(_timerTick);
+    }
+    function startPlayTimer() {
+        if (_timerRafId) cancelAnimationFrame(_timerRafId);
+        _timerStart = Date.now();
+        if (_timerEl) _timerEl.textContent = '00:00';
+        _timerTick();
+    }
+    function resumePlayTimer() {
+        if (_timerRafId) cancelAnimationFrame(_timerRafId);
+        _timerStart = Date.now() - _timerPaused;
+        _timerTick();
+    }
+    function pausePlayTimer() {
+        if (_timerRafId) { cancelAnimationFrame(_timerRafId); _timerRafId = null; }
+        _timerPaused = Date.now() - _timerStart;
+    }
     var _lastSpareLives = 0;
 
     // 로컬 점수 추적
@@ -713,17 +858,17 @@
     //  도감 데이터
     // ════════════════════════════════════════════════════
     var DESSERTS = [
-        { lv:1,  name:'젤리빈' },
-        { lv:2,  name:'파스텔 마카롱' },
-        { lv:3,  name:'글레이즈드 도넛' },
-        { lv:4,  name:'베리 컵케이크' },
-        { lv:5,  name:'버터 소금빵' },
-        { lv:6,  name:'딸기 조각케이크' },
-        { lv:7,  name:'샤인머스캣 타르트' },
-        { lv:8,  name:'눈꽃 딸기 빙수' },
-        { lv:9,  name:'프리미엄 홀케이크' },
-        { lv:10, name:'애프터눈 티 세트' },
-        { lv:11, name:'로열 디저트 파라다이스' },
+        { lv:1,  name:'캔디' },
+        { lv:2,  name:'마카롱' },
+        { lv:3,  name:'도넛' },
+        { lv:4,  name:'컵케이크' },
+        { lv:5,  name:'소금빵' },
+        { lv:6,  name:'조각 케이크' },
+        { lv:7,  name:'타르트' },
+        { lv:8,  name:'빙수' },
+        { lv:9,  name:'홀케이크' },
+        { lv:10, name:'3단 트레이 세트' },
+        { lv:11, name:'거대 파운드 케이크' },
     ];
 
     var discoveredMax = 0;
@@ -737,6 +882,69 @@
         }
     }
 
+    // ── 도감 툴팁 ──────────────────────────────────────
+    var dexTooltip   = document.getElementById('dex-tooltip');
+    var tipLvText    = document.getElementById('tip-lv-text');
+    var tipNameText  = document.getElementById('tip-name-text');
+    var tooltipTimer = null;
+
+    function showDexTooltip(circle, d) {
+        clearTimeout(tooltipTimer);
+        var isLocked = d.lv > discoveredMax;
+        tipLvText.textContent   = 'Lv.' + d.lv;
+        tipNameText.textContent = isLocked ? '???' : d.name;
+
+        // 위치: 도감 원 위에 중앙 정렬
+        var rect = circle.getBoundingClientRect();
+        var tx = rect.left + rect.width / 2;
+        var ty = rect.top - 8; // 원 위로 8px 여백
+
+        dexTooltip.style.left      = tx + 'px';
+        dexTooltip.style.top       = ty + 'px';
+        dexTooltip.style.transform = 'translateX(-50%) translateY(-100%)';
+
+        dexTooltip.classList.remove('show');
+        requestAnimationFrame(function() {
+            dexTooltip.classList.add('show');
+        });
+
+        // 1.8초 후 자동 숨김
+        tooltipTimer = setTimeout(hideDexTooltip, 1800);
+    }
+
+    function hideDexTooltip() {
+        dexTooltip.classList.remove('show');
+    }
+
+    // 드래그(스크롤) 시작 감지 → 툴팁 즉시 숨김
+    var _dexTouchStartX = 0;
+    var _dexDragging    = false;
+    var dexInnerEl      = document.getElementById('dex-inner');
+
+    dexInnerEl.addEventListener('touchstart', function(e) {
+        _dexTouchStartX = e.touches[0].clientX;
+        _dexDragging    = false;
+    }, { passive: true });
+
+    dexInnerEl.addEventListener('touchmove', function(e) {
+        if (Math.abs(e.touches[0].clientX - _dexTouchStartX) > 6) {
+            _dexDragging = true;
+            if (dexTooltip.classList.contains('show')) {
+                clearTimeout(tooltipTimer);
+                hideDexTooltip();
+            }
+        }
+    }, { passive: true });
+
+    // 도감 바 외부 터치 시 툴팁 닫기
+    document.addEventListener('touchstart', function(e) {
+        if (!dexTooltip.classList.contains('show')) return;
+        if (!dexBar.contains(e.target)) {
+            clearTimeout(tooltipTimer);
+            hideDexTooltip();
+        }
+    }, { passive: true });
+
     function renderDexBar(newlyUnlockedLv) {
         var inner = document.getElementById('dex-inner');
         if (!inner) return;
@@ -749,8 +957,12 @@
             var img = document.createElement('img');
             img.src   = 'sprites/Dessert_' + d.lv + '.png';
             img.alt   = d.name;
-            img.title = 'Lv.' + d.lv + ' ' + d.name;
-            // 크기는 CSS(.dex-circle img)로만 제어 — HTML width/height 속성 미사용
+            // 탭(드래그 아닐 때만) → 툴팁
+            circle.addEventListener('click', function(e) {
+                if (_dexDragging) return;
+                e.stopPropagation();
+                showDexTooltip(circle, d);
+            });
             circle.appendChild(img);
             inner.appendChild(circle);
         });
@@ -806,10 +1018,12 @@
             gameHud.classList.add('visible');
             dexBar.classList.add('visible');
             settingsFab.classList.add('visible');
+            if (hudTimer) hudTimer.classList.add('visible');
         } else {
             gameHud.classList.remove('visible');
             dexBar.classList.remove('visible');
             settingsFab.classList.remove('visible');
+            if (hudTimer) hudTimer.classList.remove('visible');
             hideDangerBanner();
         }
     }
@@ -839,6 +1053,7 @@
         hideLanding();
         showHUD(false); // 짧은 딜레이 후 HUD 표시
         setTimeout(function() { showHUD(true); }, 200);
+        startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
     }
 
@@ -854,6 +1069,7 @@
             unityInstance.SendMessage('GameManager', 'UseSpareLife');
         } else { return; }
         goOverlay.classList.remove('visible');
+        resumePlayTimer();
         showHUD(true);
     }
 
@@ -917,6 +1133,7 @@
             }
         }
 
+        pausePlayTimer();
         showHUD(false);
         goOverlay.classList.add('visible');
 
@@ -1002,6 +1219,7 @@
         if (newBestBadge) newBestBadge.classList.remove('show');
         _currentDisplayScore = 0;
         if (scoreEl) scoreEl.textContent = '0';
+        startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
         setTimeout(function() { showHUD(true); }, 200);
     }

@@ -12,9 +12,9 @@ using UnityEngine;
 public class CameraScaler : MonoBehaviour
 {
     [Tooltip("게임 컨테이너의 월드 너비 (GameContainer 내부 폭)")]
-    public float ContainerWorldWidth = 3.2f; 
+    public float ContainerWorldWidth = 3.6f; 
     public float MinOrthoSize = 5.0f;
-    public float MaxOrthoSize = 8.0f;
+    public float MaxOrthoSize = 8.5f; // 높이가 늘어났으므로 최대 사이즈도 살까 늘립니다.
 
     private Camera cam;
 

@@ -801,9 +801,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 617e0678ca50f41738ec2d4f35ff2d82, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ContainerWorldWidth: 3.2
+  ContainerWorldWidth: 3.6
   MinOrthoSize: 5
-  MaxOrthoSize: 8
+  MaxOrthoSize: 8.5
 --- !u!81 &788340390
 AudioListener:
   m_ObjectHideFlags: 0

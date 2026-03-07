@@ -29,11 +29,33 @@ public class SoundMgr : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            LoadDefaultClips();
         }
         else
         {
             Destroy(gameObject);
         }
+    }
+
+    private void LoadDefaultClips()
+    {
+        // 인스펙터에서 할당되지 않은 경우 Resources에서 자동 로드 시도
+        if (BgmClip == null) BgmClip = Resources.Load<AudioClip>("Audio/BGM/MainBGM");
+        if (DropClip == null) DropClip = Resources.Load<AudioClip>("Audio/SFX/DropSFX");
+        if (GameOverClip == null) GameOverClip = Resources.Load<AudioClip>("Audio/SFX/GameOverSFX");
+        if (ScoreTickClip == null) ScoreTickClip = Resources.Load<AudioClip>("Audio/SFX/ScoreSFX");
+        
+        if (MergeClips == null || MergeClips.Length == 0)
+        {
+            AudioClip merge = Resources.Load<AudioClip>("Audio/SFX/MergeSFX");
+            if (merge != null) MergeClips = new AudioClip[] { merge };
+        }
+        
+        if (BGMSource == null) BGMSource = GetComponent<AudioSource>();
+        if (SFXSource == null) SFXSource = transform.childCount > 0 ? GetComponentInChildren<AudioSource>() : GetComponent<AudioSource>();
+        
+        if (BGMSource == null || SFXSource == null) 
+            Debug.LogWarning("[SoundMgr] AudioSource가 인스펙터에서 할당되지 않았으며, 컴포넌트를 찾을 수 없습니다.");
     }
 
     private void Start()

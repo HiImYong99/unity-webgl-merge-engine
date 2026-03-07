@@ -203,7 +203,6 @@ public class Dessert : MonoBehaviour
                     StartCoroutine(Co_LandingSquash(LEVEL_DIAMETERS[idx], Mathf.Clamp01(speed / 8f)));
                 }
 
-                if (VFXMgr.Instance != null) VFXMgr.Instance.SpawnLandingEffect(transform.position, Level);
                 if (Level >= 4 && TossBridgeMgr.Instance != null) TossBridgeMgr.Instance.RequestVibrate("light");
             }
         }

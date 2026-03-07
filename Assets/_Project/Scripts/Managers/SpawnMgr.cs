@@ -19,8 +19,8 @@ public class SpawnMgr : MonoBehaviour
     private int _nextDessertLevel = -1;
     private int _queuedDessertLevel = -1;
 
-    private float _minX = -1.1f;
-    private float _maxX = 1.1f;
+    private float _minX = -1.4f;
+    private float _maxX = 1.4f;
 
     // 난이도 조절
     private int _totalDropCount = 0;
@@ -38,7 +38,7 @@ public class SpawnMgr : MonoBehaviour
     private float _spawnBaseY = 5.5f;
     private const float SPAWN_MAX_Y = 8.5f;
     private const float DANGER_ZONE_H = 1.6f;
-    private const float DANGER_ZONE_W = 3.0f;
+    private const float DANGER_ZONE_W = 3.4f; // 3.0 -> 3.4
     private const float SPAWN_RISE_STEP = 0.55f;
     private const float SPAWN_DROP_SPEED = 2.0f;
     private float _dynamicSpawnY;
@@ -327,9 +327,6 @@ public class SpawnMgr : MonoBehaviour
 
         Dessert dessertScript = _currentDessert.GetComponent<Dessert>();
         if (dessertScript != null) dessertScript.Initialize(level, false);
-
-        if (VFXMgr.Instance != null)
-            VFXMgr.Instance.SpawnSpawnEffect(spawnPos);
 
         UpdateGuideLine(spawnPos.x);
     }
