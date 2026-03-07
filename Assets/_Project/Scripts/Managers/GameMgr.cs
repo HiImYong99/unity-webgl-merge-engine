@@ -63,7 +63,9 @@ public class GameMgr : MonoBehaviour
     // ===== Fallout 시스템 (Kill Zone) =====
     private const float CONTAINER_MIN_X = -2.0f;  // 용기 좌측 경계
     private const float CONTAINER_MAX_X = 2.0f;   // 용기 우측 경계
-    private const float KILL_ZONE_Y = -4f;         // 이 Y값 아래로 떨어지면 게임 오버
+    private const float CONTAINER_TOP_Y = 3.5f;   // 용기 실제 상단 (bY=-1.5 + h=5.0)
+    private const float OVERFLOW_GRACE = 2.5f;     // 상단 초과 후 게임오버까지 유예 시간(초)
+    private float _overflowTimer = 0f;             // 상단 초과 지속 시간
     private float _gameOverDetectionCooldown = 0f; // 복구 후 즉시 게임오버 방지용
 
     private void Awake()
@@ -90,8 +92,8 @@ public class GameMgr : MonoBehaviour
         if (CurrentState != GameState.Playing) return;
 
         // ===== Fallout 게임 오버 판정 =====
-        // 용기 밖으로 떨어지는 동물 감지
         GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
+        bool anyOverflow = false;
 
         foreach (GameObject go in animals)
         {
@@ -99,20 +101,30 @@ public class GameMgr : MonoBehaviour
 
             Animal animal = go.GetComponent<Animal>();
             if (animal == null) continue;
-
             if (!animal.IsDropped) continue;
             if (animal.IsMerged) continue;
 
             float x = go.transform.position.x;
             float y = go.transform.position.y;
 
-            // 용기 외부 임계값 체크
-            bool outsideContainer = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
-            if (outsideContainer && y < KILL_ZONE_Y)
+            // 용기 상단(3.5) 위에 동물이 쌓인 경우 → 유예시간 후 게임오버
+            bool insideX = x >= CONTAINER_MIN_X && x <= CONTAINER_MAX_X;
+            if (insideX && y > CONTAINER_TOP_Y)
+                anyOverflow = true;
+        }
+
+        if (anyOverflow)
+        {
+            _overflowTimer += Time.deltaTime;
+            if (_overflowTimer >= OVERFLOW_GRACE)
             {
                 TriggerGameOver();
                 return;
             }
+        }
+        else
+        {
+            _overflowTimer = 0f;
         }
     }
 
@@ -157,6 +169,8 @@ public class GameMgr : MonoBehaviour
         HasRevived = false;
         AdWatched = false;
         SpareLives = 0;
+        _gameOverDetectionCooldown = 1.0f; // 시작 직후 이전 프레임 잔여 동물로 인한 오판 방지
+        _overflowTimer = 0f;
 
         // 기존 동물 정리
         GameObject[] existingAnimals = GameObject.FindGameObjectsWithTag("Animal");
@@ -221,6 +235,7 @@ public class GameMgr : MonoBehaviour
         SpareLives++;
 
         _gameOverDetectionCooldown = 1.5f;
+        _overflowTimer = 0f;
         ClearFallingAnimals();
 
         if (UIMgr.Instance != null) UIMgr.Instance.HideGameOver();
@@ -241,7 +256,7 @@ public class GameMgr : MonoBehaviour
             float y = go.transform.position.y;
             bool outside = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
             
-            if (outside || y > 4.1f || y < KILL_ZONE_Y + 0.5f)
+            if (outside || y > 4.1f || y < -3.5f)
             {
                 Destroy(go);
             }

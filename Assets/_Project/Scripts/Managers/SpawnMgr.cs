@@ -35,11 +35,11 @@ public class SpawnMgr : MonoBehaviour
 
     [Header("Dynamic Spawn Point")]
     public LayerMask AnimalLayer;
-    private float _spawnBaseY = 7.0f;
-    private const float SPAWN_MAX_Y = 8.5f;
+    private float _spawnBaseY = 8.0f;
+    private const float SPAWN_MAX_Y = 10.0f;
     private const float DANGER_ZONE_H = 1.6f;
-    private const float DANGER_ZONE_W = 3.4f; // 3.0 -> 3.4
-    private const float SPAWN_RISE_STEP = 0.55f;
+    private const float DANGER_ZONE_W = 3.4f;
+    private const float SPAWN_RISE_STEP = 0.8f;
     private const float SPAWN_DROP_SPEED = 2.0f;
     private float _dynamicSpawnY;
 
@@ -372,6 +372,10 @@ public class SpawnMgr : MonoBehaviour
         Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null) { rb.isKinematic = true; rb.velocity = Vector2.zero; }
 
+        // 대기 중인 동물은 콜라이더를 비활성화하여 박스 안 동물과 물리 충돌 방지
+        Collider2D col = _currentAnimal.GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+
         Animal animalScript = _currentAnimal.GetComponent<Animal>();
         if (animalScript != null) animalScript.Initialize(level, false);
 
@@ -450,6 +454,10 @@ public class SpawnMgr : MonoBehaviour
         if (_currentAnimal == null) return;
         if (_guideLine != null) _guideLine.enabled = false;
         if (_dropIndicator != null) _dropIndicator.SetActive(false);
+
+        // 드롭 시 콜라이더 복원
+        Collider2D col = _currentAnimal.GetComponent<Collider2D>();
+        if (col != null) col.enabled = true;
 
         Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null)

@@ -94,7 +94,13 @@
            UNITY CANVAS
         ════════════════════════════════════════════════ */
         #unity-container {
-            width: 100%; height: 100%; position: relative; z-index: 10;
+            position: fixed;
+            top: calc(var(--safe-top) + 80px);
+            left: 50%; transform: translateX(-50%);
+            width: 96vw; max-width: 440px;
+            height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 260px);
+            max-height: 680px;
+            z-index: 10;
             display: flex; justify-content: center; align-items: center;
         }
         #unity-canvas {
@@ -103,8 +109,12 @@
 
         /* 게임 프레임 테두리 (포인터 이벤트 없음 — 장식용) */
         .game-frame {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 96vw; height: 92vh; max-width: 440px; max-height: 860px;
+            position: fixed;
+            top: calc(var(--safe-top) + 80px);
+            left: 50%; transform: translateX(-50%);
+            width: 96vw;
+            height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 260px);
+            max-width: 440px; max-height: 680px;
             background: rgba(255,255,255,0.25);
             backdrop-filter: blur(32px) saturate(1.3);
             -webkit-backdrop-filter: blur(32px) saturate(1.3);
@@ -415,6 +425,9 @@
             .game-frame {
                 width: 78vw;
             }
+            #unity-container {
+                width: 78vw;
+            }
             #unity-canvas {
                 width: 78vw !important;
                 max-width: 440px;
@@ -471,6 +484,82 @@
         }
         #settings-fab.visible { opacity: 1; pointer-events: auto; }
         #settings-fab:active { transform: scale(0.88); }
+
+        /* ════════════════════════════════════════════════
+           동물 도감 바 (하단)
+        ════════════════════════════════════════════════ */
+        #dex-bar {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 170px);
+            left: 50%; transform: translateX(-50%) translateY(8px);
+            z-index: 50;
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 20px;
+            box-shadow: var(--shadow-md);
+            padding: 8px 12px;
+            display: flex; align-items: center; gap: 6px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s, transform .35s;
+            width: calc(min(96vw, 440px) - 32px);
+            max-width: 408px;
+        }
+        #dex-bar.visible {
+            opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+        }
+        .dex-slots {
+            display: flex; align-items: center; gap: 4px; flex: 1; justify-content: space-between;
+        }
+        .dex-slot {
+            width: 28px; height: 28px; border-radius: 10px;
+            background: rgba(0,0,0,0.04);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; flex-shrink: 0;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .2s cubic-bezier(.22,1,.36,1);
+        }
+        .dex-slot:active { transform: scale(0.88); }
+        .dex-slot img {
+            width: 24px; height: 24px; object-fit: contain;
+            filter: grayscale(1) opacity(0.2);
+            transition: filter .3s;
+        }
+        .dex-slot.found img {
+            filter: grayscale(0) opacity(1) drop-shadow(0 1px 3px rgba(0,0,0,0.15));
+        }
+        .dex-slot.found { background: rgba(49,130,246,0.07); }
+        .dex-slot.pop-in {
+            animation: dexPop .4s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes dexPop {
+            0%   { transform: scale(0.5); }
+            60%  { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+
+        /* 도감 툴팁 */
+        #dex-tooltip {
+            position: fixed; z-index: 200;
+            background: rgba(30,30,40,0.88);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            color: #fff; border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px; font-weight: 700;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0; transform: translateY(4px);
+            transition: opacity .15s, transform .15s;
+        }
+        #dex-tooltip.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 480px) {
+            #dex-bar { bottom: calc(var(--safe-bottom) + 170px); padding: 6px 8px; gap: 4px; }
+            .dex-slot { width: 24px; height: 24px; border-radius: 8px; }
+            .dex-slot img { width: 20px; height: 20px; }
+        }
 
         /* ════════════════════════════════════════════════
            GAME OVER OVERLAY
@@ -693,6 +782,12 @@
     </div>
 
 
+    <!-- ── 동물 도감 바 ── -->
+    <div id="dex-bar">
+        <div class="dex-slots" id="dex-slots"></div>
+    </div>
+    <div id="dex-tooltip"></div>
+
     <!-- ── 설정 FAB ── -->
     <div id="settings-fab" onclick="openSettings()">
         ⚙️
@@ -786,6 +881,8 @@
     var sideRight    = document.getElementById('side-right');
     var spDrop       = document.getElementById('sp-drop');
     var spMerge      = document.getElementById('sp-merge');
+    var dexBar       = document.getElementById('dex-bar');
+    var dexSlots     = document.getElementById('dex-slots');
 
     // 모바일 미니 스탯 바
     var mobileStatBar = document.getElementById('mobile-stat-bar');
@@ -802,7 +899,84 @@
         if (spMerge)   spMerge.textContent  = '0';
         if (msbDrop)   msbDrop.textContent   = '0';
         if (msbMerge)  msbMerge.textContent  = '0';
+        resetDex();
     }
+
+    // ── 동물 도감 ──
+    var DEX_TOTAL = 11;
+    var _dexFound = new Array(DEX_TOTAL + 1).fill(false); // index 1~11
+    var DEX_NAMES = ['', '병아리', '생쥐', '고슴도치', '개구리', '토끼', '고양이', '시바견', '돼지', '판다', '곰', '호랑이'];
+    var dexTooltip = document.getElementById('dex-tooltip');
+    var _dexTipTimer = null;
+
+    function showDexTooltip(slot, level) {
+        if (!dexTooltip) return;
+        var found = _dexFound[level];
+        dexTooltip.textContent = found
+            ? 'Lv.' + level + ' ' + DEX_NAMES[level]
+            : 'Lv.' + level + ' ???';
+        var r = slot.getBoundingClientRect();
+        var tipW = 120; // 대략적인 너비
+        var left = r.left + r.width / 2 - tipW / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+        dexTooltip.style.left = left + 'px';
+        dexTooltip.style.top  = (r.top - 36) + 'px';
+        dexTooltip.classList.add('show');
+        if (_dexTipTimer) clearTimeout(_dexTipTimer);
+        _dexTipTimer = setTimeout(function() { dexTooltip.classList.remove('show'); }, 1600);
+    }
+
+    function buildDex() {
+        if (!dexSlots) return;
+        dexSlots.innerHTML = '';
+        for (var i = 1; i <= DEX_TOTAL; i++) {
+            (function(lv) {
+                var slot = document.createElement('div');
+                slot.className = 'dex-slot';
+                slot.id = 'dex-slot-' + lv;
+                var img = document.createElement('img');
+                img.src = 'sprites/Animal_' + lv + '.png';
+                img.alt = 'Lv.' + lv;
+                slot.appendChild(img);
+                slot.addEventListener('click',    function(e) { e.stopPropagation(); showDexTooltip(slot, lv); });
+                slot.addEventListener('touchend', function(e) { e.stopPropagation(); e.preventDefault(); showDexTooltip(slot, lv); }, { passive: false });
+                dexSlots.appendChild(slot);
+            })(i);
+        }
+    }
+
+    var DEX_ALWAYS_VISIBLE = 4; // Lv1~4는 항상 공개
+
+    function resetDex() {
+        _dexFound = new Array(DEX_TOTAL + 1).fill(false);
+        for (var i = 1; i <= DEX_TOTAL; i++) {
+            var slot = document.getElementById('dex-slot-' + i);
+            if (slot) slot.classList.remove('found', 'pop-in');
+        }
+        // Lv1~4 항상 공개
+        for (var j = 1; j <= DEX_ALWAYS_VISIBLE; j++) {
+            _dexFound[j] = true;
+            var s = document.getElementById('dex-slot-' + j);
+            if (s) s.classList.add('found');
+        }
+    }
+
+    function markDexFound(level) {
+        var lv = parseInt(level);
+        if (lv < 1 || lv > DEX_TOTAL) return;
+        if (_dexFound[lv]) return; // 이미 발견
+        _dexFound[lv] = true;
+        var slot = document.getElementById('dex-slot-' + lv);
+        if (slot) {
+            slot.classList.add('found');
+            slot.classList.remove('pop-in');
+            void slot.offsetWidth;
+            slot.classList.add('pop-in');
+        }
+    }
+
+    buildDex();
+    resetDex(); // Lv1~4 초기 공개
 
     var unityInstance = null;
     var gameReady     = false;
@@ -921,6 +1095,7 @@
             if (sideLeft)      sideLeft.classList.add('visible');
             if (sideRight)     sideRight.classList.add('visible');
             if (mobileStatBar) mobileStatBar.classList.add('visible');
+            if (dexBar)        dexBar.classList.add('visible');
         } else {
             gameHud.classList.remove('visible');
             settingsFab.classList.remove('visible');
@@ -928,6 +1103,7 @@
             if (sideLeft)      sideLeft.classList.remove('visible');
             if (sideRight)     sideRight.classList.remove('visible');
             if (mobileStatBar) mobileStatBar.classList.remove('visible');
+            if (dexBar)        dexBar.classList.remove('visible');
             hideDangerBanner();
         }
     }
@@ -1018,6 +1194,7 @@
         _mergeCount++;
         if (spMerge)  spMerge.textContent  = _mergeCount;
         if (msbMerge) msbMerge.textContent = _mergeCount;
+        markDexFound(level);
     };
 
     // 게임 오버

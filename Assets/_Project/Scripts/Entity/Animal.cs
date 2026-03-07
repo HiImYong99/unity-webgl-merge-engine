@@ -271,6 +271,10 @@ public class Animal : MonoBehaviour
         IsMerged = true;
         other.IsMerged = true;
 
+        // simulated=false 이전에 velocity 캡처
+        Vector2 myVel = _cachedRb != null ? _cachedRb.velocity : Vector2.zero;
+        Vector2 otherVel = other._cachedRb != null ? other._cachedRb.velocity : Vector2.zero;
+
         if (_cachedCol != null) _cachedCol.enabled = false;
         if (other._cachedCol != null) other._cachedCol.enabled = false;
         if (_cachedRb != null) _cachedRb.simulated = false;
@@ -313,8 +317,9 @@ public class Animal : MonoBehaviour
         int nextLevel = Level + 1;
         GameMgr.Instance.AddScore(score, nextLevel);
 
-        spawnPos.x = Mathf.Clamp(spawnPos.x, -0.55f, 0.55f);
-        spawnPos.y = Mathf.Max(spawnPos.y, -0.3f);
+        // 컨테이너 내부로만 클램핑 (여유 있게)
+        float halfW = 1.45f; // 컨테이너 halfWidth 1.6 - 여유 0.15
+        spawnPos.x = Mathf.Clamp(spawnPos.x, -halfW, halfW);
 
         AnimalEvolutionData data = GameMgr.Instance.EvolutionData;
         GameObject nextPrefab = (data != null && nextLevel <= data.Levels.Length) ? data.Levels[nextLevel - 1].Prefab : null;
@@ -327,8 +332,10 @@ public class Animal : MonoBehaviour
         {
             Animal nd = newAnimal.GetComponent<Animal>();
             if (nd != null) nd.Initialize(nextLevel, true);
+            // 머지된 두 동물의 평균 속도를 부여해 자연스러운 물리 연속성 유지
+            Vector2 avgVel = (myVel + otherVel) * 0.5f;
             Rigidbody2D nRb = newAnimal.GetComponent<Rigidbody2D>();
-            if (nRb != null) nRb.velocity = new Vector2(0, 1.5f);
+            if (nRb != null) nRb.velocity = new Vector2(avgVel.x * 0.3f, Mathf.Max(avgVel.y * 0.3f, 0f));
         }
 
         Destroy(gameObject);
