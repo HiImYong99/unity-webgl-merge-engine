@@ -1,11 +1,19 @@
 using UnityEngine;
 using System.Collections;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// 개별 디저트 오브젝트의 물리, 애니메이션, 병합 로직을 담당하는 엔티티
 /// </summary>
 public class Dessert : MonoBehaviour
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void onMergeFromUnity(int level);
+    private static void WebBridgeCallMerge(int level) { try { onMergeFromUnity(level); } catch {} }
+#else
+    private static void WebBridgeCallMerge(int level) {}
+#endif
+
     public int Level { get; private set; }
     public bool IsMerged { get; private set; } = false;
     public bool IsDropped { get { return _isDropped; } }
@@ -284,6 +292,11 @@ public class Dessert : MonoBehaviour
             CameraMgr.Instance.Shake(0.12f + (Level * 0.01f), 0.02f + (Level * 0.012f));
 
         if (SoundMgr.Instance != null) SoundMgr.Instance.PlayMerge(Level);
+
+        int nextLevelForJS = Level + 1;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebBridgeCallMerge(nextLevelForJS);
+#endif
 
         if (TossBridgeMgr.Instance != null)
         {

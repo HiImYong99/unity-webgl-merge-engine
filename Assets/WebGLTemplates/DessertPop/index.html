@@ -309,7 +309,7 @@
         /* 플레이 타임 박스 (하단 중앙으로 이동) */
         .hud-timer-box {
             position: fixed;
-            bottom: calc(var(--safe-bottom) + 20px);
+            bottom: calc(var(--safe-bottom) + 60px);
             left: 50%;
             transform: translate(-50%, 12px);
             z-index: 155;
@@ -370,7 +370,7 @@
            도감 바 (하단)
         ════════════════════════════════════════════════ */
         #dex-bar {
-            position: fixed; bottom: calc(var(--safe-bottom) + 88px);
+            position: fixed; bottom: calc(var(--safe-bottom) + 128px);
             left: 20px; right: 20px; height: 62px; z-index: 40;
             background: rgba(255,255,255,0.80);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -490,12 +490,129 @@
         }
 
         /* ════════════════════════════════════════════════
+           사이드 패널 (게임 박스 좌우)
+        ════════════════════════════════════════════════ */
+        .side-panel {
+            position: fixed;
+            top: 50%; transform: translateY(-50%);
+            z-index: 45;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 14px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s;
+        }
+        .side-panel.visible { opacity: 1; }
+        #side-left  { left:  calc(50% - min(48vw, 220px) - 58px); }
+        #side-right { right: calc(50% - min(48vw, 220px) - 58px); }
+
+        /* 패널 카드 */
+        .sp-card {
+            background: rgba(255,255,255,0.78);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 18px;
+            box-shadow: var(--shadow-sm);
+            padding: 10px 8px;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 4px; width: 50px;
+            text-align: center;
+        }
+        .sp-icon { font-size: 18px; line-height: 1; }
+        .sp-label {
+            font-size: 8px; font-weight: 700;
+            color: var(--text-tertiary); letter-spacing: .04em;
+            line-height: 1; white-space: nowrap;
+        }
+        .sp-value {
+            font-size: 15px; font-weight: 900;
+            color: var(--text-primary); line-height: 1;
+        }
+        .sp-value.highlight { color: var(--toss-blue); }
+
+        /* 콤보 강조 애니메이션 */
+        @keyframes comboPop {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.35); color: #ff5988; }
+            100% { transform: scale(1); }
+        }
+        .sp-value.combo-pop { animation: comboPop .3s cubic-bezier(.22,1,.36,1); }
+
+        /* 최고 디저트 이미지 */
+        .sp-best-img {
+            width: 36px; height: 36px; object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+        }
+
+        /* 모바일(480px 이하)에서는 숨김 — 공간 부족 */
+        @media (max-width: 480px) {
+            .side-panel { display: none; }
+        }
+
+        /* ════════════════════════════════════════════════
+           모바일 미니 스탯 바 (480px 이하 전용)
+        ════════════════════════════════════════════════ */
+        #mobile-stat-bar {
+            display: none; /* 기본 숨김 */
+        }
+        @media (max-width: 480px) {
+            #mobile-stat-bar {
+                display: flex;
+                position: fixed;
+                bottom: calc(var(--safe-bottom) + 130px);
+                left: 12px; right: 12px;
+                z-index: 46;
+                background: rgba(255,255,255,0.82);
+                backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255,255,255,0.65);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-sm);
+                padding: 6px 4px;
+                align-items: center;
+                justify-content: space-around;
+                gap: 4px;
+                opacity: 0; pointer-events: none;
+                transition: opacity .35s, transform .35s;
+                transform: translateY(8px);
+            }
+            #mobile-stat-bar.visible {
+                opacity: 1; pointer-events: auto;
+                transform: translateY(0);
+            }
+        }
+
+        .msb-item {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 1px; flex: 1;
+        }
+        .msb-item + .msb-item {
+            border-left: 1px solid rgba(0,0,0,0.06);
+        }
+        .msb-icon { font-size: 14px; line-height: 1; }
+        .msb-val  {
+            font-size: 14px; font-weight: 900; color: var(--text-primary);
+            line-height: 1; font-variant-numeric: tabular-nums;
+        }
+        .msb-val.highlight { color: var(--toss-blue); }
+        .msb-lbl  {
+            font-size: 8px; font-weight: 700; color: var(--text-tertiary);
+            letter-spacing: .03em; line-height: 1;
+        }
+        .msb-best-wrap {
+            display: flex; align-items: center; gap: 3px;
+        }
+        .msb-best-img {
+            width: 18px; height: 18px; object-fit: contain;
+            display: none; /* src 없을 때 숨김 */
+        }
+        .msb-val.combo-pop { animation: comboPop .3s cubic-bezier(.22,1,.36,1); }
+
+        /* ════════════════════════════════════════════════
            설정 버튼 (우하단)
         ════════════════════════════════════════════════ */
         #settings-fab {
-            position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
+            position: fixed; bottom: calc(var(--safe-bottom) + 60px); right: 20px;
             z-index: 155;
-            width: 52px; height: 52px; border-radius: 50%;
+            width: 60px; height: 60px; border-radius: 50%;
             background: rgba(255,255,255,0.3); /* 더욱 투명하게 조정 */
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1.5px solid rgba(255,255,255,0.7);
@@ -505,7 +622,7 @@
             transition: transform .15s, box-shadow .15s, opacity .3s;
             opacity: 0; pointer-events: none;
         }
-        #settings-fab img { width: 38px; height: 38px; object-fit: contain; }
+        #settings-fab img { width: 46px; height: 46px; object-fit: contain; }
         #settings-fab.visible { opacity: 1; pointer-events: auto; }
         #settings-fab:active { transform: scale(0.88); }
 
@@ -695,8 +812,62 @@
         </div>
     </div>
 
+    <!-- ── 사이드 패널 좌 (콤보 · 드롭 수) ── -->
+    <div id="side-left" class="side-panel">
+        <div class="sp-card">
+            <div class="sp-icon">🔥</div>
+            <div class="sp-label">콤보</div>
+            <div class="sp-value" id="sp-combo">0</div>
+        </div>
+        <div class="sp-card">
+            <div class="sp-icon">🎯</div>
+            <div class="sp-label">드롭</div>
+            <div class="sp-value" id="sp-drop">0</div>
+        </div>
+    </div>
+
+    <!-- ── 사이드 패널 우 (최고 디저트 · 레벨) ── -->
+    <div id="side-right" class="side-panel">
+        <div class="sp-card">
+            <div class="sp-label">최고</div>
+            <img class="sp-best-img" id="sp-best-img" src="" alt="" style="display:none">
+            <div class="sp-value highlight" id="sp-best-lv">-</div>
+        </div>
+        <div class="sp-card">
+            <div class="sp-icon">⭐</div>
+            <div class="sp-label">병합</div>
+            <div class="sp-value" id="sp-merge">0</div>
+        </div>
+    </div>
+
     <!-- ── 도감 바 ── -->
     <div id="dex-bar"><div id="dex-inner"></div></div>
+
+    <!-- ── 모바일 미니 스탯 바 (480px 이하 전용) ── -->
+    <div id="mobile-stat-bar">
+        <div class="msb-item">
+            <span class="msb-icon">🔥</span>
+            <span class="msb-val" id="msb-combo">0</span>
+            <span class="msb-lbl">콤보</span>
+        </div>
+        <div class="msb-item">
+            <span class="msb-icon">🎯</span>
+            <span class="msb-val" id="msb-drop">0</span>
+            <span class="msb-lbl">드롭</span>
+        </div>
+        <div class="msb-item">
+            <span class="msb-icon">⭐</span>
+            <span class="msb-val" id="msb-merge">0</span>
+            <span class="msb-lbl">병합</span>
+        </div>
+        <div class="msb-item">
+            <div class="msb-best-wrap">
+                <img class="msb-best-img" id="msb-best-img" src="" alt="">
+                <span class="msb-val highlight" id="msb-best-lv">-</span>
+            </div>
+            <span class="msb-lbl">최고</span>
+        </div>
+    </div>
 
     <!-- ── 도감 툴팁 ── -->
     <div id="dex-tooltip">
@@ -793,6 +964,42 @@
     var settingsFab  = document.getElementById('settings-fab');
     var newBestBadge = document.getElementById('new-best-badge');
     var hudTimer     = document.getElementById('hud-timer');
+    var sideLeft     = document.getElementById('side-left');
+    var sideRight    = document.getElementById('side-right');
+    var spCombo      = document.getElementById('sp-combo');
+    var spDrop       = document.getElementById('sp-drop');
+    var spBestImg    = document.getElementById('sp-best-img');
+    var spBestLv     = document.getElementById('sp-best-lv');
+    var spMerge      = document.getElementById('sp-merge');
+
+    // 모바일 미니 스탯 바
+    var mobileStatBar = document.getElementById('mobile-stat-bar');
+    var msbCombo      = document.getElementById('msb-combo');
+    var msbDrop       = document.getElementById('msb-drop');
+    var msbMerge      = document.getElementById('msb-merge');
+    var msbBestImg    = document.getElementById('msb-best-img');
+    var msbBestLv     = document.getElementById('msb-best-lv');
+
+    // 사이드 패널 상태
+    var _combo       = 0;
+    var _dropCount   = 0;
+    var _mergeCount  = 0;
+    var _bestLevel   = 0;
+    var _comboTimer  = null;
+
+    function resetSidePanel() {
+        _combo = 0; _dropCount = 0; _mergeCount = 0; _bestLevel = 0;
+        if (spCombo)   spCombo.textContent  = '0';
+        if (spDrop)    spDrop.textContent   = '0';
+        if (spMerge)   spMerge.textContent  = '0';
+        if (spBestLv)  spBestLv.textContent = '-';
+        if (spBestImg) { spBestImg.src = ''; spBestImg.style.display = 'none'; }
+        if (msbCombo)  msbCombo.textContent  = '0';
+        if (msbDrop)   msbDrop.textContent   = '0';
+        if (msbMerge)  msbMerge.textContent  = '0';
+        if (msbBestLv) msbBestLv.textContent = '-';
+        if (msbBestImg){ msbBestImg.src = ''; msbBestImg.style.display = 'none'; }
+    }
 
     var unityInstance = null;
     var gameReady     = false;
@@ -1018,12 +1225,18 @@
             gameHud.classList.add('visible');
             dexBar.classList.add('visible');
             settingsFab.classList.add('visible');
-            if (hudTimer) hudTimer.classList.add('visible');
+            if (hudTimer)      hudTimer.classList.add('visible');
+            if (sideLeft)      sideLeft.classList.add('visible');
+            if (sideRight)     sideRight.classList.add('visible');
+            if (mobileStatBar) mobileStatBar.classList.add('visible');
         } else {
             gameHud.classList.remove('visible');
             dexBar.classList.remove('visible');
             settingsFab.classList.remove('visible');
-            if (hudTimer) hudTimer.classList.remove('visible');
+            if (hudTimer)      hudTimer.classList.remove('visible');
+            if (sideLeft)      sideLeft.classList.remove('visible');
+            if (sideRight)     sideRight.classList.remove('visible');
+            if (mobileStatBar) mobileStatBar.classList.remove('visible');
             hideDangerBanner();
         }
     }
@@ -1102,6 +1315,54 @@
             nextImg.classList.remove('pop');
             void nextImg.offsetWidth;
             nextImg.classList.add('pop');
+        }
+        // 드롭 카운트 증가
+        _dropCount++;
+        if (spDrop)  spDrop.textContent  = _dropCount;
+        if (msbDrop) msbDrop.textContent = _dropCount;
+        // 콤보 타이머 리셋 (3초 이내 병합 없으면 콤보 초기화)
+        clearTimeout(_comboTimer);
+        _comboTimer = setTimeout(function() {
+            _combo = 0;
+            if (spCombo)  spCombo.textContent  = '0';
+            if (msbCombo) msbCombo.textContent = '0';
+        }, 3000);
+    };
+
+    // 병합 이벤트 (Unity에서 호출)
+    window.onMergeFromUnity = function(level) {
+        _mergeCount++;
+        if (spMerge)  spMerge.textContent  = _mergeCount;
+        if (msbMerge) msbMerge.textContent = _mergeCount;
+        // 콤보 증가
+        clearTimeout(_comboTimer);
+        _combo++;
+        if (spCombo) {
+            spCombo.textContent = _combo;
+            spCombo.classList.remove('combo-pop');
+            void spCombo.offsetWidth;
+            spCombo.classList.add('combo-pop');
+        }
+        if (msbCombo) {
+            msbCombo.textContent = _combo;
+            msbCombo.classList.remove('combo-pop');
+            void msbCombo.offsetWidth;
+            msbCombo.classList.add('combo-pop');
+        }
+        _comboTimer = setTimeout(function() {
+            _combo = 0;
+            if (spCombo)  spCombo.textContent  = '0';
+            if (msbCombo) msbCombo.textContent = '0';
+        }, 3000);
+        // 최고 레벨 갱신
+        var lv = parseInt(level);
+        if (lv > _bestLevel) {
+            _bestLevel = lv;
+            var imgSrc = 'sprites/Dessert_' + lv + '.png';
+            if (spBestImg) { spBestImg.src = imgSrc; spBestImg.style.display = 'block'; }
+            if (spBestLv)  spBestLv.textContent = 'Lv.' + lv;
+            if (msbBestImg){ msbBestImg.src = imgSrc; msbBestImg.style.display = 'inline-block'; }
+            if (msbBestLv) msbBestLv.textContent = 'Lv.' + lv;
         }
     };
 
@@ -1219,6 +1480,7 @@
         if (newBestBadge) newBestBadge.classList.remove('show');
         _currentDisplayScore = 0;
         if (scoreEl) scoreEl.textContent = '0';
+        resetSidePanel();
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
         setTimeout(function() { showHUD(true); }, 200);

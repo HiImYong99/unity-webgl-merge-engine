@@ -37,7 +37,7 @@ public class CameraScaler : MonoBehaviour
 
         // 컨테이너가 화면에 들어오게 하는 orthographicSize 계산
         // 좁은 화면(세로)에서는 너비에 맞추고, 넓은 화면에서는 중앙에 고정
-        float fillRatio = 0.9f; 
+        float fillRatio = 0.576f;
         float targetOrthoWidth = ContainerWorldWidth / fillRatio;
         float targetOrthoSize = targetOrthoWidth / (2.0f * screenAspect);
 

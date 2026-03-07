@@ -97,6 +97,13 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // ── Unity → JS: 병합 이벤트 (사이드 패널 콤보/병합 카운터) ──
+  onMergeFromUnity: function(level) {
+    if (typeof window.onMergeFromUnity === 'function') {
+      window.onMergeFromUnity(level);
+    }
+  },
+
   AppLogin: function() {
     console.log("[WebBridge] AppLogin called.");
     if (window.AppsInToss && typeof window.AppsInToss.appLogin === 'function') {

@@ -17,10 +17,11 @@ public class VFXMgr : MonoBehaviour
     [Header("Colors")]
     public Color[] LevelColors;
 
-    // 티어별 머지 이펙트 레퍼런스
+    // 티어별 머지 이펙트 레퍼런스 (비활성 - Pop만 사용)
     private GameObject _vfxMergeNormal;
     private GameObject _vfxMergePremium;
     private GameObject _vfxMergeLegendary;
+    private GameObject _vfxPop;
 
     private void Awake()
     {
@@ -37,31 +38,27 @@ public class VFXMgr : MonoBehaviour
 
     private void LoadDefaultVFX()
     {
-        // Resources/VFX 폴더에서 자동 로드 시도 (인스펙터 할당 누락 대비)
-        if (MergeEffectPrefab == null) MergeEffectPrefab = Resources.Load<GameObject>("VFX/VFX_Merge_Normal");
-        if (SpawnEffectPrefab == null) SpawnEffectPrefab = Resources.Load<GameObject>("VFX/VFX_Spawn");
-        if (LandingEffectPrefab == null) LandingEffectPrefab = Resources.Load<GameObject>("VFX/VFX_Landing");
+        // Resources/VFX 폴더에서 자동 로드 시도
+        _vfxPop = Resources.Load<GameObject>("VFX/VFX_Pop");
         
-        // 티어별 로드
+        // 이전 프리팹들 (백업용 로드는 유지하되 사용처에서 차단)
         _vfxMergeNormal = Resources.Load<GameObject>("VFX/VFX_Merge_Normal");
         _vfxMergePremium = Resources.Load<GameObject>("VFX/VFX_Merge_Premium");
         _vfxMergeLegendary = Resources.Load<GameObject>("VFX/VFX_Merge_Legendary");
         
-        if (MergeEffectPrefab == null && _vfxMergeNormal != null) MergeEffectPrefab = _vfxMergeNormal;
+        if (MergeEffectPrefab == null) MergeEffectPrefab = _vfxPop;
     }
 
-    /// <summary>병합 시 화려한 폭발 이펙트</summary>
+    /// <summary>병합 시 화려한 폭발 이펙트 (Pop 이펙트로 통일)</summary>
     public void SpawnMergeEffect(Vector3 position, int level)
     {
-        // 레벨별 티어 결정
-        GameObject targetPrefab = MergeEffectPrefab;
-        if (level >= 9 && _vfxMergeLegendary != null) targetPrefab = _vfxMergeLegendary;
-        else if (level >= 5 && _vfxMergePremium != null) targetPrefab = _vfxMergePremium;
-        else if (_vfxMergeNormal != null) targetPrefab = _vfxMergeNormal;
+        // 사용자 요청: Pop 말고는 효과 없앰
+        GameObject targetPrefab = _vfxPop;
+        if (targetPrefab == null) targetPrefab = MergeEffectPrefab;
 
         if (targetPrefab == null)
         {
-            Debug.LogWarning($"[VFXMgr] Lv{level} 머지 이펙트 프리팹을 찾을 수 없습니다.");
+            Debug.LogWarning($"[VFXMgr] Pop 이펙트 프리팹을 찾을 수 없습니다.");
             return;
         }
 
@@ -69,46 +66,52 @@ public class VFXMgr : MonoBehaviour
         Vector3 vfxPos = new Vector3(position.x, position.y, -1.0f);
         GameObject go = Instantiate(targetPrefab, vfxPos, Quaternion.identity);
         
-        // 레벨별 색상 적용 (자식 오브젝트 포함하여 ParticleSystem 검색)
-        var ps = go.GetComponentInChildren<ParticleSystem>();
-        if (ps != null)
+        // [보정] 불필요한 가이드/배경 요소 정밀 제거 (분석된 스크린샷 기반)
+        foreach (Transform child in go.GetComponentsInChildren<Transform>(true))
         {
-            if (LevelColors != null && LevelColors.Length >= level)
+            string n = child.name.ToLower();
+            
+            // 1. 이름 기반 차단 강화 (Checker, Plane, Quad 등 가이드용 도형 포함)
+            if (n.Contains("portal") || n.Contains("guide") || n.Contains("bg") || n.Contains("back") || 
+                n.Contains("f3") || n.Contains("checker") || n.Contains("plane") || n.Contains("quad"))
             {
-                var main = ps.main;
-                main.startColor = LevelColors[level - 1];
+                if (!n.Contains("effect") && !n.Contains("pop"))
+                {
+                    child.gameObject.SetActive(false);
+                    continue;
+                }
             }
-            ps.Play(); // 명시적 실행
+
+            // 2. 모든 렌더러(Sprite, Mesh 등)의 자산 이름 검사
+            if (child.TryGetComponent<Renderer>(out var r))
+            {
+                // 파티클 렌더러는 살려둠
+                if (r is ParticleSystemRenderer) continue;
+
+                // 머티리얼이나 스프라이트에 'checker'나 'guide'가 들어가면 비활성화
+                bool isGuide = false;
+                if (r.sharedMaterial != null && r.sharedMaterial.name.ToLower().Contains("checker")) isGuide = true;
+                
+                if (r is SpriteRenderer sr && sr.sprite != null)
+                {
+                    string sName = sr.sprite.name.ToLower();
+                    if (sName.Contains("checker") || sName.Contains("guide") || (sName.Contains("portal") && !sName.Contains("effect")))
+                    {
+                        isGuide = true;
+                    }
+                }
+
+                if (isGuide) r.enabled = false;
+            }
+
+            // 3. UI/텍스트 요소 무조건 차단
+            if (n.Contains("text") || child.GetComponent("Text") != null || child.GetComponent("TMP_Text") != null)
+            {
+                child.gameObject.SetActive(false);
+            }
         }
 
-        // 특정 컴포넌트(페이드아웃용) 실행
-        var fader = go.GetComponent<MergeEffectFader>();
-        if (fader == null) fader = go.GetComponentInChildren<MergeEffectFader>();
-        
-        if (fader != null) fader.StartFade();
-    }
-
-    /// <summary>새로운 디저트 스폰 시 반짝임 이펙트 (비활성 - 머지 이펙트만 사용)</summary>
-    public void SpawnSpawnEffect(Vector3 position)
-    {
-        // 사용자 요청: 머지할 때만 VFX 노출 (스폰 이펙트 제거)
-        /*
-        if (SpawnEffectPrefab == null) return;
-        Vector3 vfxPos = new Vector3(position.x, position.y, -0.5f);
-        GameObject go = Instantiate(SpawnEffectPrefab, vfxPos, Quaternion.identity);
-        var ps = go.GetComponentInChildren<ParticleSystem>();
-        if (ps != null) ps.Play();
-        */
-    }
-
-    /// <summary>바닥 또는 다른 디저트와 충격 시 먼지/파편 이펙트 (비활성 - 머지 이펙트만 사용)</summary>
-    public void SpawnLandingEffect(Vector3 position, int level)
-    {
-        // 사용자 요청: 머지할 때만 VFX 노출 (착지 이펙트 제거)
-        /*
-        if (LandingEffectPrefab == null) return;
-        Vector3 vfxPos = new Vector3(position.x, position.y, -0.5f);
-        GameObject go = Instantiate(LandingEffectPrefab, vfxPos, Quaternion.identity);
+        // 레벨별 색상 적용
         var ps = go.GetComponentInChildren<ParticleSystem>();
         if (ps != null)
         {
@@ -119,25 +122,28 @@ public class VFXMgr : MonoBehaviour
             }
             ps.Play();
         }
-        */
+
+        var fader = go.GetComponent<MergeEffectFader>();
+        if (fader == null) fader = go.GetComponentInChildren<MergeEffectFader>();
+        if (fader != null) fader.StartFade();
     }
 
-    /// <summary>획득 점수 텍스트 연출 (비활성 - Pop 이펙트만 사용)</summary>
+    /// <summary>새로운 디저트 스폰 시 반짝임 이펙트 (비활성)</summary>
+    public void SpawnSpawnEffect(Vector3 position) { }
+
+    /// <summary>바닥 또는 다른 디저트와 충격 시 먼지/파편 이펙트 (비활성)</summary>
+    public void SpawnLandingEffect(Vector3 position, int level) { }
+
+    /// <summary>획득 점수 텍스트 연출</summary>
     public void SpawnScoreEffect(Vector3 position, int score, int level)
     {
-        // 사용자 요청: Pop(머지 파티클) 외의 효과 제거
-        /*
         // 점수 텍스트는 가장 앞에 보이도록 Z축 보정 (-2.0f)
         Vector3 vfxPos = new Vector3(position.x, position.y, -2.0f);
         GameObject go;
 
-        if (ScoreTextPrefab != null)
-        {
-            go = Instantiate(ScoreTextPrefab, vfxPos, Quaternion.identity);
-        }
+        if (ScoreTextPrefab != null) go = Instantiate(ScoreTextPrefab, vfxPos, Quaternion.identity);
         else
         {
-            // 프리팹이 없을 경우 동적으로 GameObject 생성하여 FloatingScore 추가
             go = new GameObject("DynamicScoreText");
             go.transform.position = vfxPos;
         }
@@ -147,11 +153,14 @@ public class VFXMgr : MonoBehaviour
         
         if (fs != null)
         {
-            Color col = (LevelColors != null && LevelColors.Length >= level) 
-                ? LevelColors[level - 1] 
-                : Color.white;
+            // 백그라운드 대비 가독성을 위해 흰색이 아닌 진한 베리/초콜릿 색상 적용
+            Color defaultColor = new Color(0.35f, 0.15f, 0.25f); // 진한 베리색
+            Color col = (LevelColors != null && LevelColors.Length >= level) ? LevelColors[level - 1] : defaultColor;
+            
+            // 만약 선택된 색상이 너무 밝으면 가독성을 위해 살짝 보정 (흰색 계열 방지)
+            if (col.r > 0.8f && col.g > 0.8f && col.b > 0.8f) col = defaultColor;
+            
             fs.Initialize(score, col);
         }
-        */
     }
 }
