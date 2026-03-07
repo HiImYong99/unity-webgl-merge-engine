@@ -12,7 +12,6 @@ public class GameMgr : MonoBehaviour
     private class SaveDataModel
     {
         public int highScore;
-        public int lastDiscoveryLevel;
         public SettingsModel settings;
 
         public int currentScore;
@@ -46,7 +45,6 @@ public class GameMgr : MonoBehaviour
     // Properties
     public int Score { get; private set; }
     public int HighScore { get; private set; }
-    public int LastDiscoveryLevel { get; private set; }
     public GameState CurrentState { get; private set; }
     public bool HasRevived { get; private set; } // Legacy - keeping for compat
     public bool AdWatched { get; private set; } = false;
@@ -127,19 +125,10 @@ public class GameMgr : MonoBehaviour
 
         Score += amount;
 
-        bool newDiscovery = false;
-        if (mergedLevel > LastDiscoveryLevel)
-        {
-            LastDiscoveryLevel = mergedLevel;
-            newDiscovery = true;
-            SaveData();
-        }
 
         if (UIMgr.Instance != null)
             UIMgr.Instance.UpdateScore(Score);
 
-        if (newDiscovery && UIMgr.Instance != null)
-            UIMgr.Instance.NotifyAnimalDiscovered(mergedLevel);
 
         if (Score > HighScore)
         {
@@ -268,7 +257,6 @@ public class GameMgr : MonoBehaviour
             if (_loadedSaveData != null)
             {
                 HighScore = _loadedSaveData.highScore;
-                LastDiscoveryLevel = _loadedSaveData.lastDiscoveryLevel;
 
                 if (_loadedSaveData.settings != null)
                 {
@@ -280,7 +268,6 @@ public class GameMgr : MonoBehaviour
         }
 
         HighScore = 0;
-        LastDiscoveryLevel = 0;
         IsSfxEnabled = true;
         IsVibrationEnabled = true;
     }
@@ -349,7 +336,6 @@ public class GameMgr : MonoBehaviour
         SaveDataModel data = new SaveDataModel
         {
             highScore = HighScore,
-            lastDiscoveryLevel = LastDiscoveryLevel,
             settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled },
             hasSavedGame = true,
             currentScore = Score,
@@ -391,7 +377,6 @@ public class GameMgr : MonoBehaviour
         SaveDataModel data = _loadedSaveData ?? new SaveDataModel();
 
         data.highScore = HighScore;
-        data.lastDiscoveryLevel = LastDiscoveryLevel;
         data.settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
 
         string json = JsonUtility.ToJson(data);

@@ -76,18 +76,6 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  // ── Unity → JS: 도감 발견 알림 ──
-  onDessertDiscoveredFromUnity: function(level) {
-    if (typeof window.onDessertDiscoveredFromUnity === 'function') {
-      window.onDessertDiscoveredFromUnity(level);
-    }
-  },
-
-  onAnimalDiscoveredFromUnity: function(level) {
-    if (typeof window.onAnimalDiscoveredFromUnity === 'function') {
-      window.onAnimalDiscoveredFromUnity(level);
-    }
-  },
 
   // ── Unity → JS: 위험 구역 경고 (데드라인 근처) ──
   notifyDangerZoneFromUnity: function(active) {

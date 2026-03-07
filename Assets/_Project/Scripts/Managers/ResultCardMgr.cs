@@ -44,7 +44,7 @@ public class ResultCardMgr : MonoBehaviour
 
         if (BridgeMgr.Instance != null && GameMgr.Instance != null)
         {
-            BridgeMgr.Instance.RequestShare(GameMgr.Instance.Score, GameMgr.Instance.LastDiscoveryLevel, base64);
+            BridgeMgr.Instance.RequestShare(GameMgr.Instance.Score, 0, base64);
         }
     }
 }

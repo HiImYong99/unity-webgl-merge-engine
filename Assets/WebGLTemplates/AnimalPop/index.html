@@ -367,131 +367,9 @@
         .danger-text { font-size: 13px; font-weight: 700; line-height: 1.3; }
 
         /* ════════════════════════════════════════════════
-           도감 바 (하단)
-        ════════════════════════════════════════════════ */
-        #dex-bar {
-            position: fixed; bottom: calc(var(--safe-bottom) + 128px);
-            left: 20px; right: 20px; height: 62px; z-index: 40;
-            background: rgba(255,255,255,0.80);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border-radius: var(--radius-md);
-            border: 1px solid rgba(255,255,255,0.6);
-            padding: 6px 14px;
-            display: flex; align-items: center;
-            box-shadow: var(--shadow-md);
-            opacity: 0; transform: translateY(10px);
-            transition: opacity .35s, transform .35s;
-        }
-        #dex-bar.visible { opacity: 1; transform: translateY(0); }
-
-        /* 아이패드 등 넓은 화면: 바 너비 제한 + 중앙 정렬 */
-        @media (min-width: 600px) {
-            #dex-bar {
-                left: 50%; right: auto;
-                transform: translateX(-50%) translateY(10px);
-                width: min(560px, calc(100vw - 40px));
-            }
-            #dex-bar.visible { transform: translateX(-50%) translateY(0); }
-        }
-
-        #dex-inner {
-            display: flex; align-items: center;
-            justify-content: flex-start;
-            gap: 8px; overflow-x: auto; width: 100%; scrollbar-width: none;
-            padding: 0 4px;
-            scroll-behavior: smooth;
-        }
-        #dex-inner::-webkit-scrollbar { display: none; }
-
-        /* 아이패드: 11개 모두 보이면 중앙 정렬 */
-        @media (min-width: 600px) {
-            #dex-inner { justify-content: center; overflow-x: visible; }
-        }
-
-        .dex-circle {
-            width: 38px; height: 38px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.45);
-            border: 1.5px solid rgba(255,255,255,0.7);
-            transition: transform .15s;
-            cursor: pointer;
-        }
-
-        /* 아이패드: 아이콘 살짝 크게 */
-        @media (min-width: 600px) {
-            .dex-circle { width: 44px; height: 44px; }
-            #dex-bar { height: 70px; }
-        }
-
-        .dex-circle:active { transform: scale(0.9); }
-        .dex-circle img {
-            width: 100%; height: 100%;
-            max-width: 36px; max-height: 36px;
-            object-fit: contain;
-            object-position: center;
-            display: block;
-            flex-shrink: 0;
-        }
-        @media (min-width: 600px) {
-            .dex-circle img { max-width: 42px; max-height: 42px; }
-        }
-
-        .dex-circle.locked { opacity: 0.22; filter: grayscale(1) brightness(0.6); }
-        .dex-circle.new-unlock {
-            animation: unlockPop .5s cubic-bezier(.22,1,.36,1);
-            border-color: rgba(255,180,0,0.8);
-            box-shadow: 0 0 0 3px rgba(255,180,0,0.25);
-        }
-        @keyframes unlockPop {
-            0%   { transform: scale(0); }
-            60%  { transform: scale(1.25); }
-            100% { transform: scale(1); }
-        }
-
-        /* ════════════════════════════════════════════════
-           도감 툴팁
-        ════════════════════════════════════════════════ */
-        #dex-tooltip {
-            position: fixed;
-            z-index: 80;
-            pointer-events: none;
-            display: flex; flex-direction: column; align-items: center; gap: 2px;
-            background: rgba(255,255,255,0.92);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.8);
-            border-radius: 10px;
-            padding: 6px 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-            opacity: 0;
-            transition: opacity .15s ease;
-            white-space: nowrap;
-        }
-        #dex-tooltip.show {
-            opacity: 1;
-        }
-        #dex-tooltip .tip-lv {
-            font-size: 10px; font-weight: 700;
-            color: var(--toss-blue); letter-spacing: 0.02em;
-            line-height: 1;
-        }
-        #dex-tooltip .tip-name {
-            font-size: 12px; font-weight: 700;
-            color: var(--text-primary); line-height: 1;
-        }
-        /* 아래 꼭짓점 화살표 */
-        #dex-tooltip::after {
-            content: '';
-            position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid rgba(255,255,255,0.92);
-        }
-
-        /* ════════════════════════════════════════════════
            사이드 패널 (게임 박스 좌우)
         ════════════════════════════════════════════════ */
+
         .side-panel {
             position: fixed;
             top: 50%; transform: translateY(-50%);
@@ -529,19 +407,6 @@
         }
         .sp-value.highlight { color: var(--toss-blue); }
 
-        /* 콤보 강조 애니메이션 */
-        @keyframes comboPop {
-            0%   { transform: scale(1); }
-            40%  { transform: scale(1.35); color: #ff5988; }
-            100% { transform: scale(1); }
-        }
-        .sp-value.combo-pop { animation: comboPop .3s cubic-bezier(.22,1,.36,1); }
-
-        /* 최고 동물 이미지 */
-        .sp-best-img {
-            width: 36px; height: 36px; object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
-        }
 
         /* 모바일(480px 이하): 캔버스 폭 줄이고 사이드 패널 표시 */
         @media (max-width: 480px) {
@@ -558,7 +423,6 @@
             .sp-icon { font-size: 14px; }
             .sp-label { font-size: 7px; }
             .sp-value { font-size: 13px; }
-            .sp-best-img { width: 28px; height: 28px; }
         }
 
         /* ════════════════════════════════════════════════
@@ -585,14 +449,6 @@
             font-size: 8px; font-weight: 700; color: var(--text-tertiary);
             letter-spacing: .03em; line-height: 1;
         }
-        .msb-best-wrap {
-            display: flex; align-items: center; gap: 3px;
-        }
-        .msb-best-img {
-            width: 18px; height: 18px; object-fit: contain;
-            display: none; /* src 없을 때 숨김 */
-        }
-        .msb-val.combo-pop { animation: comboPop .3s cubic-bezier(.22,1,.36,1); }
 
         /* ════════════════════════════════════════════════
            설정 버튼 (우하단)
@@ -600,8 +456,8 @@
         #settings-fab {
             position: fixed; bottom: calc(var(--safe-bottom) + 60px); right: 20px;
             z-index: 155;
-            width: 60px; height: 60px; border-radius: 50%;
-            background: rgba(255,255,255,0.3); /* 더욱 투명하게 조정 */
+            width: 56px; height: 56px; border-radius: 50%;
+            background: rgba(255,255,255,0.45);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1.5px solid rgba(255,255,255,0.7);
             display: flex; align-items: center; justify-content: center;
@@ -609,8 +465,8 @@
             box-shadow: var(--shadow-md);
             transition: transform .15s, box-shadow .15s, opacity .3s;
             opacity: 0; pointer-events: none;
+            font-size: 30px; line-height: 1;
         }
-        #settings-fab img { width: 46px; height: 46px; object-fit: contain; }
         #settings-fab.visible { opacity: 1; pointer-events: auto; }
         #settings-fab:active { transform: scale(0.88); }
 
@@ -800,13 +656,8 @@
         </div>
     </div>
 
-    <!-- ── 사이드 패널 좌 (콤보 · 드롭 수) ── -->
+    <!-- ── 사이드 패널 좌 (드롭 수) ── -->
     <div id="side-left" class="side-panel">
-        <div class="sp-card">
-            <div class="sp-icon">🔥</div>
-            <div class="sp-label">콤보</div>
-            <div class="sp-value" id="sp-combo">0</div>
-        </div>
         <div class="sp-card">
             <div class="sp-icon">🎯</div>
             <div class="sp-label">드롭</div>
@@ -814,13 +665,8 @@
         </div>
     </div>
 
-    <!-- ── 사이드 패널 우 (최고 동물 · 레벨) ── -->
+    <!-- ── 사이드 패널 우 (병합) ── -->
     <div id="side-right" class="side-panel">
-        <div class="sp-card">
-            <div class="sp-label">최고</div>
-            <img class="sp-best-img" id="sp-best-img" src="" alt="" style="display:none">
-            <div class="sp-value highlight" id="sp-best-lv">-</div>
-        </div>
         <div class="sp-card">
             <div class="sp-icon">⭐</div>
             <div class="sp-label">병합</div>
@@ -828,16 +674,9 @@
         </div>
     </div>
 
-    <!-- ── 도감 바 ── -->
-    <div id="dex-bar"><div id="dex-inner"></div></div>
 
     <!-- ── 모바일 미니 스탯 바 (480px 이하 전용) ── -->
     <div id="mobile-stat-bar">
-        <div class="msb-item">
-            <span class="msb-icon">🔥</span>
-            <span class="msb-val" id="msb-combo">0</span>
-            <span class="msb-lbl">콤보</span>
-        </div>
         <div class="msb-item">
             <span class="msb-icon">🎯</span>
             <span class="msb-val" id="msb-drop">0</span>
@@ -848,24 +687,12 @@
             <span class="msb-val" id="msb-merge">0</span>
             <span class="msb-lbl">병합</span>
         </div>
-        <div class="msb-item">
-            <div class="msb-best-wrap">
-                <img class="msb-best-img" id="msb-best-img" src="" alt="">
-                <span class="msb-val highlight" id="msb-best-lv">-</span>
-            </div>
-            <span class="msb-lbl">최고</span>
-        </div>
     </div>
 
-    <!-- ── 도감 툴팁 ── -->
-    <div id="dex-tooltip">
-        <span class="tip-lv" id="tip-lv-text"></span>
-        <span class="tip-name" id="tip-name-text"></span>
-    </div>
 
     <!-- ── 설정 FAB ── -->
     <div id="settings-fab" onclick="openSettings()">
-        <img src="sprites/SettingsIcon.png" alt="설정">
+        ⚙️
     </div>
 
     <!-- ── 게임 오버 ── -->
@@ -947,46 +774,31 @@
     var goBestEl     = document.getElementById('go-best');
     var goBestBadge  = document.getElementById('go-best-badge');
     var goSubText    = document.getElementById('go-sub-text');
-    var dexBar       = document.getElementById('dex-bar');
+
     var dangerBanner = document.getElementById('danger-banner');
     var settingsFab  = document.getElementById('settings-fab');
     var newBestBadge = document.getElementById('new-best-badge');
     var hudTimer     = document.getElementById('hud-timer');
     var sideLeft     = document.getElementById('side-left');
     var sideRight    = document.getElementById('side-right');
-    var spCombo      = document.getElementById('sp-combo');
     var spDrop       = document.getElementById('sp-drop');
-    var spBestImg    = document.getElementById('sp-best-img');
-    var spBestLv     = document.getElementById('sp-best-lv');
     var spMerge      = document.getElementById('sp-merge');
 
     // 모바일 미니 스탯 바
     var mobileStatBar = document.getElementById('mobile-stat-bar');
-    var msbCombo      = document.getElementById('msb-combo');
     var msbDrop       = document.getElementById('msb-drop');
     var msbMerge      = document.getElementById('msb-merge');
-    var msbBestImg    = document.getElementById('msb-best-img');
-    var msbBestLv     = document.getElementById('msb-best-lv');
 
     // 사이드 패널 상태
-    var _combo       = 0;
     var _dropCount   = 0;
     var _mergeCount  = 0;
-    var _bestLevel   = 0;
-    var _comboTimer  = null;
 
     function resetSidePanel() {
-        _combo = 0; _dropCount = 0; _mergeCount = 0; _bestLevel = 0;
-        if (spCombo)   spCombo.textContent  = '0';
+        _dropCount = 0; _mergeCount = 0;
         if (spDrop)    spDrop.textContent   = '0';
         if (spMerge)   spMerge.textContent  = '0';
-        if (spBestLv)  spBestLv.textContent = '-';
-        if (spBestImg) { spBestImg.src = ''; spBestImg.style.display = 'none'; }
-        if (msbCombo)  msbCombo.textContent  = '0';
         if (msbDrop)   msbDrop.textContent   = '0';
         if (msbMerge)  msbMerge.textContent  = '0';
-        if (msbBestLv) msbBestLv.textContent = '-';
-        if (msbBestImg){ msbBestImg.src = ''; msbBestImg.style.display = 'none'; }
     }
 
     var unityInstance = null;
@@ -1052,123 +864,6 @@
     document.addEventListener('click',    resumeWebGLAudio, { passive: true });
     document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
 
-    // ════════════════════════════════════════════════════
-    //  도감 데이터
-    // ════════════════════════════════════════════════════
-    var ANIMALS = [
-        { lv:1,  name:'병아리' },
-        { lv:2,  name:'생쥐' },
-        { lv:3,  name:'고슴도치' },
-        { lv:4,  name:'개구리' },
-        { lv:5,  name:'토끼' },
-        { lv:6,  name:'고양이' },
-        { lv:7,  name:'시바견' },
-        { lv:8,  name:'돼지' },
-        { lv:9,  name:'판다' },
-        { lv:10, name:'곰' },
-        { lv:11, name:'호랑이' },
-    ];
-    // 하위 호환: 기존 코드에서 DESSERTS 참조하는 곳 대응
-    var DESSERTS = ANIMALS;
-
-    // discoveredMax: localStorage에 저장된 값 사용, 최소값은 1 (Lv1은 게임 시작 시 보여줌)
-    var discoveredMax = 1;
-    try { discoveredMax = Math.max(1, parseInt(localStorage.getItem('animalpop_discovered') || '1')); } catch(e){}
-
-    function saveDiscoveredMax(lv) {
-        if (lv > discoveredMax) {
-            discoveredMax = lv;
-            try { localStorage.setItem('animalpop_discovered', String(lv)); } catch(e){}
-            renderDexBar(lv); // 새 발견 레벨 전달
-        }
-    }
-
-    // ── 도감 툴팁 ──────────────────────────────────────
-    var dexTooltip   = document.getElementById('dex-tooltip');
-    var tipLvText    = document.getElementById('tip-lv-text');
-    var tipNameText  = document.getElementById('tip-name-text');
-    var tooltipTimer = null;
-
-    function showDexTooltip(circle, d) {
-        clearTimeout(tooltipTimer);
-        var isLocked = d.lv > discoveredMax;
-        tipLvText.textContent   = 'Lv.' + d.lv;
-        tipNameText.textContent = isLocked ? '???' : d.name;
-
-        // 위치: 도감 원 위에 중앙 정렬
-        var rect = circle.getBoundingClientRect();
-        var tx = rect.left + rect.width / 2;
-        var ty = rect.top - 8; // 원 위로 8px 여백
-
-        dexTooltip.style.left      = tx + 'px';
-        dexTooltip.style.top       = ty + 'px';
-        dexTooltip.style.transform = 'translateX(-50%) translateY(-100%)';
-
-        dexTooltip.classList.remove('show');
-        requestAnimationFrame(function() {
-            dexTooltip.classList.add('show');
-        });
-
-        // 1.8초 후 자동 숨김
-        tooltipTimer = setTimeout(hideDexTooltip, 1800);
-    }
-
-    function hideDexTooltip() {
-        dexTooltip.classList.remove('show');
-    }
-
-    // 드래그(스크롤) 시작 감지 → 툴팁 즉시 숨김
-    var _dexTouchStartX = 0;
-    var _dexDragging    = false;
-    var dexInnerEl      = document.getElementById('dex-inner');
-
-    dexInnerEl.addEventListener('touchstart', function(e) {
-        _dexTouchStartX = e.touches[0].clientX;
-        _dexDragging    = false;
-    }, { passive: true });
-
-    dexInnerEl.addEventListener('touchmove', function(e) {
-        if (Math.abs(e.touches[0].clientX - _dexTouchStartX) > 6) {
-            _dexDragging = true;
-            if (dexTooltip.classList.contains('show')) {
-                clearTimeout(tooltipTimer);
-                hideDexTooltip();
-            }
-        }
-    }, { passive: true });
-
-    // 도감 바 외부 터치 시 툴팁 닫기
-    document.addEventListener('touchstart', function(e) {
-        if (!dexTooltip.classList.contains('show')) return;
-        if (!dexBar.contains(e.target)) {
-            clearTimeout(tooltipTimer);
-            hideDexTooltip();
-        }
-    }, { passive: true });
-
-    function renderDexBar(newlyUnlockedLv) {
-        var inner = document.getElementById('dex-inner');
-        if (!inner) return;
-        inner.innerHTML = '';
-        DESSERTS.forEach(function(d) {
-            var circle = document.createElement('div');
-            var isLocked = d.lv > discoveredMax;
-            circle.className = 'dex-circle' + (isLocked ? ' locked' : '');
-            if (d.lv === newlyUnlockedLv) circle.classList.add('new-unlock');
-            var img = document.createElement('img');
-            img.src   = 'sprites/Animal_' + d.lv + '.png';
-            img.alt   = d.name;
-            // 탭(드래그 아닐 때만) → 툴팁
-            circle.addEventListener('click', function(e) {
-                if (_dexDragging) return;
-                e.stopPropagation();
-                showDexTooltip(circle, d);
-            });
-            circle.appendChild(img);
-            inner.appendChild(circle);
-        });
-    }
-    renderDexBar();
 
     // ════════════════════════════════════════════════════
     //  Unity 초기화
@@ -1218,7 +913,6 @@
     function showHUD(show) {
         if (show) {
             gameHud.classList.add('visible');
-            dexBar.classList.add('visible');
             settingsFab.classList.add('visible');
             if (hudTimer)      hudTimer.classList.add('visible');
             if (sideLeft)      sideLeft.classList.add('visible');
@@ -1226,7 +920,6 @@
             if (mobileStatBar) mobileStatBar.classList.add('visible');
         } else {
             gameHud.classList.remove('visible');
-            dexBar.classList.remove('visible');
             settingsFab.classList.remove('visible');
             if (hudTimer)      hudTimer.classList.remove('visible');
             if (sideLeft)      sideLeft.classList.remove('visible');
@@ -1322,36 +1015,6 @@
         _mergeCount++;
         if (spMerge)  spMerge.textContent  = _mergeCount;
         if (msbMerge) msbMerge.textContent = _mergeCount;
-        // 콤보 증가
-        clearTimeout(_comboTimer);
-        _combo++;
-        if (spCombo) {
-            spCombo.textContent = _combo;
-            spCombo.classList.remove('combo-pop');
-            void spCombo.offsetWidth;
-            spCombo.classList.add('combo-pop');
-        }
-        if (msbCombo) {
-            msbCombo.textContent = _combo;
-            msbCombo.classList.remove('combo-pop');
-            void msbCombo.offsetWidth;
-            msbCombo.classList.add('combo-pop');
-        }
-        _comboTimer = setTimeout(function() {
-            _combo = 0;
-            if (spCombo)  spCombo.textContent  = '0';
-            if (msbCombo) msbCombo.textContent = '0';
-        }, 1000);
-        // 최고 레벨 갱신
-        var lv = parseInt(level);
-        if (lv > _bestLevel) {
-            _bestLevel = lv;
-            var imgSrc = 'sprites/Animal_' + lv + '.png';
-            if (spBestImg) { spBestImg.src = imgSrc; spBestImg.style.display = 'block'; }
-            if (spBestLv)  spBestLv.textContent = 'Lv.' + lv;
-            if (msbBestImg){ msbBestImg.src = imgSrc; msbBestImg.style.display = 'inline-block'; }
-            if (msbBestLv) msbBestLv.textContent = 'Lv.' + lv;
-        }
     };
 
     // 게임 오버
@@ -1404,10 +1067,6 @@
         showLanding();
     };
 
-    // 도감 발견
-    window.onAnimalDiscoveredFromUnity = function(level) {
-        saveDiscoveredMax(parseInt(level));
-    };
 
     // 위험 구역 경고
     window.notifyDangerZoneFromUnity = function(active) {

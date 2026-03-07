@@ -673,7 +673,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   GameOverPanel: {fileID: 0}
-  EvolutionEncyclopediaPanel: {fileID: 0}
   ExitModalPanel: {fileID: 0}
   LandingPanel: {fileID: 0}
   ScoreText: {fileID: 0}

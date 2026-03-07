@@ -10,7 +10,6 @@ public class UIMgr : MonoBehaviour
 
     [Header("UI Panels")]
     public GameObject GameOverPanel;
-    public GameObject EvolutionEncyclopediaPanel;
     public GameObject ExitModalPanel;
     public GameObject LandingPanel;
     
@@ -46,7 +45,6 @@ public class UIMgr : MonoBehaviour
         if (LandingPanel != null) LandingPanel.SetActive(false);
         if (HUDPanel != null) HUDPanel.SetActive(false);
         if (GameOverPanel != null) GameOverPanel.SetActive(false);
-        if (EvolutionEncyclopediaPanel != null) EvolutionEncyclopediaPanel.SetActive(false);
         if (ExitModalPanel != null) ExitModalPanel.SetActive(false);
     }
 
@@ -266,12 +264,6 @@ public class UIMgr : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 
-    public void NotifyAnimalDiscovered(int level)
-    {
-#if UNITY_WEBGL && !UNITY_EDITOR
-        try { OnAnimalDiscoveredJS(level); } catch { }
-#endif
-    }
 
     // WebGL Bridge
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -289,13 +281,9 @@ public class UIMgr : MonoBehaviour
         showGameOverFromUnity(score, best, adWatched, spareLives); 
     }
 
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void onAnimalDiscoveredFromUnity(int level);
-    private static void OnAnimalDiscoveredJS(int level) { onAnimalDiscoveredFromUnity(level); }
 #else
     private static void UpdateScoreJS(int score) { }
     private static void UpdateNextJS(int level) { }
     private static void ShowGameOverJS(int score, int best, bool adWatched, int spareLives) { }
-    private static void OnAnimalDiscoveredJS(int level) { }
 #endif
 }

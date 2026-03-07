@@ -51,46 +51,10 @@ public class VFXMgr : MonoBehaviour
         if (MergeEffectPrefab == null) MergeEffectPrefab = _vfxPop;
     }
 
-    /// <summary>병합 시 화려한 폭발 이펙트 (클린한 에셋으로 교체)</summary>
+    /// <summary>병합 시 화려한 폭발 이펙트 (비활성)</summary>
     public void SpawnMergeEffect(Vector3 position, int level)
     {
-        GameObject targetPrefab = _vfxPop; // VFX_Merge_Normal이 할당됨
-        if (targetPrefab == null) targetPrefab = MergeEffectPrefab;
-
-        if (targetPrefab == null) return;
-
-        Vector3 vfxPos = new Vector3(position.x, position.y, -1.0f);
-        GameObject go = Instantiate(targetPrefab, vfxPos, Quaternion.identity);
-        
-        // 스케일 조정 (Pop 효과에 맞게 소폭 축소)
-        go.transform.localScale = Vector3.one * 0.85f;
-
-        // [딥 클린] 혹시라도 묻어있을 배경/가이드 요소 제거
-        foreach (Transform child in go.GetComponentsInChildren<Transform>(true))
-        {
-            if (child == null || child == go.transform) continue;
-            string n = child.name.ToLower();
-            if (n.Contains("bg") || n.Contains("back") || n.Contains("guide") || n.Contains("magical") || n.Contains("spawn"))
-            {
-                Destroy(child.gameObject);
-            }
-        }
-
-        // 레벨별 색상 적용
-        var ps = go.GetComponentInChildren<ParticleSystem>();
-        if (ps != null)
-        {
-            if (LevelColors != null && LevelColors.Length >= level)
-            {
-                var main = ps.main;
-                main.startColor = LevelColors[level - 1];
-            }
-            ps.Play();
-        }
-
-        var fader = go.GetComponent<MergeEffectFader>();
-        if (fader == null) fader = go.GetComponentInChildren<MergeEffectFader>();
-        if (fader != null) fader.StartFade();
+        // USER_REQUEST: Merge시 VFX는 없애자 그냥
     }
 
     /// <summary>새로운 디저트 스폰 시 반짝임 이펙트 (비활성)</summary>
