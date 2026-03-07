@@ -186,9 +186,9 @@ public class UIMgr : MonoBehaviour
     {
         if (NextGuideText != null)
         {
-            string[] dessertEmojis = { "🍬", "🍪", "🍩", "🧁", "🥐", "🍰", "🥧", "🍧", "🎂", "🗼", "🏆" };
-            int idx = Mathf.Clamp(nextLevel - 1, 0, dessertEmojis.Length - 1);
-            NextGuideText.text = dessertEmojis[idx] + " Lv." + nextLevel;
+            string[] animalEmojis = { "🐥", "🐭", "🦔", "🐸", "🐰", "🐱", "🐕", "🐷", "🐼", "🐻", "🐯" };
+            int idx = Mathf.Clamp(nextLevel - 1, 0, animalEmojis.Length - 1);
+            NextGuideText.text = animalEmojis[idx] + " Lv." + nextLevel;
         }
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -266,10 +266,10 @@ public class UIMgr : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 
-    public void NotifyDessertDiscovered(int level)
+    public void NotifyAnimalDiscovered(int level)
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        try { OnDessertDiscoveredJS(level); } catch { }
+        try { OnAnimalDiscoveredJS(level); } catch { }
 #endif
     }
 
@@ -290,12 +290,12 @@ public class UIMgr : MonoBehaviour
     }
 
     [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void onDessertDiscoveredFromUnity(int level);
-    private static void OnDessertDiscoveredJS(int level) { onDessertDiscoveredFromUnity(level); }
+    private static extern void onAnimalDiscoveredFromUnity(int level);
+    private static void OnAnimalDiscoveredJS(int level) { onAnimalDiscoveredFromUnity(level); }
 #else
     private static void UpdateScoreJS(int score) { }
     private static void UpdateNextJS(int level) { }
     private static void ShowGameOverJS(int score, int best, bool adWatched, int spareLives) { }
-    private static void OnDessertDiscoveredJS(int level) { }
+    private static void OnAnimalDiscoveredJS(int level) { }
 #endif
 }

@@ -83,6 +83,12 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  onAnimalDiscoveredFromUnity: function(level) {
+    if (typeof window.onAnimalDiscoveredFromUnity === 'function') {
+      window.onAnimalDiscoveredFromUnity(level);
+    }
+  },
+
   // ── Unity → JS: 위험 구역 경고 (데드라인 근처) ──
   notifyDangerZoneFromUnity: function(active) {
     if (typeof window.notifyDangerZoneFromUnity === 'function') {

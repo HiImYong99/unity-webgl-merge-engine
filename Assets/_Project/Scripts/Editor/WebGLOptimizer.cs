@@ -34,7 +34,7 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
 
         // ─── WebGL 메모리 최적화 ───────────────────────────────────
         // 앱인토스는 메모리 제약이 있으므로 힙 크기 제한
-        // 디저트 팝 같은 캐주얼 게임은 256MB 이면 충분
+        // 애니멀 팝 같은 캐주얼 게임은 256MB 이면 충분
         PlayerSettings.WebGL.memorySize = 256;
 
         // ─── 기타 성능 설정 ────────────────────────────────────────
@@ -49,32 +49,32 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         );
 
         // ─── WebGL 템플릿 자동 설정 ────────────────────────────────
-        // Assets/WebGLTemplates/DessertPop/ 폴더가 있으면 자동 선택
-        SetDessertPopTemplate();
+        // Assets/WebGLTemplates/AnimalPop/ 폴더가 있으면 자동 선택
+        SetAnimalPopTemplate();
 
         Debug.Log("[WebGLOptimizer] ✅ 설정 완료: Gzip+Fallback, ASTC, 256MB Heap, StripEngineCode ON");
     }
 
-    public static void SetDessertPopTemplate()
+    public static void SetAnimalPopTemplate()
     {
-        const string templateId = "PROJECT:DessertPop";
-        const string templatePath = "Assets/WebGLTemplates/DessertPop";
+        const string templateId = "PROJECT:AnimalPop";
+        const string templatePath = "Assets/WebGLTemplates/AnimalPop";
 
         if (System.IO.Directory.Exists(templatePath))
         {
             PlayerSettings.WebGL.template = templateId;
-            Debug.Log("[WebGLOptimizer] ✅ WebGL Template → DessertPop");
+            Debug.Log("[WebGLOptimizer] ✅ WebGL Template → AnimalPop");
         }
         else
         {
-            Debug.LogWarning("[WebGLOptimizer] ⚠ WebGLTemplates/DessertPop 폴더 없음, 템플릿 설정 건너뜀");
+            Debug.LogWarning("[WebGLOptimizer] ⚠ WebGLTemplates/AnimalPop 폴더 없음, 템플릿 설정 건너뜀");
         }
     }
 
     /// <summary>
     /// Unity 메뉴에서 수동으로 최적화 설정 미리보기/적용 가능
     /// </summary>
-    // [MenuItem("DessertPop/Apply AppsInToss WebGL Settings", false, 50)] // Moved to IntegratedMenu
+    // [MenuItem("AnimalPop/Apply AppsInToss WebGL Settings", false, 50)] // Moved to IntegratedMenu
     public static void ApplySettingsManually()
     {
         ApplySettingsManuallyNoDialog();
@@ -95,6 +95,6 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         PlayerSettings.WebGL.memorySize = 256;
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.Minimal);
-        SetDessertPopTemplate();
+        SetAnimalPopTemplate();
     }
 }

@@ -29,7 +29,7 @@ public class PhysicsMgr : MonoBehaviour
         if (DefaultMaterial != null) return DefaultMaterial;
         
         // 폴백 재질 생성 (반발계수 낮음, 마찰력 적절)
-        var mat = new PhysicsMaterial2D("DessertDefault")
+        var mat = new PhysicsMaterial2D("AnimalDefault")
         {
             bounciness = 0.08f,
             friction = 0.22f
@@ -42,7 +42,7 @@ public class PhysicsMgr : MonoBehaviour
     {
         if (StickyMaterial != null) return StickyMaterial;
         
-        var mat = new PhysicsMaterial2D("DessertSticky")
+        var mat = new PhysicsMaterial2D("AnimalSticky")
         {
             bounciness = 0.01f,
             friction = 0.85f

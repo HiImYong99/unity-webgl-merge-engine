@@ -17,11 +17,11 @@ public class GameMgr : MonoBehaviour
 
         public int currentScore;
         public bool hasSavedGame;
-        public List<DessertSaveData> activeDesserts = new List<DessertSaveData>();
+        public List<AnimalSaveData> activeAnimals = new List<AnimalSaveData>();
     }
 
     [System.Serializable]
-    private class DessertSaveData
+    private class AnimalSaveData
     {
         public int level;
         public Vector2 position;
@@ -60,7 +60,7 @@ public class GameMgr : MonoBehaviour
 
     // Fields
     private SaveDataModel _loadedSaveData;
-    public DessertEvolutionData EvolutionData;
+    public AnimalEvolutionData EvolutionData;
 
     // ===== Fallout 시스템 (Kill Zone) =====
     private const float CONTAINER_MIN_X = -2.0f;  // 용기 좌측 경계
@@ -92,18 +92,18 @@ public class GameMgr : MonoBehaviour
         if (CurrentState != GameState.Playing) return;
 
         // ===== Fallout 게임 오버 판정 =====
-        // 용기 밖으로 떨어지는 디저트 감지
-        GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
+        // 용기 밖으로 떨어지는 동물 감지
+        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
 
-        foreach (GameObject go in desserts)
+        foreach (GameObject go in animals)
         {
             if (go == null) continue;
 
-            Dessert dessert = go.GetComponent<Dessert>();
-            if (dessert == null) continue;
+            Animal animal = go.GetComponent<Animal>();
+            if (animal == null) continue;
 
-            if (!dessert.IsDropped) continue;
-            if (dessert.IsMerged) continue;
+            if (!animal.IsDropped) continue;
+            if (animal.IsMerged) continue;
 
             float x = go.transform.position.x;
             float y = go.transform.position.y;
@@ -139,7 +139,7 @@ public class GameMgr : MonoBehaviour
             UIMgr.Instance.UpdateScore(Score);
 
         if (newDiscovery && UIMgr.Instance != null)
-            UIMgr.Instance.NotifyDessertDiscovered(mergedLevel);
+            UIMgr.Instance.NotifyAnimalDiscovered(mergedLevel);
 
         if (Score > HighScore)
         {
@@ -169,9 +169,9 @@ public class GameMgr : MonoBehaviour
         AdWatched = false;
         SpareLives = 0;
 
-        // 기존 디저트 정리
-        GameObject[] existingDesserts = GameObject.FindGameObjectsWithTag("Dessert");
-        foreach (GameObject go in existingDesserts) Destroy(go);
+        // 기존 동물 정리
+        GameObject[] existingAnimals = GameObject.FindGameObjectsWithTag("Animal");
+        foreach (GameObject go in existingAnimals) Destroy(go);
 
         if (SpawnMgr.Instance != null) SpawnMgr.Instance.FullReset();
 
@@ -185,7 +185,7 @@ public class GameMgr : MonoBehaviour
             UIMgr.Instance.ShowHUD(true);
         }
 
-        if (SpawnMgr.Instance != null) SpawnMgr.Instance.PrepareNextDessert();
+        if (SpawnMgr.Instance != null) SpawnMgr.Instance.PrepareNextAnimal();
     }
 
     public void TriggerGameOver()
@@ -212,7 +212,7 @@ public class GameMgr : MonoBehaviour
         if (_loadedSaveData != null)
         {
             _loadedSaveData.hasSavedGame = false;
-            _loadedSaveData.activeDesserts.Clear();
+            _loadedSaveData.activeAnimals.Clear();
             _loadedSaveData.currentScore = 0;
         }
     }
@@ -232,20 +232,20 @@ public class GameMgr : MonoBehaviour
         SpareLives++;
 
         _gameOverDetectionCooldown = 1.5f;
-        ClearFallingDesserts();
+        ClearFallingAnimals();
 
         if (UIMgr.Instance != null) UIMgr.Instance.HideGameOver();
         if (SpawnMgr.Instance != null)
         {
             SpawnMgr.Instance.CanSpawn = true;
-            SpawnMgr.Instance.PrepareNextDessert();
+            SpawnMgr.Instance.PrepareNextAnimal();
         }
     }
 
-    private void ClearFallingDesserts()
+    private void ClearFallingAnimals()
     {
-        GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
-        foreach (GameObject go in desserts)
+        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
+        foreach (GameObject go in animals)
         {
             if (go == null) continue;
             float x = go.transform.position.x;
@@ -280,7 +280,7 @@ public class GameMgr : MonoBehaviour
         }
 
         HighScore = 0;
-        LastDiscoveryLevel = 1;
+        LastDiscoveryLevel = 0;
         IsSfxEnabled = true;
         IsVibrationEnabled = true;
     }
@@ -353,19 +353,19 @@ public class GameMgr : MonoBehaviour
             settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled },
             hasSavedGame = true,
             currentScore = Score,
-            activeDesserts = new List<DessertSaveData>()
+            activeAnimals = new List<AnimalSaveData>()
         };
 
-        GameObject[] desserts = GameObject.FindGameObjectsWithTag("Dessert");
-        foreach (GameObject go in desserts)
+        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
+        foreach (GameObject go in animals)
         {
-            Dessert d = go.GetComponent<Dessert>();
+            Animal d = go.GetComponent<Animal>();
             if (d != null && d.IsDropped && !d.IsMerged)
             {
                 Rigidbody2D rb = go.GetComponent<Rigidbody2D>();
                 Vector2 vel = rb != null ? rb.velocity : Vector2.zero;
 
-                data.activeDesserts.Add(new DessertSaveData
+                data.activeAnimals.Add(new AnimalSaveData
                 {
                     level = d.Level,
                     position = go.transform.position,

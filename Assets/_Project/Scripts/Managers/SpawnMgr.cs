@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// 디저트 스폰과 입력(드롭) 처리를 담당하는 매니저
+/// 동물 스폰과 입력(드롭) 처리를 담당하는 매니저
 /// </summary>
 public class SpawnMgr : MonoBehaviour
 {
@@ -12,12 +12,12 @@ public class SpawnMgr : MonoBehaviour
     public float SpawnCooldown = 0.85f;
     public bool CanSpawn = true;
 
-    private GameObject _currentDessert;
-    private DessertEvolutionData _evolutionData;
+    private GameObject _currentAnimal;
+    private AnimalEvolutionData _evolutionData;
 
     // Next Queue 시스템
-    private int _nextDessertLevel = -1;
-    private int _queuedDessertLevel = -1;
+    private int _nextAnimalLevel = -1;
+    private int _queuedAnimalLevel = -1;
 
     private float _minX = -1.4f;
     private float _maxX = 1.4f;
@@ -31,10 +31,10 @@ public class SpawnMgr : MonoBehaviour
     private static readonly float[] SPAWN_WEIGHTS_LATE = { 15f, 15f, 28f, 28f, 14f };
 
     private const int SPAWN_MIN_LEVEL = 1;
-    private const int SPAWN_MAX_LEVEL = Dessert.MAX_SPAWN_LEVEL;
+    private const int SPAWN_MAX_LEVEL = Animal.MAX_SPAWN_LEVEL;
 
     [Header("Dynamic Spawn Point")]
-    public LayerMask DessertLayer;
+    public LayerMask AnimalLayer;
     private float _spawnBaseY = 7.0f;
     private const float SPAWN_MAX_Y = 8.5f;
     private const float DANGER_ZONE_H = 1.6f;
@@ -101,7 +101,7 @@ public class SpawnMgr : MonoBehaviour
     private void UpdateGuideLine(float xPos)
     {
         if (_guideLine == null) return;
-        if (_currentDessert == null || !CanSpawn)
+        if (_currentAnimal == null || !CanSpawn)
         {
             _guideLine.enabled = false;
             return;
@@ -132,7 +132,7 @@ public class SpawnMgr : MonoBehaviour
             dangerCenter,
             new Vector2(DANGER_ZONE_W, DANGER_ZONE_H),
             0f,
-            DessertLayer
+            AnimalLayer
         ) != null;
 
         if (danger)
@@ -159,10 +159,10 @@ public class SpawnMgr : MonoBehaviour
         Vector3 sp = SpawnPoint.position;
         SpawnPoint.position = new Vector3(sp.x, _dynamicSpawnY, sp.z);
 
-        if (_currentDessert != null)
+        if (_currentAnimal != null)
         {
-            Vector3 dp = _currentDessert.transform.position;
-            _currentDessert.transform.position = new Vector3(dp.x, _dynamicSpawnY, dp.z);
+            Vector3 dp = _currentAnimal.transform.position;
+            _currentAnimal.transform.position = new Vector3(dp.x, _dynamicSpawnY, dp.z);
         }
     }
 
@@ -188,7 +188,7 @@ public class SpawnMgr : MonoBehaviour
             return;
         }
 
-        if (!CanSpawn || _currentDessert == null)
+        if (!CanSpawn || _currentAnimal == null)
         {
             if (_guideLine != null) _guideLine.enabled = false;
             return;
@@ -213,7 +213,7 @@ public class SpawnMgr : MonoBehaviour
 
             if (touch.phase == TouchPhase.Ended)
             {
-                DropDessert();
+                DropAnimal();
                 isInput = false;
             }
             else if (!isOverUI && cam != null)
@@ -224,7 +224,7 @@ public class SpawnMgr : MonoBehaviour
         }
         else if (Input.GetMouseButtonUp(0))
         {
-            DropDessert();
+            DropAnimal();
             isInput = false;
         }
         else if (Input.GetMouseButton(0) && !isOverUI && cam != null)
@@ -233,15 +233,15 @@ public class SpawnMgr : MonoBehaviour
             isInput = true;
         }
 
-        if (isInput && _currentDessert != null)
+        if (isInput && _currentAnimal != null)
         {
             float targetX = Mathf.Clamp(inputPos.x, _minX, _maxX);
-            _currentDessert.transform.position = new Vector3(targetX, _dynamicSpawnY, 0f);
+            _currentAnimal.transform.position = new Vector3(targetX, _dynamicSpawnY, 0f);
             UpdateGuideLine(targetX);
         }
-        else if (_currentDessert != null)
+        else if (_currentAnimal != null)
         {
-            UpdateGuideLine(_currentDessert.transform.position.x);
+            UpdateGuideLine(_currentAnimal.transform.position.x);
         }
     }
 
@@ -268,33 +268,33 @@ public class SpawnMgr : MonoBehaviour
         return SPAWN_MIN_LEVEL;
     }
 
-    public void PrepareNextDessert()
+    public void PrepareNextAnimal()
     {
-        _nextDessertLevel = (_queuedDessertLevel > 0) ? _queuedDessertLevel : GetWeightedRandomLevel();
-        _queuedDessertLevel = GetWeightedRandomLevel();
+        _nextAnimalLevel = (_queuedAnimalLevel > 0) ? _queuedAnimalLevel : GetWeightedRandomLevel();
+        _queuedAnimalLevel = GetWeightedRandomLevel();
 
         if (UIMgr.Instance != null)
-            UIMgr.Instance.UpdateNextGuide(_queuedDessertLevel);
+            UIMgr.Instance.UpdateNextGuide(_queuedAnimalLevel);
 
-        SpawnDessertAtCursor(_nextDessertLevel);
+        SpawnAnimalAtCursor(_nextAnimalLevel);
     }
 
     public void FullReset()
     {
         CancelInvoke(nameof(ResetSpawn));
 
-        if (_currentDessert != null)
+        if (_currentAnimal != null)
         {
-            Destroy(_currentDessert);
-            _currentDessert = null;
+            Destroy(_currentAnimal);
+            _currentAnimal = null;
         }
 
         if (_guideLine != null) _guideLine.enabled = false;
         _isDangerActive = false;
         _dangerTimer = 0f;
 
-        _nextDessertLevel = -1;
-        _queuedDessertLevel = -1;
+        _nextAnimalLevel = -1;
+        _queuedAnimalLevel = -1;
         _totalDropCount = 0;
         CanSpawn = true;
 
@@ -306,7 +306,7 @@ public class SpawnMgr : MonoBehaviour
         }
     }
 
-    private void SpawnDessertAtCursor(int level)
+    private void SpawnAnimalAtCursor(int level)
     {
         Vector3 spawnPos = (SpawnPoint != null)
             ? new Vector3(SpawnPoint.position.x, _dynamicSpawnY, 0f)
@@ -316,27 +316,27 @@ public class SpawnMgr : MonoBehaviour
         if (_evolutionData != null && _evolutionData.Levels != null && level <= _evolutionData.Levels.Length)
             prefab = _evolutionData.Levels[level - 1].Prefab;
 
-        GameObject dessertGo = (prefab != null)
+        GameObject animalGo = (prefab != null)
             ? Instantiate(prefab, spawnPos, Quaternion.identity)
-            : CreatePlaceholderDessert(level, spawnPos);
+            : CreatePlaceholderAnimal(level, spawnPos);
 
-        _currentDessert = dessertGo;
+        _currentAnimal = animalGo;
 
-        Rigidbody2D rb = _currentDessert.GetComponent<Rigidbody2D>();
+        Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null) { rb.isKinematic = true; rb.velocity = Vector2.zero; }
 
-        Dessert dessertScript = _currentDessert.GetComponent<Dessert>();
-        if (dessertScript != null) dessertScript.Initialize(level, false);
+        Animal animalScript = _currentAnimal.GetComponent<Animal>();
+        if (animalScript != null) animalScript.Initialize(level, false);
 
         UpdateGuideLine(spawnPos.x);
     }
 
     public static GameObject CreatePlaceholderForMerge(int level, Vector3 position)
     {
-        return CreatePlaceholderDessert(level, position);
+        return CreatePlaceholderAnimal(level, position);
     }
 
-    private static GameObject CreatePlaceholderDessert(int level, Vector3 position)
+    private static GameObject CreatePlaceholderAnimal(int level, Vector3 position)
     {
         float[] diameters = {
             0.35f, 0.44f, 0.55f, 0.68f, 0.85f,
@@ -355,8 +355,8 @@ public class SpawnMgr : MonoBehaviour
         };
         Color col = palette[Mathf.Clamp(level - 1, 0, palette.Length - 1)];
 
-        GameObject go = new GameObject($"Dessert_Lv{level}_Placeholder");
-        try { go.tag = "Dessert"; } catch { }
+        GameObject go = new GameObject($"Animal_Lv{level}_Placeholder");
+        try { go.tag = "Animal"; } catch { }
         go.transform.position = position;
 
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
@@ -375,7 +375,7 @@ public class SpawnMgr : MonoBehaviour
         if (PhysicsMgr.Instance != null)
             col2d.sharedMaterial = PhysicsMgr.Instance.GetDefaultMaterial();
 
-        go.AddComponent<Dessert>();
+        go.AddComponent<Animal>();
         return go;
     }
 
@@ -398,12 +398,12 @@ public class SpawnMgr : MonoBehaviour
         return Sprite.Create(tex, new Rect(0, 0, resolution, resolution), new Vector2(0.5f, 0.5f), resolution);
     }
 
-    private void DropDessert()
+    private void DropAnimal()
     {
-        if (_currentDessert == null) return;
+        if (_currentAnimal == null) return;
         if (_guideLine != null) _guideLine.enabled = false;
 
-        Rigidbody2D rb = _currentDessert.GetComponent<Rigidbody2D>();
+        Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null)
         {
             rb.isKinematic = false;
@@ -415,10 +415,10 @@ public class SpawnMgr : MonoBehaviour
                 SoundMgr.Instance.PlayDrop();
         }
 
-        Dessert dessertScript = _currentDessert.GetComponent<Dessert>();
-        if (dessertScript != null) dessertScript.SetDropped(true);
+        Animal animalScript = _currentAnimal.GetComponent<Animal>();
+        if (animalScript != null) animalScript.SetDropped(true);
 
-        _currentDessert = null;
+        _currentAnimal = null;
         CanSpawn = false;
         _totalDropCount++;
 
@@ -428,6 +428,6 @@ public class SpawnMgr : MonoBehaviour
     private void ResetSpawn()
     {
         CanSpawn = true;
-        PrepareNextDessert();
+        PrepareNextAnimal();
     }
 }
