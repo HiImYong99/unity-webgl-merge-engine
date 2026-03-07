@@ -47,6 +47,9 @@ public class SpawnMgr : MonoBehaviour
     private LineRenderer _guideLine;
     private const int GUIDE_DOTS = 14;
 
+    private GameObject _dropIndicator;
+    private SpriteRenderer _dropIndicatorSr;
+
     // 위험 구역 감지
     private bool _isDangerActive = false;
     private float _dangerTimer = 0f;
@@ -96,6 +99,16 @@ public class SpawnMgr : MonoBehaviour
         _guideLine.material = new Material(Shader.Find("Sprites/Default"));
         _guideLine.sortingOrder = 50;
         _guideLine.enabled = false;
+
+        // --- Drop Indicator Setup ---
+        _dropIndicator = new GameObject("DropIndicator");
+        _dropIndicator.transform.SetParent(transform);
+        _dropIndicatorSr = _dropIndicator.AddComponent<SpriteRenderer>();
+        _dropIndicatorSr.sprite = CreateCircleSprite(128);
+        _dropIndicatorSr.color = new Color(0.9f, 0.5f, 0.7f, 0.7f); // 귀여운 반투명 핑크 타겟
+        _dropIndicator.transform.localScale = new Vector3(0.5f, 0.2f, 1f); 
+        _dropIndicatorSr.sortingOrder = 60;
+        _dropIndicator.SetActive(false);
     }
 
     private void UpdateGuideLine(float xPos)
@@ -104,18 +117,49 @@ public class SpawnMgr : MonoBehaviour
         if (_currentAnimal == null || !CanSpawn)
         {
             _guideLine.enabled = false;
+            if (_dropIndicator != null) _dropIndicator.SetActive(false);
             return;
         }
 
         _guideLine.enabled = true;
-        float topY = _dynamicSpawnY - 0.1f;
-        float botY = -1.5f;
+        if (_dropIndicator != null) _dropIndicator.SetActive(true);
 
+        float topY = _dynamicSpawnY - 0.1f;
+        float botY = -4.0f; // 기본으로 아주 아래쪽 낙하 위치로 잡음
+
+        // 현재 동물의 충돌 반경 구하기
+        float animalRadius = 0.5f;
+        var col2d = _currentAnimal.GetComponent<CircleCollider2D>();
+        if (col2d != null) animalRadius = col2d.radius * _currentAnimal.transform.localScale.x;
+
+        // CircleCast로 정확한 낙하 위치(Centroid) 계산
+        RaycastHit2D[] hits = Physics2D.CircleCastAll(new Vector2(xPos, topY), animalRadius * 0.95f, Vector2.down, 15f);
+        foreach (var h in hits)
+        {
+            if (h.collider != null && h.collider.gameObject != _currentAnimal && !h.collider.isTrigger)
+            {
+                botY = topY - h.distance; // distance는 진행 거리이므로, 이를 빼면 도착할 원의 중심 Y좌표가 됨!
+                break;
+            }
+        }
+
+        // 가이드 라인 렌더링
         for (int i = 0; i < GUIDE_DOTS; i++)
         {
             float t = (float)i / (GUIDE_DOTS - 1);
             float y = Mathf.Lerp(topY, botY, t);
             _guideLine.SetPosition(i, new Vector3(xPos, y, -0.1f));
+        }
+
+        // 도착 마커 업데이트
+        if (_dropIndicator != null)
+        {
+            // 동물 크기에 비례하여 마커 폭 조절
+            float targetWidth = animalRadius * 2.2f;
+            _dropIndicator.transform.localScale = new Vector3(targetWidth, targetWidth * 0.35f, 1f);
+            
+            // 바닥에 살짝 눌린 위치에 배치 (- animalRadius * 0.8f 하여 동물 중심보다 아래 바닥쯤에)
+            _dropIndicator.transform.position = new Vector3(xPos, botY - animalRadius * 0.9f, -0.2f);
         }
     }
 
@@ -185,12 +229,14 @@ public class SpawnMgr : MonoBehaviour
         if (GameMgr.Instance != null && GameMgr.Instance.CurrentState != GameMgr.GameState.Playing)
         {
             if (_guideLine != null) _guideLine.enabled = false;
+            if (_dropIndicator != null) _dropIndicator.SetActive(false);
             return;
         }
 
         if (!CanSpawn || _currentAnimal == null)
         {
             if (_guideLine != null) _guideLine.enabled = false;
+            if (_dropIndicator != null) _dropIndicator.SetActive(false);
             return;
         }
 
@@ -290,6 +336,7 @@ public class SpawnMgr : MonoBehaviour
         }
 
         if (_guideLine != null) _guideLine.enabled = false;
+        if (_dropIndicator != null) _dropIndicator.SetActive(false);
         _isDangerActive = false;
         _dangerTimer = 0f;
 
@@ -402,6 +449,7 @@ public class SpawnMgr : MonoBehaviour
     {
         if (_currentAnimal == null) return;
         if (_guideLine != null) _guideLine.enabled = false;
+        if (_dropIndicator != null) _dropIndicator.SetActive(false);
 
         Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null)

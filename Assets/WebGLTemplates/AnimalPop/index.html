@@ -63,6 +63,7 @@
         .bg-mesh {
             position: fixed; inset: 0; z-index: -2;
             background:
+                linear-gradient(to top, rgba(160, 240, 190, 0.45) 0%, rgba(160, 240, 190, 0) 35%),
                 radial-gradient(ellipse at 15% 10%, rgba(255, 182, 193, 0.55) 0%, transparent 55%),
                 radial-gradient(ellipse at 85% 5%,  rgba(179, 197, 255, 0.50) 0%, transparent 50%),
                 radial-gradient(ellipse at 90% 90%, rgba(255, 223, 160, 0.45) 0%, transparent 55%),
@@ -80,6 +81,7 @@
         .blob-1 { width: 380px; height: 380px; background: #ffd6e0; top: -8%;  left: -8%;  animation-duration: 26s; }
         .blob-2 { width: 320px; height: 320px; background: #dde8ff; bottom: 5%; right: -5%; animation-duration: 32s; animation-delay: -8s; }
         .blob-3 { width: 260px; height: 260px; background: #fef3c7; top: 38%;  left: 55%;  animation-duration: 22s; animation-delay: -4s; }
+        .blob-4 { width: 400px; height: 200px; background: #bdf2cc; bottom: -5%; left: 10%; animation-duration: 20s; animation-delay: -2s; border-radius: 50% 50% 0 0; filter: blur(60px); opacity: 0.75; }
 
         @keyframes blobFloat {
             0%   { transform: translate(0,   0  ) scale(1.00); }
@@ -309,7 +311,7 @@
         /* 플레이 타임 박스 (하단 중앙으로 이동) */
         .hud-timer-box {
             position: fixed;
-            bottom: calc(var(--safe-bottom) + 60px);
+            bottom: calc(var(--safe-bottom) + 110px);
             left: 50%;
             transform: translate(-50%, 12px);
             z-index: 155;
@@ -454,7 +456,7 @@
            설정 버튼 (우하단)
         ════════════════════════════════════════════════ */
         #settings-fab {
-            position: fixed; bottom: calc(var(--safe-bottom) + 60px); right: 20px;
+            position: fixed; bottom: calc(var(--safe-bottom) + 110px); right: 20px;
             z-index: 155;
             width: 56px; height: 56px; border-radius: 50%;
             background: rgba(255,255,255,0.45);
@@ -593,6 +595,7 @@
     <div class="blob blob-1"></div>
     <div class="blob blob-2"></div>
     <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
 
     <!-- Unity Canvas -->
     <div id="unity-container">
