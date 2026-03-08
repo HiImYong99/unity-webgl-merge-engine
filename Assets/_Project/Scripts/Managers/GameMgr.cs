@@ -248,6 +248,16 @@ public class GameMgr : MonoBehaviour
 #endif
     }
 
+    /// <summary>
+    /// 영구 구매자 2배속 ON/OFF (JS에서 직접 호출)
+    /// multiplier: 1f = 일반, 2f = 2배속
+    /// </summary>
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        SpeedBoostActive = (multiplier > 1f);
+        Time.timeScale = multiplier;
+    }
+
 #if UNITY_WEBGL && !UNITY_EDITOR
     [System.Runtime.InteropServices.DllImport("__Internal")]
     private static extern void notifySpeedBoostActivatedFromUnity();

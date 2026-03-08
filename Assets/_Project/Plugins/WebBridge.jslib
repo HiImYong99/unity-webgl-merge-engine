@@ -19,25 +19,105 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // ── 부활 광고 (보상형 Rewarded) ──
+  // 흐름: ShowAd 호출 → loadFullScreenAd → loaded → showFullScreenAd
+  //        → userEarnedReward → OnReviveSuccess
   ShowAd: function() {
-    console.log("[WebBridge] Showing Ad...");
-    setTimeout(function() {
-        console.log("[WebBridge] Ad Complete!");
+    console.log("[WebBridge] ShowAd: 부활 보상형 광고 시작");
+
+    var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
+
+    // AppsInToss SDK 미지원 환경 (브라우저/에디터) 폴백
+    if (typeof window.loadFullScreenAd !== 'function' ||
+        !window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) {
+      console.warn('[WebBridge] loadFullScreenAd 미지원 환경 — 즉시 성공 시뮬레이션');
+      setTimeout(function() {
         SendMessage('BridgeManager', 'OnReviveSuccess');
-    }, 1000);
+      }, 800);
+      return;
+    }
+
+    var loadUnregister = window.loadFullScreenAd({
+      options: { adGroupId: REVIVE_AD_ID },
+      onEvent: function(event) {
+        if (event.type !== 'loaded') return;
+        console.log('[WebBridge] 부활 광고 loaded → show');
+        loadUnregister && loadUnregister();
+
+        var showUnregister = window.showFullScreenAd({
+          options: { adGroupId: REVIVE_AD_ID },
+          onEvent: function(ev) {
+            if (ev.type === 'userEarnedReward') {
+              // 보상형: 시청 완료 시 지급
+              console.log('[WebBridge] 부활 광고 userEarnedReward → OnReviveSuccess');
+              SendMessage('BridgeManager', 'OnReviveSuccess');
+            }
+            if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
+              showUnregister && showUnregister();
+              // 다음 광고 미리 로드
+              window._preloadReviveAd && window._preloadReviveAd();
+            }
+          },
+          onError: function(err) {
+            console.error('[WebBridge] 부활 광고 show 실패:', err);
+            showUnregister && showUnregister();
+          }
+        });
+      },
+      onError: function(err) {
+        console.error('[WebBridge] 부활 광고 load 실패:', err);
+        loadUnregister && loadUnregister();
+      }
+    });
   },
 
+  // ── 2배속 광고 (보상형 Rewarded) ──
+  // userEarnedReward 이벤트에서 OnSpeedBoostAdSuccess 콜백
   ShowSpeedBoostAd: function() {
-    console.log("[WebBridge] Showing SpeedBoost Ad...");
-    if (typeof window.showSpeedBoostAdFromUnity === 'function') {
-      window.showSpeedBoostAdFromUnity();
-    } else {
-      // 폴백: 광고 없이 즉시 성공 처리 (테스트/브라우저)
+    console.log("[WebBridge] ShowSpeedBoostAd: 2배속 보상형 광고 시작");
+
+    var SPEED_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
+
+    // AppsInToss SDK 미지원 환경 (브라우저/에디터) 폴백
+    if (typeof window.loadFullScreenAd !== 'function' ||
+        !window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) {
+      console.warn('[WebBridge] loadFullScreenAd 미지원 환경 — 즉시 성공 시뮬레이션');
       setTimeout(function() {
-        console.log("[WebBridge] SpeedBoost Ad Complete!");
         SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-      }, 1000);
+      }, 800);
+      return;
     }
+
+    var loadUnregister = window.loadFullScreenAd({
+      options: { adGroupId: SPEED_AD_ID },
+      onEvent: function(event) {
+        if (event.type !== 'loaded') return;
+        console.log('[WebBridge] 2배속 광고 loaded → show');
+        loadUnregister && loadUnregister();
+
+        var showUnregister = window.showFullScreenAd({
+          options: { adGroupId: SPEED_AD_ID },
+          onEvent: function(ev) {
+            if (ev.type === 'userEarnedReward') {
+              // 보상형: 시청 완료 시 지급
+              console.log('[WebBridge] 2배속 광고 userEarnedReward → OnSpeedBoostAdSuccess');
+              SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+            }
+            if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
+              showUnregister && showUnregister();
+            }
+          },
+          onError: function(err) {
+            console.error('[WebBridge] 2배속 광고 show 실패:', err);
+            showUnregister && showUnregister();
+          }
+        });
+      },
+      onError: function(err) {
+        console.error('[WebBridge] 2배속 광고 load 실패:', err);
+        loadUnregister && loadUnregister();
+      }
+    });
   },
 
   notifySpeedBoostActivatedFromUnity: function() {
@@ -55,8 +135,8 @@ mergeInto(LibraryManager.library, {
 
     if (navigator.share) {
         var shareData = {
-            title: '디저트 팝!',
-            text: '디저트 팝에서 ' + scoreStr + '점을 달성했어요! 🍩',
+            title: '애니멀 팝!',
+            text: '애니멀 팝에서 ' + scoreStr + '점을 달성했어요! 🐾',
         };
 
         if (imgStr && imgStr.startsWith('data:image/')) {

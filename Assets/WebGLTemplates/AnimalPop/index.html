@@ -255,6 +255,17 @@
             cursor: default; pointer-events: none;
         }
         .hud-speed-btn.hidden { display: none; }
+        /* 영구 구매자: 토글 가능 */
+        .hud-speed-btn.premium {
+            background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
+            border-color: #7c3aed; color: #7c3aed;
+            cursor: pointer; pointer-events: auto;
+        }
+        .hud-speed-btn.premium:active { filter: brightness(0.94); }
+        .hud-speed-btn.premium.speed-on {
+            background: linear-gradient(135deg, #7c3aed 0%, #3182f6 100%);
+            color: #fff; border-color: #7c3aed;
+        }
 
         /* 다음 동물 박스 */
         .hud-next-box {
@@ -381,6 +392,33 @@
             .sp-icon { font-size: 14px; }
             .sp-label { font-size: 7px; }
             .sp-value { font-size: 13px; }
+        }
+
+        /* 대형 화면(플립 펼침/태블릿/iPad): UI를 게임 중앙 영역 기준으로 고정 */
+        @media (min-width: 481px) {
+            /* HUD: 게임 너비(440px) 기준으로 중앙 정렬 */
+            #game-hud {
+                left: 50%;
+                right: auto;
+                width: min(440px, 96vw);
+                transform: translateX(-50%) translateY(-12px);
+            }
+            #game-hud.visible {
+                transform: translateX(-50%) translateY(0);
+            }
+            /* 사이드 패널: 게임 컨테이너(440px 절반=220px) 바로 바깥에 배치 */
+            #side-left  { left:  calc(50% - 220px - 64px); }
+            #side-right { right: calc(50% - 220px - 64px); }
+            /* danger 배너도 HUD 너비에 맞춤 */
+            #danger-banner {
+                left: 50%;
+                right: auto;
+                width: min(440px, 96vw);
+                transform: translateX(-50%) translateY(-8px) scale(0.97);
+            }
+            #danger-banner.visible {
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
         }
 
         /* ════════════════════════════════════════════════
@@ -636,10 +674,41 @@
         .sht-primary:active { background: var(--toss-blue-dark); }
         .sht-ghost   { background: transparent; color: var(--text-secondary); }
         .sht-ghost:active { background: var(--bg-surface-02); }
+
+        /* ════════════════════════════════════════════════
+           가로 회전 차단 — 모바일(태블릿 제외) landscape
+        ════════════════════════════════════════════════ */
+        @media (max-width: 896px) and (orientation: landscape) {
+            #rotate-overlay { display: flex !important; }
+        }
+        #rotate-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 9999;
+            background: #191f28;
+            flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px;
+            color: #fff;
+            text-align: center;
+            padding: 24px;
+        }
+        .rotate-icon { font-size: 56px; animation: rotatePulse 1.6s ease-in-out infinite; }
+        @keyframes rotatePulse {
+            0%,100% { transform: rotate(0deg); }
+            50%      { transform: rotate(-90deg); }
+        }
+        .rotate-title { font-size: 18px; font-weight: 800; }
+        .rotate-sub   { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
     </style>
 </head>
 
 <body>
+    <!-- 가로 회전 차단 -->
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <div class="rotate-title">세로로 돌려주세요</div>
+        <div class="rotate-sub">애니멀 팝은 세로 화면에서<br>더 잘 즐길 수 있어요!</div>
+    </div>
+
     <!-- Unity Canvas -->
     <div id="unity-container">
         <canvas id="unity-canvas" data-pixel-art="true"></canvas>
@@ -685,7 +754,7 @@
             </div>
         </div>
         <button class="hud-speed-btn" id="speed-boost-btn" onclick="onSpeedBoostClicked()">
-            ⚡ 광고 보고 2배속
+            ⚡ 광고보고 2배속
         </button>
     </div>
 
@@ -767,7 +836,7 @@
                 </div>
             </div>
             <div class="go-btn-stack">
-                <button id="go-btn-revive" class="go-btn go-btn-primary" onclick="onReviveClicked()" style="display:none">광고 보고 2회 더 도전</button>
+                <button id="go-btn-revive" class="go-btn go-btn-primary" onclick="onReviveClicked()" style="display:none">광고 보고 이어서 도전하기</button>
                 <button class="go-btn go-btn-secondary" onclick="onRestartClicked()">다시 도전하기</button>
                 <button class="go-btn go-btn-ghost" onclick="onShareClicked()">📤 결과 공유하기</button>
             </div>
@@ -1035,10 +1104,44 @@
         }, 8000);
 
         updateLocalBestScore();
+
+        // Unity 로드 완료 후 부활 광고 프리로드
+        // (dismissed 이후 jslib에서 _preloadReviveAd 재호출)
+        _preloadReviveAd();
     }).catch(function(err) {
         loadText.textContent = '로딩에 실패했어요 😢';
         console.error(err);
     });
+
+    // ════════════════════════════════════════════════════
+    //  광고 프리로드 (앱인토스 loadFullScreenAd)
+    // ════════════════════════════════════════════════════
+    var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
+    var _reviveAdLoaded = false;
+    var _reviveAdUnregister = null;
+
+    window._preloadReviveAd = function() {
+        if (typeof window.loadFullScreenAd !== 'function') return;
+        if (!window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) return;
+
+        // 이전 리스너 정리
+        if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
+        _reviveAdLoaded = false;
+
+        _reviveAdUnregister = window.loadFullScreenAd({
+            options: { adGroupId: REVIVE_AD_ID },
+            onEvent: function(event) {
+                if (event.type === 'loaded') {
+                    console.log('[Ad] 부활 광고 프리로드 완료');
+                    _reviveAdLoaded = true;
+                }
+            },
+            onError: function(err) {
+                console.warn('[Ad] 부활 광고 프리로드 실패:', err);
+                _reviveAdLoaded = false;
+            }
+        });
+    };
 
     // ════════════════════════════════════════════════════
     //  HUD / 상태 유틸
@@ -1117,16 +1220,161 @@
     // ── 스피드 부스트 ──
     var _speedBoostActive = false;
     var _speedBoostBtn = null;
+    var _premiumSpeedOwned = false;   // 영구 구매 여부
+    var _premiumSpeedOn    = false;   // 영구 구매자의 현재 ON/OFF 상태
+    var SPEED_SKU = 'double_speed_permanent';
 
-    function onSpeedBoostClicked() {
-        if (_speedBoostActive) return;
-        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'RequestSpeedBoostAd');
+    // localStorage에서 영구 구매 상태 복원
+    try {
+        _premiumSpeedOwned = localStorage.getItem('animalpop_premium_speed') === '1';
+    } catch(e){}
+
+    function _getSpeedBtn() {
+        if (!_speedBoostBtn) _speedBoostBtn = document.getElementById('speed-boost-btn');
+        return _speedBoostBtn;
     }
+
+    // 버튼 UI를 현재 상태에 맞게 갱신
+    function _refreshSpeedBtn() {
+        var btn = _getSpeedBtn();
+        if (!btn) return;
+        if (_premiumSpeedOwned) {
+            btn.classList.remove('boosted');
+            btn.classList.add('premium');
+            btn.onclick = onPremiumSpeedToggle;
+            if (_premiumSpeedOn) {
+                btn.classList.add('speed-on');
+                btn.innerHTML = '⚡ 2배속 ON';
+            } else {
+                btn.classList.remove('speed-on');
+                btn.innerHTML = '⚡ 2배속 OFF';
+            }
+        } else if (_speedBoostActive) {
+            btn.classList.add('boosted');
+            btn.classList.remove('premium', 'speed-on');
+            btn.onclick = null;
+            btn.innerHTML = '⚡ 2배속 ON!';
+        } else {
+            btn.classList.remove('boosted', 'premium', 'speed-on');
+            btn.onclick = onSpeedBoostClicked;
+            btn.innerHTML = '⚡ 광고보고 2배속';
+        }
+    }
+
+    // 영구 구매자: 토글
+    function onPremiumSpeedToggle() {
+        if (!_premiumSpeedOwned) return;
+        _premiumSpeedOn = !_premiumSpeedOn;
+        _refreshSpeedBtn();
+        if (unityInstance) {
+            unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', _premiumSpeedOn ? '2' : '1');
+        }
+    }
+
+    // 일반 유저: 광고 시청 or 결제 선택
+    function onSpeedBoostClicked() {
+        if (_speedBoostActive || _premiumSpeedOwned) return;
+        // 결제 시트: 광고 시청 / 990원 결제
+        _showSpeedChoiceSheet();
+    }
+
+    // 선택 바텀시트 표시
+    function _showSpeedChoiceSheet() {
+        var existing = document.getElementById('speed-choice-sheet');
+        if (existing) { existing.remove(); }
+
+        var sheet = document.createElement('div');
+        sheet.id = 'speed-choice-sheet';
+        sheet.style.cssText = [
+            'position:fixed;inset:0;z-index:300;display:flex;align-items:flex-end;',
+            'justify-content:center;background:rgba(0,0,0,0.45);'
+        ].join('');
+        sheet.innerHTML = [
+            '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;',
+            'padding:24px 20px 36px;box-shadow:0 -8px 32px rgba(0,0,0,0.12);">',
+            '  <div style="width:36px;height:4px;background:#e5e8eb;border-radius:99px;margin:0 auto 20px;"></div>',
+            '  <div style="font-size:17px;font-weight:800;color:#191f28;margin-bottom:4px;text-align:center;">⚡ 2배속 활성화</div>',
+            '  <div style="font-size:13px;color:#8b95a1;text-align:center;margin-bottom:22px;">원하는 방법을 선택하세요</div>',
+            '  <button id="sc-btn-ad" style="width:100%;padding:16px;background:#3182f6;color:#fff;',
+            '    border:none;border-radius:14px;font-size:15px;font-weight:700;margin-bottom:10px;',
+            '    cursor:pointer;font-family:inherit;">📺 광고 보고 지금만 2배속</button>',
+            '  <button id="sc-btn-iap" style="width:100%;padding:16px;background:linear-gradient(135deg,#7c3aed,#3182f6);',
+            '    color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;',
+            '    cursor:pointer;font-family:inherit;">👑 990원 결제하고 평생 2배속 ON/OFF</button>',
+            '  <button id="sc-btn-cancel" style="width:100%;padding:14px;background:none;',
+            '    color:#8b95a1;border:none;font-size:14px;font-weight:600;margin-top:4px;',
+            '    cursor:pointer;font-family:inherit;">취소</button>',
+            '</div>'
+        ].join('');
+
+        document.body.appendChild(sheet);
+
+        document.getElementById('sc-btn-ad').onclick = function() {
+            sheet.remove();
+            if (unityInstance) unityInstance.SendMessage('BridgeManager', 'RequestSpeedBoostAd');
+        };
+        document.getElementById('sc-btn-iap').onclick = function() {
+            sheet.remove();
+            _purchasePremiumSpeed();
+        };
+        document.getElementById('sc-btn-cancel').onclick = function() { sheet.remove(); };
+        sheet.addEventListener('click', function(e) { if (e.target === sheet) sheet.remove(); });
+    }
+
+    // 앱인토스 IAP 결제
+    function _purchasePremiumSpeed() {
+        if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
+            console.warn('[IAP] AppsInToss IAP를 사용할 수 없는 환경이에요.');
+            // 개발 환경 테스트용 폴백
+            if (confirm('[개발] IAP 미지원 환경. 구매 성공 시뮬레이션?')) {
+                _onPremiumSpeedGranted();
+            }
+            return;
+        }
+
+        var cleanup = window.AppsInToss.IAP.createOneTimePurchaseOrder({
+            options: {
+                sku: SPEED_SKU,
+                processProductGrant: function(params) {
+                    _onPremiumSpeedGranted();
+                    return true;
+                }
+            },
+            onEvent: function(event) {
+                if (event.type === 'success') { cleanup && cleanup(); }
+            },
+            onError: function(error) {
+                console.error('[IAP] 결제 실패:', error);
+                cleanup && cleanup();
+            }
+        });
+    }
+
+    // 영구 구매 지급 처리
+    function _onPremiumSpeedGranted() {
+        _premiumSpeedOwned = true;
+        _premiumSpeedOn    = true;   // 구매 즉시 ON
+        try { localStorage.setItem('animalpop_premium_speed', '1'); } catch(e){}
+        _refreshSpeedBtn();
+        if (unityInstance) {
+            unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
+        }
+    }
+
+    // 앱 시작 시 미지급된 주문 복구 (getPendingOrders)
+    function _recoverPendingSpeedOrders() {
+        if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) return;
+        window.AppsInToss.IAP.getPendingOrders().then(function(res) {
+            if (!res) return;
+            var orders = res.orders || [];
+            var hasSpeed = orders.some(function(o) { return o.sku === SPEED_SKU; });
+            if (hasSpeed) _onPremiumSpeedGranted();
+        }).catch(function(e) { console.warn('[IAP] getPendingOrders 실패:', e); });
+    }
+    _recoverPendingSpeedOrders();
 
     // Unity → JS: 스피드부스트 광고 요청 (jslib에서 window 함수로 호출)
     window.showSpeedBoostAdFromUnity = function() {
-        // 실제 앱인토스 광고 SDK 연동 포인트
-        // 여기에 실제 광고 SDK 호출을 넣으세요
         console.log("[JS] showSpeedBoostAdFromUnity: 광고 표시");
         // 테스트용: 1초 후 성공 콜백
         setTimeout(function() {
@@ -1137,11 +1385,7 @@
     // Unity → JS: 스피드부스트 활성화 완료 알림
     window.notifySpeedBoostActivatedFromUnity = function() {
         _speedBoostActive = true;
-        if (!_speedBoostBtn) _speedBoostBtn = document.getElementById('speed-boost-btn');
-        if (_speedBoostBtn) {
-            _speedBoostBtn.classList.add('boosted');
-            _speedBoostBtn.textContent = '⚡ 2배속 ON!';
-        }
+        _refreshSpeedBtn();
     };
 
     // ════════════════════════════════════════════════════
@@ -1205,8 +1449,8 @@
             if (canRevive) {
                 reviveBtn.style.display = 'block';
                 reviveBtn.textContent = _lastAdWatched
-                    ? '한 번 더 도전하기 (' + _lastSpareLives + '회 남음)'
-                    : '광고 보고 2회 더 도전';
+                    ? '이어서 도전하기 (' + _lastSpareLives + '회 남음)'
+                    : '광고 보고 이어서 도전하기';
             } else {
                 reviveBtn.style.display = 'none';
             }
@@ -1294,12 +1538,14 @@
         if (newBestBadge) newBestBadge.classList.remove('show');
         _currentDisplayScore = 0;
         if (scoreEl) scoreEl.textContent = '0';
-        // 스피드부스트 상태 초기화
+        // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
         _speedBoostActive = false;
-        if (!_speedBoostBtn) _speedBoostBtn = document.getElementById('speed-boost-btn');
-        if (_speedBoostBtn) {
-            _speedBoostBtn.classList.remove('boosted');
-            _speedBoostBtn.textContent = '⚡ 2배속 광고';
+        _refreshSpeedBtn();
+        // 영구 구매자 & ON 상태면 게임 재시작 시에도 2배속 적용
+        if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
+            setTimeout(function() {
+                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
+            }, 300);
         }
         resetSidePanel();
         startPlayTimer();
@@ -1323,6 +1569,12 @@
         bgmMuted = localStorage.getItem('animalpop_bgm') === '0';
         sfxMuted = localStorage.getItem('animalpop_sfx') === '0';
     } catch(e){}
+
+    // 영구 구매 상태에 따라 버튼 초기 UI 설정
+    // (HUD가 표시된 후 버튼이 DOM에 있을 때 적용됨)
+    document.addEventListener('DOMContentLoaded', function() {
+        if (_premiumSpeedOwned) { _premiumSpeedOn = false; _refreshSpeedBtn(); }
+    });
     </script>
 </body>
 </html>

@@ -7,6 +7,7 @@ public class AnimalAssetLinker : EditorWindow
     private const string SPRITE_PATH = "Assets/_Project/Resources/Animals/";
     private const string PREFAB_PATH = "Assets/_Project/Prefabs/Animals/";
     private const string DATA_PATH = "Assets/_Project/Data/AnimalEvolutionData.asset";
+    private const string SPRITES_WEBGL_PATH = "Assets/WebGLTemplates/AnimalPop/sprites/";
 
     // [MenuItem("AnimalPop/Link Individual Sprites", false, 11)] // Moved to IntegratedMenu
     public static void LinkIndividualSprites()
@@ -50,11 +51,18 @@ public class AnimalAssetLinker : EditorWindow
                 importer.SaveAndReimport();
             }
 
-            // 2. 스프라이트 로드
+            // 2. sprites/ WebGL 폴더 동기화
+            if (Directory.Exists(SPRITES_WEBGL_PATH))
+            {
+                string destPath = SPRITES_WEBGL_PATH + spriteName + ".png";
+                File.Copy(fullSpritePath, destPath, overwrite: true);
+            }
+
+            // 3. 스프라이트 로드
             Sprite newSprite = AssetDatabase.LoadAssetAtPath<Sprite>(fullSpritePath);
             if (newSprite == null) continue;
 
-            // 3. Update Prefab
+            // 4. Update Prefab
             string prefabName = "Animal_Lvl_" + levelNum;
             string fullPrefabPath = PREFAB_PATH + prefabName + ".prefab";
             GameObject prefabGo = AssetDatabase.LoadAssetAtPath<GameObject>(fullPrefabPath);
@@ -87,7 +95,7 @@ public class AnimalAssetLinker : EditorWindow
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        EditorUtility.DisplayDialog("Success", "Sprites have been processed and linked!\nColliders upgraded to CircleCollider2D.", "OK");
+        EditorUtility.DisplayDialog("Success", "스프라이트 임포터 설정, 프리팹 연결, sprites/ 동기화가 완료됐습니다!\nColliders upgraded to CircleCollider2D.", "OK");
     }
 
     /// <summary>

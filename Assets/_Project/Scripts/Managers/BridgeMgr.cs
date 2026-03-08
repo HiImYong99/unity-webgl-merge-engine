@@ -62,4 +62,12 @@ public class BridgeMgr : MonoBehaviour
     {
         if (GameMgr.Instance != null) GameMgr.Instance.ActivateSpeedBoost();
     }
+
+    // Called from JS: 영구 구매자의 2배속 ON/OFF 토글
+    // multiplierStr: "1" (normal) or "2" (double)
+    public void SetSpeedMultiplier(string multiplierStr)
+    {
+        if (float.TryParse(multiplierStr, out float multiplier) && GameMgr.Instance != null)
+            GameMgr.Instance.SetSpeedMultiplier(multiplier);
+    }
 }
