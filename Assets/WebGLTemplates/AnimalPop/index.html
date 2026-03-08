@@ -1146,7 +1146,7 @@
         if (!_lastAdWatched) {
             unityInstance.SendMessage('BridgeManager', 'RequestAd');
         } else if (_lastSpareLives > 0) {
-            unityInstance.SendMessage('GameManager', 'UseSpareLife');
+            unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
         } else { return; }
         goOverlay.classList.remove('visible');
         resumePlayTimer();
@@ -1214,12 +1214,13 @@
 
         var reviveBtn = document.getElementById('go-btn-revive');
         if (reviveBtn) {
-            if (!_lastAdWatched) {
+            var maxRevives = 2;
+            var canRevive = !_lastAdWatched || (_lastSpareLives > 0 && _lastSpareLives < maxRevives);
+            if (canRevive) {
                 reviveBtn.style.display = 'block';
-                reviveBtn.textContent = '광고 보고 2회 더 도전';
-            } else if (_lastSpareLives > 0) {
-                reviveBtn.style.display = 'block';
-                reviveBtn.textContent = '한 번 더 도전하기 (' + _lastSpareLives + '회 남음)';
+                reviveBtn.textContent = _lastAdWatched
+                    ? '한 번 더 도전하기 (' + _lastSpareLives + '회 남음)'
+                    : '광고 보고 2회 더 도전';
             } else {
                 reviveBtn.style.display = 'none';
             }

@@ -7,41 +7,16 @@ using System.Collections.Generic;
 /// </summary>
 public class VesselVisualEnhancer : MonoBehaviour
 {
+    // 컨테이너 규격 상수 (AnimalPopSetup, GameMgr와 일치)
+    private const float VESSEL_W = 3.2f;
+    private const float VESSEL_H = 5.0f;
+    private const float VESSEL_WALL_T = 0.8f;
+    private const float VESSEL_BOTTOM_Y = -1.5f;
+
     private void Start()
     {
-        FixAndResizeContainer();
         ApplyPremiumVessel();
         InvokeRepeating(nameof(AggressiveClear), 0.5f, 1.0f);
-    }
-
-    private void FixAndResizeContainer()
-    {
-        // 모바일 기기에서의 시인성과 디저트 부피감을 위해 컨테이너 크기를 재규격화(3.6 x 6.5)합니다.
-        float targetW = 3.6f;
-        float targetH = 6.5f;
-        float wallT = 0.8f;
-        float bY = -1.5f;
-
-        Transform floor = transform.Find("Floor");
-        if (floor != null)
-        {
-            floor.localPosition = new Vector3(0, bY - wallT / 2, 0);
-            if (floor.TryGetComponent<BoxCollider2D>(out var col)) col.size = new Vector2(targetW + wallT * 2, wallT);
-        }
-
-        Transform left = transform.Find("LeftWall");
-        if (left != null)
-        {
-            left.localPosition = new Vector3(-targetW / 2 - wallT / 2, bY + targetH / 2, 0);
-            if (left.TryGetComponent<BoxCollider2D>(out var col)) col.size = new Vector2(wallT, targetH);
-        }
-
-        Transform right = transform.Find("RightWall");
-        if (right != null)
-        {
-            right.localPosition = new Vector3(targetW / 2 + wallT / 2, bY + targetH / 2, 0);
-            if (right.TryGetComponent<BoxCollider2D>(out var col)) col.size = new Vector2(wallT, targetH);
-        }
     }
 
     private void AggressiveClear()
@@ -98,23 +73,31 @@ public class VesselVisualEnhancer : MonoBehaviour
                 BoxCollider2D boxCol = child.GetComponent<BoxCollider2D>();
                 if (boxCol == null) continue;
 
-                Transform visual = child.Find("Visual") ?? child;
+                // Visual 자식이 없으면 새로 만든다 (벽 자체의 scale을 건드리면 collider 크기가 바뀜)
+                Transform visual = child.Find("Visual");
+                if (visual == null)
+                {
+                    GameObject visualGo = new GameObject("Visual");
+                    visualGo.transform.SetParent(child);
+                    visualGo.transform.localPosition = Vector3.zero;
+                    visual = visualGo.transform;
+                }
+
+                // Visual 크기는 collider size 그대로 (부모 scale=1 가정)
+                visual.localScale = new Vector3(boxCol.size.x, boxCol.size.y, 1f);
+
                 Renderer r = visual.GetComponent<Renderer>();
-                
                 if (r == null)
                 {
                     SpriteRenderer sr = visual.gameObject.AddComponent<SpriteRenderer>();
                     sr.sprite = whiteSprite;
                     sr.color = wallColor;
                     sr.sortingOrder = -5;
-                    visual.localScale = new Vector3(boxCol.size.x, boxCol.size.y, 1f);
-                    r = sr;
                 }
                 else
                 {
                     if (r is SpriteRenderer sr) sr.color = wallColor;
                     else if (r.material != null) r.material.color = wallColor;
-                    visual.localScale = new Vector3(boxCol.size.x, boxCol.size.y, 1f);
                 }
             }
         }
@@ -127,9 +110,8 @@ public class VesselVisualEnhancer : MonoBehaviour
 
     private void CreateDecorativePearls()
     {
-        // (기존 펄 생성 로직과 유사하나 확장된 사이즈에 맞춰 위치 보정)
-        float w = 3.6f;
-        float bY = -1.5f;
+        float w = VESSEL_W;
+        float bY = VESSEL_BOTTOM_Y;
 
         Texture2D pearlTex = new Texture2D(32, 32);
         for (int y = 0; y < 32; y++)
@@ -165,11 +147,10 @@ public class VesselVisualEnhancer : MonoBehaviour
 
     private void DrawVesselOutline()
     {
-        // 5. LineRenderer를 이용한 세련된 외곽선 추가 (모서리가 둥근 유리병 형태)
         LineRenderer line = GetComponent<LineRenderer>();
         if (line == null) line = gameObject.AddComponent<LineRenderer>();
 
-        float w = 3.6f, h = 6.5f, bY = -1.5f;
+        float w = VESSEL_W, h = VESSEL_H, bY = VESSEL_BOTTOM_Y;
         float wallX = w / 2;
         float radius = 0.4f; // 둥근 모서리 반경
         float margin = 0.05f;

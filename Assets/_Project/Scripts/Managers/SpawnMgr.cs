@@ -19,8 +19,8 @@ public class SpawnMgr : MonoBehaviour
     private int _nextAnimalLevel = -1;
     private int _queuedAnimalLevel = -1;
 
-    private float _minX = -1.4f;
-    private float _maxX = 1.4f;
+    private float _minX = -1.3f;  // 내벽 -1.6에서 가장자리 여유 0.3
+    private float _maxX = 1.3f;   // 내벽 +1.6에서 가장자리 여유 0.3
 
     // 난이도 조절
     private int _totalDropCount = 0;
@@ -240,6 +240,16 @@ public class SpawnMgr : MonoBehaviour
             return;
         }
 
+        // [Debug] 현재 동물을 거대 동물(Lv 10)로 즉시 교체 (T 키)
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            Vector3 lastPos = _currentAnimal.transform.position;
+            Destroy(_currentAnimal);
+            SpawnAnimalAtCursor(10);
+            _currentAnimal.transform.position = lastPos;
+            Debug.Log("[Debug] Animal Swapped to Level 10");
+        }
+
         ProcessInput();
     }
 
@@ -323,6 +333,19 @@ public class SpawnMgr : MonoBehaviour
             UIMgr.Instance.UpdateNextGuide(_queuedAnimalLevel);
 
         SpawnAnimalAtCursor(_nextAnimalLevel);
+    }
+
+    /// <summary>게임오버 시 대기 중인 스폰 예약을 취소하고 상태를 잠금</summary>
+    public void CancelPendingSpawn()
+    {
+        CancelInvoke(nameof(ResetSpawn));
+        CanSpawn = false;
+
+        if (_currentAnimal != null)
+        {
+            Destroy(_currentAnimal);
+            _currentAnimal = null;
+        }
     }
 
     public void FullReset()
@@ -463,7 +486,7 @@ public class SpawnMgr : MonoBehaviour
         if (rb != null)
         {
             rb.isKinematic = false;
-            rb.gravityScale = 1f;
+            rb.gravityScale = 1.25f;
             rb.velocity = new Vector2(Random.Range(-0.015f, 0.015f), 0f);
             rb.angularVelocity = Random.Range(-3f, 3f);
 

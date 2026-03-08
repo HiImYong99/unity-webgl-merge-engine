@@ -96,9 +96,13 @@ public class Animal : MonoBehaviour
 
         if (_cachedRb != null)
         {
-            _cachedRb.isKinematic = !_isDropped;
+            // 머지로 생성된 동물은 Co_MergePopIn 애니메이션 중 kinematic 유지,
+            // 애니메이션 완료 후 Co_MergePopIn에서 직접 physics 활성화함
+            _cachedRb.isKinematic = true;
             _cachedRb.simulated = true;
-            _cachedRb.gravityScale = _isDropped ? 1.0f : 0f;
+            _cachedRb.gravityScale = _isDropped ? 1.25f : 0f;
+            _cachedRb.velocity = Vector2.zero;
+            _cachedRb.angularVelocity = 0f;
             _cachedRb.mass = 0.5f + (idx * 0.18f);
 
             _cachedRb.collisionDetectionMode = _isDropped ?
@@ -162,8 +166,18 @@ public class Animal : MonoBehaviour
     private IEnumerator Co_MergePopIn(float diameter)
     {
         _isSpawning = true;
-        float[] keyframes = { 0f, 1.28f, 0.92f, 1.04f, 0.98f, 1.0f };
-        float[] times = { 0f, 0.18f, 0.30f, 0.40f, 0.48f, 0.56f };
+
+        // 애니메이션 중 kinematic 유지: 중력으로 낙하하거나 스케일 팽창으로 벽 통과하는 현상 방지
+        if (_cachedRb != null)
+        {
+            _cachedRb.isKinematic = true;
+            _cachedRb.velocity = Vector2.zero;
+            _cachedRb.angularVelocity = 0f;
+        }
+
+        // 스케일은 최대 1.0 * diameter 초과하지 않는 안전한 keyframe 사용
+        float[] keyframes = { 0f, 1.0f, 0.88f, 1.0f };
+        float[] times    = { 0f, 0.15f, 0.28f, 0.42f };
         float elapsed = 0f;
         float total = times[times.Length - 1];
 
@@ -178,6 +192,14 @@ public class Animal : MonoBehaviour
             yield return null;
         }
         transform.localScale = Vector3.one * diameter;
+
+        // 애니메이션 완료 후 물리 활성화
+        if (_cachedRb != null)
+        {
+            _cachedRb.isKinematic = false;
+            _cachedRb.gravityScale = 1.25f;
+            _cachedRb.WakeUp();
+        }
         _isSpawning = false;
     }
 
@@ -188,7 +210,7 @@ public class Animal : MonoBehaviour
         {
             _cachedRb.isKinematic = false;
             _cachedRb.simulated = true;
-            _cachedRb.gravityScale = 1.0f;
+            _cachedRb.gravityScale = 1.25f;
             _cachedRb.WakeUp();
         }
     }
@@ -317,9 +339,13 @@ public class Animal : MonoBehaviour
         int nextLevel = Level + 1;
         GameMgr.Instance.AddScore(score, nextLevel);
 
-        // 컨테이너 내부로만 클램핑 (여유 있게)
-        float halfW = 1.45f; // 컨테이너 halfWidth 1.6 - 여유 0.15
+        // 컨테이너 내부로 클램핑 (벽 탈출 방지)
+        int nextIdx = Mathf.Clamp(nextLevel - 1, 0, LEVEL_DIAMETERS.Length - 1);
+        float nextRadius = LEVEL_DIAMETERS[nextIdx] * 0.5f;
+        float halfW = 1.6f - nextRadius - 0.05f; // 새 동물 반지름만큼 여유
+        halfW = Mathf.Max(halfW, 0.1f);
         spawnPos.x = Mathf.Clamp(spawnPos.x, -halfW, halfW);
+        spawnPos.y = Mathf.Clamp(spawnPos.y, -1.5f + nextRadius, 3.5f - nextRadius);
 
         AnimalEvolutionData data = GameMgr.Instance.EvolutionData;
         GameObject nextPrefab = (data != null && nextLevel <= data.Levels.Length) ? data.Levels[nextLevel - 1].Prefab : null;
@@ -332,10 +358,16 @@ public class Animal : MonoBehaviour
         {
             Animal nd = newAnimal.GetComponent<Animal>();
             if (nd != null) nd.Initialize(nextLevel, true);
-            // 머지된 두 동물의 평균 속도를 부여해 자연스러운 물리 연속성 유지
-            Vector2 avgVel = (myVel + otherVel) * 0.5f;
+
             Rigidbody2D nRb = newAnimal.GetComponent<Rigidbody2D>();
-            if (nRb != null) nRb.velocity = new Vector2(avgVel.x * 0.3f, Mathf.Max(avgVel.y * 0.3f, 0f));
+            if (nRb != null)
+            {
+                // velocity / angularVelocity 완전 초기화
+                nRb.velocity = Vector2.zero;
+                nRb.angularVelocity = 0f;
+                // 물리 위치도 강제 동기화 (Rigidbody가 이전 프레임 위치로 돌아가는 현상 방지)
+                nRb.position = spawnPos;
+            }
         }
 
         Destroy(gameObject);
