@@ -27,6 +27,25 @@ mergeInto(LibraryManager.library, {
     }, 1000);
   },
 
+  ShowSpeedBoostAd: function() {
+    console.log("[WebBridge] Showing SpeedBoost Ad...");
+    if (typeof window.showSpeedBoostAdFromUnity === 'function') {
+      window.showSpeedBoostAdFromUnity();
+    } else {
+      // 폴백: 광고 없이 즉시 성공 처리 (테스트/브라우저)
+      setTimeout(function() {
+        console.log("[WebBridge] SpeedBoost Ad Complete!");
+        SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+      }, 1000);
+    }
+  },
+
+  notifySpeedBoostActivatedFromUnity: function() {
+    if (typeof window.notifySpeedBoostActivatedFromUnity === 'function') {
+      window.notifySpeedBoostActivatedFromUnity();
+    }
+  },
+
   ShareResult: function(score, level, imageBase64) {
     var scoreStr = typeof score === "number" ? score.toString() : UTF8ToString(score);
     var levelStr = typeof level === "number" ? level.toString() : UTF8ToString(level);

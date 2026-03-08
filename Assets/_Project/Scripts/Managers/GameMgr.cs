@@ -49,6 +49,7 @@ public class GameMgr : MonoBehaviour
     public bool HasRevived { get; private set; } // Legacy - keeping for compat
     public bool AdWatched { get; private set; } = false;
     public int SpareLives { get; private set; } = 0;
+    public bool SpeedBoostActive { get; private set; } = false;
 
     public string UserIdentifier { get; private set; }
     public bool IsLoggedIn { get; private set; }
@@ -171,6 +172,7 @@ public class GameMgr : MonoBehaviour
         HasRevived = false;
         AdWatched = false;
         SpareLives = 0;
+        SpeedBoostActive = false;
         _gameOverDetectionCooldown = 1.0f; // 시작 직후 이전 프레임 잔여 동물로 인한 오판 방지
 
         // 기존 동물 정리
@@ -229,6 +231,30 @@ public class GameMgr : MonoBehaviour
     /// 광고 시청 후 부활 처리
     /// </summary>
     private const int MAX_REVIVES = 2;
+
+    /// <summary>
+    /// 광고 시청 후 게임속도 2배 부스트 활성화 (이번 판 내내 유지)
+    /// </summary>
+    public void ActivateSpeedBoost()
+    {
+        if (CurrentState != GameState.Playing) return;
+        if (SpeedBoostActive) return;
+
+        SpeedBoostActive = true;
+        Time.timeScale = 2.0f;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        try { NotifySpeedBoostActivatedJS(); } catch { }
+#endif
+    }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    private static extern void notifySpeedBoostActivatedFromUnity();
+    private static void NotifySpeedBoostActivatedJS() { notifySpeedBoostActivatedFromUnity(); }
+#else
+    private static void NotifySpeedBoostActivatedJS() { }
+#endif
 
     public void Revive()
     {

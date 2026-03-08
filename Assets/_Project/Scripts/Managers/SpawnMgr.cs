@@ -19,8 +19,8 @@ public class SpawnMgr : MonoBehaviour
     private int _nextAnimalLevel = -1;
     private int _queuedAnimalLevel = -1;
 
-    private float _minX = -1.3f;  // 내벽 -1.6에서 가장자리 여유 0.3
-    private float _maxX = 1.3f;   // 내벽 +1.6에서 가장자리 여유 0.3
+    private float _minX = -1.0f;  // 내벽 -1.6에서 가장자리 여유 0.6 (Lv3~4 벽 끼임 방지)
+    private float _maxX = 1.0f;   // 내벽 +1.6에서 가장자리 여유 0.6
 
     // 난이도 조절
     private int _totalDropCount = 0;
@@ -43,12 +43,10 @@ public class SpawnMgr : MonoBehaviour
     private const float SPAWN_DROP_SPEED = 2.0f;
     private float _dynamicSpawnY;
 
-    // Guide Line
-    private LineRenderer _guideLine;
-    private const int GUIDE_DOTS = 14;
-
-    private GameObject _dropIndicator;
-    private SpriteRenderer _dropIndicatorSr;
+    // Guide Line (점선 방식: 여러 개의 작은 원 스프라이트)
+    private const int GUIDE_DOT_COUNT = 12;
+    private GameObject[] _guideDots;
+    private SpriteRenderer[] _guideDotSrs;
 
     // 위험 구역 감지
     private bool _isDangerActive = false;
@@ -75,92 +73,87 @@ public class SpawnMgr : MonoBehaviour
 
     private void Co_SetupGuideLine()
     {
-        GameObject glGo = new GameObject("GuideLine");
-        glGo.transform.SetParent(transform);
-        _guideLine = glGo.AddComponent<LineRenderer>();
-        _guideLine.positionCount = GUIDE_DOTS;
-        _guideLine.useWorldSpace = true;
-        _guideLine.startWidth = 0.025f;
-        _guideLine.endWidth = 0.01f;
-        _guideLine.numCapVertices = 4;
+        // 점선: 작은 원 오브젝트 배열로 구성
+        Sprite dotSprite = CreateCircleSprite(32);
+        _guideDots = new GameObject[GUIDE_DOT_COUNT];
+        _guideDotSrs = new SpriteRenderer[GUIDE_DOT_COUNT];
 
-        Gradient grad = new Gradient();
-        grad.SetKeys(
-            new GradientColorKey[] {
-                new GradientColorKey(new Color(0.8f, 0.5f, 0.9f), 0f),
-                new GradientColorKey(new Color(0.5f, 0.7f, 1f), 1f)
-            },
-            new GradientAlphaKey[] {
-                new GradientAlphaKey(0.85f, 0f),
-                new GradientAlphaKey(0f, 1f)
-            }
-        );
-        _guideLine.colorGradient = grad;
-        _guideLine.material = new Material(Shader.Find("Sprites/Default"));
-        _guideLine.sortingOrder = 50;
-        _guideLine.enabled = false;
-
-        // --- Drop Indicator Setup ---
-        _dropIndicator = new GameObject("DropIndicator");
-        _dropIndicator.transform.SetParent(transform);
-        _dropIndicatorSr = _dropIndicator.AddComponent<SpriteRenderer>();
-        _dropIndicatorSr.sprite = CreateCircleSprite(128);
-        _dropIndicatorSr.color = new Color(0.9f, 0.5f, 0.7f, 0.7f); // 귀여운 반투명 핑크 타겟
-        _dropIndicator.transform.localScale = new Vector3(0.5f, 0.2f, 1f); 
-        _dropIndicatorSr.sortingOrder = 60;
-        _dropIndicator.SetActive(false);
+        for (int i = 0; i < GUIDE_DOT_COUNT; i++)
+        {
+            GameObject dot = new GameObject($"GuideDot_{i}");
+            dot.transform.SetParent(transform);
+            SpriteRenderer sr = dot.AddComponent<SpriteRenderer>();
+            sr.sprite = dotSprite;
+            sr.sortingOrder = 50;
+            dot.SetActive(false);
+            _guideDots[i] = dot;
+            _guideDotSrs[i] = sr;
+        }
     }
 
     private void UpdateGuideLine(float xPos)
     {
-        if (_guideLine == null) return;
-        if (_currentAnimal == null || !CanSpawn)
+        if (_guideDots == null) return;
+
+        bool show = (_currentAnimal != null && CanSpawn);
+        if (!show)
         {
-            _guideLine.enabled = false;
-            if (_dropIndicator != null) _dropIndicator.SetActive(false);
+            SetGuideDotsActive(false);
             return;
         }
 
-        _guideLine.enabled = true;
-        if (_dropIndicator != null) _dropIndicator.SetActive(true);
-
-        float topY = _dynamicSpawnY - 0.1f;
-        float botY = -4.0f; // 기본으로 아주 아래쪽 낙하 위치로 잡음
+        float topY = _dynamicSpawnY - 0.35f; // 동물 바로 아래부터 시작
+        float botY = -4.0f;
 
         // 현재 동물의 충돌 반경 구하기
         float animalRadius = 0.5f;
         var col2d = _currentAnimal.GetComponent<CircleCollider2D>();
         if (col2d != null) animalRadius = col2d.radius * _currentAnimal.transform.localScale.x;
 
-        // CircleCast로 정확한 낙하 위치(Centroid) 계산
+        // CircleCast로 정확한 낙하 위치 계산
         RaycastHit2D[] hits = Physics2D.CircleCastAll(new Vector2(xPos, topY), animalRadius * 0.95f, Vector2.down, 15f);
         foreach (var h in hits)
         {
             if (h.collider != null && h.collider.gameObject != _currentAnimal && !h.collider.isTrigger)
             {
-                botY = topY - h.distance; // distance는 진행 거리이므로, 이를 빼면 도착할 원의 중심 Y좌표가 됨!
+                botY = topY - h.distance;
                 break;
             }
         }
 
-        // 가이드 라인 렌더링
-        for (int i = 0; i < GUIDE_DOTS; i++)
+        // 점선 렌더링: 위에서 아래로 갈수록 크기와 알파가 줄어듦
+        float totalDist = topY - botY;
+        for (int i = 0; i < GUIDE_DOT_COUNT; i++)
         {
-            float t = (float)i / (GUIDE_DOTS - 1);
+            float t = (float)i / (GUIDE_DOT_COUNT - 1);
             float y = Mathf.Lerp(topY, botY, t);
-            _guideLine.SetPosition(i, new Vector3(xPos, y, -0.1f));
-        }
 
-        // 도착 마커 업데이트
-        if (_dropIndicator != null)
-        {
-            // 동물 크기에 비례하여 마커 폭 조절
-            float targetWidth = animalRadius * 2.2f;
-            _dropIndicator.transform.localScale = new Vector3(targetWidth, targetWidth * 0.35f, 1f);
-            
-            // 바닥에 살짝 눌린 위치에 배치 (- animalRadius * 0.8f 하여 동물 중심보다 아래 바닥쯤에)
-            _dropIndicator.transform.position = new Vector3(xPos, botY - animalRadius * 0.9f, -0.2f);
+            // 위→아래 거리에 비례해 실제 간격 내 도착 범위만 표시
+            if (y < botY - 0.1f)
+            {
+                _guideDots[i].SetActive(false);
+                continue;
+            }
+
+            // 크기: 상단 0.055 → 하단 0.025 (자연스럽게 수렴)
+            float dotSize = Mathf.Lerp(0.055f, 0.025f, t);
+            // 알파: 상단 0.75 → 하단 0.15
+            float alpha = Mathf.Lerp(0.75f, 0.15f, t);
+            // 색상: 위쪽은 연보라, 아래쪽은 하늘색
+            Color col = Color.Lerp(new Color(0.75f, 0.55f, 0.95f, alpha), new Color(0.55f, 0.75f, 1f, alpha), t);
+
+            _guideDots[i].SetActive(true);
+            _guideDots[i].transform.position = new Vector3(xPos, y, -0.1f);
+            _guideDots[i].transform.localScale = Vector3.one * dotSize;
+            _guideDotSrs[i].color = col;
         }
+    }
+
+    private void SetGuideDotsActive(bool active)
+    {
+        if (_guideDots == null) return;
+        for (int i = 0; i < GUIDE_DOT_COUNT; i++)
+            if (_guideDots[i] != null) _guideDots[i].SetActive(active);
     }
 
     private void LateUpdate()
@@ -228,15 +221,13 @@ public class SpawnMgr : MonoBehaviour
     {
         if (GameMgr.Instance != null && GameMgr.Instance.CurrentState != GameMgr.GameState.Playing)
         {
-            if (_guideLine != null) _guideLine.enabled = false;
-            if (_dropIndicator != null) _dropIndicator.SetActive(false);
+            SetGuideDotsActive(false);
             return;
         }
 
         if (!CanSpawn || _currentAnimal == null)
         {
-            if (_guideLine != null) _guideLine.enabled = false;
-            if (_dropIndicator != null) _dropIndicator.SetActive(false);
+            SetGuideDotsActive(false);
             return;
         }
 
@@ -358,8 +349,7 @@ public class SpawnMgr : MonoBehaviour
             _currentAnimal = null;
         }
 
-        if (_guideLine != null) _guideLine.enabled = false;
-        if (_dropIndicator != null) _dropIndicator.SetActive(false);
+        SetGuideDotsActive(false);
         _isDangerActive = false;
         _dangerTimer = 0f;
 
@@ -475,8 +465,7 @@ public class SpawnMgr : MonoBehaviour
     private void DropAnimal()
     {
         if (_currentAnimal == null) return;
-        if (_guideLine != null) _guideLine.enabled = false;
-        if (_dropIndicator != null) _dropIndicator.SetActive(false);
+        SetGuideDotsActive(false);
 
         // 드롭 시 콜라이더 복원
         Collider2D col = _currentAnimal.GetComponent<Collider2D>();

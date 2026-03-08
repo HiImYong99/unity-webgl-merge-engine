@@ -167,7 +167,9 @@ public class Animal : MonoBehaviour
     {
         _isSpawning = true;
 
-        // 애니메이션 중 kinematic 유지: 중력으로 낙하하거나 스케일 팽창으로 벽 통과하는 현상 방지
+        // 애니메이션 중 콜라이더 비활성화: 스케일 팽창으로 주변 동물 밀어내는 현상 방지
+        if (_cachedCol != null) _cachedCol.enabled = false;
+
         if (_cachedRb != null)
         {
             _cachedRb.isKinematic = true;
@@ -193,10 +195,14 @@ public class Animal : MonoBehaviour
         }
         transform.localScale = Vector3.one * diameter;
 
-        // 애니메이션 완료 후 물리 활성화
+        // 애니메이션 완료 후 콜라이더 복원 및 물리 활성화
+        if (_cachedCol != null) _cachedCol.enabled = true;
+
         if (_cachedRb != null)
         {
             _cachedRb.isKinematic = false;
+            _cachedRb.velocity = Vector2.zero;
+            _cachedRb.angularVelocity = 0f;
             _cachedRb.gravityScale = 1.25f;
             _cachedRb.WakeUp();
         }
@@ -342,10 +348,9 @@ public class Animal : MonoBehaviour
         // 컨테이너 내부로 클램핑 (벽 탈출 방지)
         int nextIdx = Mathf.Clamp(nextLevel - 1, 0, LEVEL_DIAMETERS.Length - 1);
         float nextRadius = LEVEL_DIAMETERS[nextIdx] * 0.5f;
-        float halfW = 1.6f - nextRadius - 0.05f; // 새 동물 반지름만큼 여유
-        halfW = Mathf.Max(halfW, 0.1f);
+        float halfW = Mathf.Max(1.6f - nextRadius - 0.1f, 0.1f);
         spawnPos.x = Mathf.Clamp(spawnPos.x, -halfW, halfW);
-        spawnPos.y = Mathf.Clamp(spawnPos.y, -1.5f + nextRadius, 3.5f - nextRadius);
+        spawnPos.y = Mathf.Clamp(spawnPos.y, -1.5f + nextRadius + 0.05f, 3.5f - nextRadius);
 
         AnimalEvolutionData data = GameMgr.Instance.EvolutionData;
         GameObject nextPrefab = (data != null && nextLevel <= data.Levels.Length) ? data.Levels[nextLevel - 1].Prefab : null;

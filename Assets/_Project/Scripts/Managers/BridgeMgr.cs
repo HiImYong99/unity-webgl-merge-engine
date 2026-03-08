@@ -10,11 +10,13 @@ public class BridgeMgr : MonoBehaviour
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] private static extern void ShowAd();
+    [DllImport("__Internal")] private static extern void ShowSpeedBoostAd();
     [DllImport("__Internal")] private static extern void ShareResult(int score, int level, string imageBase64);
     [DllImport("__Internal")] private static extern void ExitApp();
     [DllImport("__Internal")] private static extern void AppLogin();
 #else
     private static void ShowAd() { Debug.Log("[BridgeMgr] Mock ShowAd."); Instance.OnReviveSuccess(); }
+    private static void ShowSpeedBoostAd() { Debug.Log("[BridgeMgr] Mock ShowSpeedBoostAd."); Instance.OnSpeedBoostAdSuccess(); }
     private static void ShareResult(int score, int level, string base64) { Debug.Log($"[BridgeMgr] Mock Share: {score}"); }
     private static void ExitApp() { Debug.Log("[BridgeMgr] Mock Exit."); }
     private static void AppLogin() { Instance.OnLoginSuccess("mock_bridge_user_" + Random.Range(100, 999)); }
@@ -34,6 +36,7 @@ public class BridgeMgr : MonoBehaviour
     }
 
     public void RequestAd() => ShowAd();
+    public void RequestSpeedBoostAd() => ShowSpeedBoostAd();
     public void RequestShare(int score, int level, string base64) => ShareResult(score, level, base64);
     public void RequestExitApp() => ExitApp();
     public void RequestAppLogin() => AppLogin();
@@ -52,5 +55,11 @@ public class BridgeMgr : MonoBehaviour
     public void OnReviveSuccess()
     {
         if (GameMgr.Instance != null) GameMgr.Instance.Revive();
+    }
+
+    // Called from JSLib after speed boost ad watched
+    public void OnSpeedBoostAdSuccess()
+    {
+        if (GameMgr.Instance != null) GameMgr.Instance.ActivateSpeedBoost();
     }
 }

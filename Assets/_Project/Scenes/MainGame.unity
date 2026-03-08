@@ -733,7 +733,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   BGMSource: {fileID: 425242986}
   SFXSource: {fileID: 1814651253}
-  BgmClip: {fileID: 0}
+  BgmClip: {fileID: 8300000, guid: 2fd78748a8fe4431f9e8153e5dd7447c, type: 3}
   DropClip: {fileID: 0}
   MergeClips: []
   LevelUpClip: {fileID: 0}
