@@ -577,7 +577,7 @@
         .go-card {
             background: rgba(255,255,255,0.95);
             border-radius: var(--radius-xl);
-            padding: 32px 24px 24px;
+            padding: 32px 24px 28px;
             width: calc(100% - 48px); max-width: 360px;
             text-align: center;
             box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.7);
@@ -603,17 +603,40 @@
             padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px;
         }
 
-        .go-btn-stack { display: flex; flex-direction: column; gap: 8px; }
+        .go-btn-stack { display: flex; flex-direction: column; gap: 10px; }
         .go-btn {
-            font-family: inherit; width: 100%; padding: 15px;
+            font-family: inherit; width: 100%; padding: 17px;
             border: none; border-radius: var(--radius-md);
-            font-size: 15px; font-weight: 700; cursor: pointer;
-            transition: transform .1s, opacity .1s;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: transform .12s cubic-bezier(.22,1,.36,1), box-shadow .12s, filter .12s;
+            position: relative; overflow: hidden;
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
         }
-        .go-btn:active { transform: scale(0.97); opacity: 0.85; }
-        .go-btn-primary   { background: var(--toss-blue); color: #fff; box-shadow: 0 6px 16px rgba(49,130,246,0.28); }
-        .go-btn-secondary { background: var(--bg-surface-02); color: var(--text-primary); border: 1px solid var(--line-01); }
-        .go-btn-ghost     { background: transparent; color: var(--text-secondary); }
+        .go-btn:active { transform: scale(0.96); filter: brightness(0.92); }
+
+        /* 광고 부활 (primary — Toss Blue) */
+        .go-btn-primary {
+            background: var(--toss-blue);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(49,130,246,0.32);
+        }
+
+        /* 재시작 버튼 — Toss Blue (주요 CTA, 최우선) */
+        .go-btn-secondary {
+            background: var(--toss-blue);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(49,130,246,0.32);
+        }
+
+        /* 공유 버튼 — TDS outlined (흰 배경, 테두리, 강조 텍스트) */
+        .go-btn-ghost {
+            background: #fff;
+            color: var(--toss-blue);
+            border: 1.5px solid var(--toss-blue);
+            box-shadow: none;
+            font-size: 15px;
+        }
 
         /* ════════════════════════════════════════════════
            SETTINGS BOTTOM SHEET (TDS Style)
@@ -812,8 +835,8 @@
             </div>
             <div class="go-btn-stack">
                 <button id="go-btn-revive" class="go-btn go-btn-primary" onclick="onReviveClicked()" style="display:none">광고 보고 2회 더 도전</button>
-                <button class="go-btn go-btn-secondary" onclick="onRestartClicked()">처음부터 다시하기</button>
-                <button class="go-btn go-btn-ghost" onclick="onShareClicked()">결과 공유하기</button>
+                <button class="go-btn go-btn-secondary" onclick="onRestartClicked()">다시 도전하기</button>
+                <button class="go-btn go-btn-ghost" onclick="onShareClicked()">📤 결과 공유하기</button>
             </div>
         </div>
     </div>
