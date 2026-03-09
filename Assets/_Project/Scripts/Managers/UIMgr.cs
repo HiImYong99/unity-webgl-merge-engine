@@ -184,7 +184,7 @@ public class UIMgr : MonoBehaviour
     {
         if (NextGuideText != null)
         {
-            string[] animalEmojis = { "🐥", "🐭", "🦔", "🐸", "🐰", "🐱", "🐕", "🐷", "🐼", "🐻", "🐯" };
+            string[] animalEmojis = { "🐥", "🐭", "🦔", "🐰", "🐱", "🐕", "🐑", "🐒", "🐷", "🐼", "🦁" };
             int idx = Mathf.Clamp(nextLevel - 1, 0, animalEmojis.Length - 1);
             NextGuideText.text = animalEmojis[idx] + " Lv." + nextLevel;
         }
