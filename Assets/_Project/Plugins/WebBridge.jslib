@@ -133,9 +133,10 @@ mergeInto(LibraryManager.library, {
     console.log("[WebBridge] ShareResult: Score=" + scoreStr + ", Level=" + levelStr);
 
     if (navigator.share) {
+        // 메시지 대신 현재 웹앱(앱인토스) 링크를 공유하도록 변경
         var shareData = {
             title: '애니멀 팝!',
-            text: '애니멀 팝에서 ' + scoreStr + '점을 달성했어요! 🐾',
+            url: window.location.href
         };
 
         navigator.share(shareData).catch(function(err) { console.error(err); });

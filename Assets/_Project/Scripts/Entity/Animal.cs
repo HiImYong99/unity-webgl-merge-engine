@@ -113,9 +113,7 @@ public class Animal : MonoBehaviour
 
         if (_cachedRb != null)
         {
-            // 머지로 생성된 동물은 Co_MergePopIn 애니메이션 중 kinematic 유지,
-            // 애니메이션 완료 후 Co_MergePopIn에서 직접 physics 활성화함
-            _cachedRb.isKinematic = true;
+            _cachedRb.isKinematic = !_isDropped; // 머지/드롭된 동물은 즉시 물리 적용
             _cachedRb.simulated = true;
             _cachedRb.gravityScale = _isDropped ? 1.25f : 0f;
             _cachedRb.velocity = Vector2.zero;
@@ -184,19 +182,9 @@ public class Animal : MonoBehaviour
     {
         _isSpawning = true;
 
-        // 애니메이션 중 콜라이더 비활성화: 스케일 팽창으로 주변 동물 밀어내는 현상 방지
-        if (_cachedCol != null) _cachedCol.enabled = false;
-
-        if (_cachedRb != null)
-        {
-            _cachedRb.isKinematic = true;
-            _cachedRb.velocity = Vector2.zero;
-            _cachedRb.angularVelocity = 0f;
-        }
-
-        // 스케일은 최대 1.0 * diameter 초과하지 않는 안전한 keyframe 사용
-        float[] keyframes = { 0f, 1.0f, 0.88f, 1.0f };
-        float[] times    = { 0f, 0.15f, 0.28f, 0.42f };
+        // 스케일은 시작 시 약간 작은 상태에서 원래 크기까지 탄력적으로 커짐
+        float[] keyframes = { 0.7f, 1.1f, 0.95f, 1.0f };
+        float[] times    = { 0f, 0.12f, 0.22f, 0.32f };
         float elapsed = 0f;
         float total = times[times.Length - 1];
 
@@ -212,17 +200,6 @@ public class Animal : MonoBehaviour
         }
         transform.localScale = Vector3.one * diameter;
 
-        // 애니메이션 완료 후 콜라이더 복원 및 물리 활성화
-        if (_cachedCol != null) _cachedCol.enabled = true;
-
-        if (_cachedRb != null)
-        {
-            _cachedRb.isKinematic = false;
-            _cachedRb.velocity = Vector2.zero;
-            _cachedRb.angularVelocity = 0f;
-            _cachedRb.gravityScale = 1.25f;
-            _cachedRb.WakeUp();
-        }
         _isSpawning = false;
     }
 
@@ -417,10 +394,10 @@ public class Animal : MonoBehaviour
             Rigidbody2D nRb = newAnimal.GetComponent<Rigidbody2D>();
             if (nRb != null)
             {
-                // velocity / angularVelocity 완전 초기화
-                nRb.velocity = Vector2.zero;
-                nRb.angularVelocity = 0f;
-                // 물리 위치도 강제 동기화 (Rigidbody가 이전 프레임 위치로 돌아가는 현상 방지)
+                // velocity 초기화 방지: 이전 두 객체의 평균 모멘텀을 일부 유지하거나
+                // 물리 엔진의 충돌 처리에 맡기기 위해 강제 초기화를 줄임.
+                // nRb.velocity = Vector2.zero; 가 있으면 새 객체가 공중에 멈출 수 있으므로 조심스럽게 사용.
+                // 위치 동기화도 Rigidbody.position을 사용.
                 nRb.position = spawnPos;
             }
         }
