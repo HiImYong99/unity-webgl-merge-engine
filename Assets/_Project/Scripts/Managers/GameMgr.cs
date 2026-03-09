@@ -38,6 +38,7 @@ public class GameMgr : MonoBehaviour
     [System.Serializable]
     private class SettingsModel
     {
+        public bool bgm;
         public bool sfx;
         public bool vibration;
     }
@@ -54,6 +55,7 @@ public class GameMgr : MonoBehaviour
     public string UserIdentifier { get; private set; }
     public bool IsLoggedIn { get; private set; }
 
+    public bool IsBgmEnabled { get; private set; } = true;
     public bool IsSfxEnabled { get; private set; } = true;
     public bool IsVibrationEnabled { get; private set; } = true;
 
@@ -66,6 +68,7 @@ public class GameMgr : MonoBehaviour
     private const float CONTAINER_MAX_X = 2.0f;   // 용기 우측 경계 (외벽 포함)
     private const float KILL_ZONE_Y = 3.5f;       // 킬존 Y: 컨테이너 상단 높이. 이 위에서 X 범위 밖으로 나가면 게임오버
     private float _gameOverDetectionCooldown = 0f; // 복구 후 즉시 게임오버 방지용
+    private List<Animal> _activeAnimals = new List<Animal>();
 
     private void Awake()
     {
@@ -106,19 +109,19 @@ public class GameMgr : MonoBehaviour
 
         // ===== Fallout 게임 오버 판정 =====
         // 용기 X 범위 밖으로 벗어난 동물이 킬존 아래로 떨어지면 게임오버
-        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
-
-        foreach (GameObject go in animals)
+        for (int i = _activeAnimals.Count - 1; i >= 0; i--)
         {
-            if (go == null) continue;
+            Animal animal = _activeAnimals[i];
+            if (animal == null)
+            {
+                _activeAnimals.RemoveAt(i);
+                continue;
+            }
 
-            Animal animal = go.GetComponent<Animal>();
-            if (animal == null) continue;
-            if (!animal.IsDropped) continue;
-            if (animal.IsMerged) continue;
+            if (!animal.IsDropped || animal.IsMerged) continue;
 
-            float x = go.transform.position.x;
-            float y = go.transform.position.y;
+            float x = animal.transform.position.x;
+            float y = animal.transform.position.y;
 
             // 용기 X 범위 밖으로 벗어난 동물이 킬존 위에 있으면 게임오버
             bool outsideX = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
@@ -130,6 +133,18 @@ public class GameMgr : MonoBehaviour
         }
     }
 
+    public void RegisterAnimal(Animal animal)
+    {
+        if (!_activeAnimals.Contains(animal))
+            _activeAnimals.Add(animal);
+    }
+
+    public void UnregisterAnimal(Animal animal)
+    {
+        if (_activeAnimals.Contains(animal))
+            _activeAnimals.Remove(animal);
+    }
+
     /// <summary>
     /// 점수 추가 및 새로운 디저트 발견 처리
     /// </summary>
@@ -139,17 +154,29 @@ public class GameMgr : MonoBehaviour
 
         Score += amount;
 
-
         if (UIMgr.Instance != null)
             UIMgr.Instance.UpdateScore(Score);
-
 
         if (Score > HighScore)
         {
             HighScore = Score;
             NotifyNewHighScore(Score);
         }
+
+        // 최적화: 매번 저장하지 않고 일정 간격(예: 10회 병합마다)으로 저장
+        // (머지 레벨이 0보다 크면 병합에 의한 호출임을 의미)
+        if (mergedLevel > 0)
+        {
+            _mergeCountForSave++;
+            if (_mergeCountForSave >= 10)
+            {
+                _mergeCountForSave = 0;
+                SaveCurrentBoardState();
+            }
+        }
     }
+
+    private int _mergeCountForSave = 0;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [System.Runtime.InteropServices.DllImport("__Internal")]
@@ -176,8 +203,11 @@ public class GameMgr : MonoBehaviour
         _gameOverDetectionCooldown = 1.0f; // 시작 직후 이전 프레임 잔여 동물로 인한 오판 방지
 
         // 기존 동물 정리
-        GameObject[] existingAnimals = GameObject.FindGameObjectsWithTag("Animal");
-        foreach (GameObject go in existingAnimals) Destroy(go);
+        for (int i = _activeAnimals.Count - 1; i >= 0; i--)
+        {
+            if (_activeAnimals[i] != null) Destroy(_activeAnimals[i].gameObject);
+        }
+        _activeAnimals.Clear();
 
         if (SpawnMgr.Instance != null) SpawnMgr.Instance.FullReset();
 
@@ -288,17 +318,18 @@ public class GameMgr : MonoBehaviour
 
     private void ClearFallingAnimals()
     {
-        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
-        foreach (GameObject go in animals)
+        for (int i = _activeAnimals.Count - 1; i >= 0; i--)
         {
-            if (go == null) continue;
-            float x = go.transform.position.x;
-            float y = go.transform.position.y;
+            Animal animal = _activeAnimals[i];
+            if (animal == null) continue;
+
+            float x = animal.transform.position.x;
+            float y = animal.transform.position.y;
             bool outside = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
 
             if (outside || y > KILL_ZONE_Y + 1.0f || y < -3.5f)
             {
-                Destroy(go);
+                Destroy(animal.gameObject);
             }
         }
     }
@@ -315,6 +346,7 @@ public class GameMgr : MonoBehaviour
 
                 if (_loadedSaveData.settings != null)
                 {
+                    IsBgmEnabled = _loadedSaveData.settings.bgm;
                     IsSfxEnabled = _loadedSaveData.settings.sfx;
                     IsVibrationEnabled = _loadedSaveData.settings.vibration;
                 }
@@ -323,6 +355,7 @@ public class GameMgr : MonoBehaviour
         }
 
         HighScore = 0;
+        IsBgmEnabled = true;
         IsSfxEnabled = true;
         IsVibrationEnabled = true;
     }
@@ -340,7 +373,8 @@ public class GameMgr : MonoBehaviour
 
         if (SoundMgr.Instance != null)
         {
-            SoundMgr.Instance.SetMute(!IsSfxEnabled);
+            SoundMgr.Instance.SetMute(!IsBgmEnabled);
+            SoundMgr.Instance.SetSfxMute(!IsSfxEnabled);
         }
 
         if (UIMgr.Instance != null)
@@ -372,16 +406,47 @@ public class GameMgr : MonoBehaviour
         }
     }
 
-    public void UpdateSettings(bool sfx, bool vibration)
+    public void UpdateSettings(bool bgm, bool sfx, bool vibration)
     {
+        IsBgmEnabled = bgm;
         IsSfxEnabled = sfx;
         IsVibrationEnabled = vibration;
         
         if (SoundMgr.Instance != null)
         {
+            SoundMgr.Instance.SetMute(!bgm);
             SoundMgr.Instance.SetSfxMute(!sfx);
         }
         SaveData();
+    }
+
+    // JS SendMessage 전용 (SoundMgr에서 이관하거나 중복 호출 방지)
+    public void SetBgmMuteFromJS(string mute)
+    {
+        bool enabled = (mute == "0");
+        if (IsBgmEnabled == enabled) return;
+        UpdateSettings(enabled, IsSfxEnabled, IsVibrationEnabled);
+    }
+
+    public void SetSfxMuteFromJS(string mute)
+    {
+        bool enabled = (mute == "0");
+        if (IsSfxEnabled == enabled) return;
+        UpdateSettings(IsBgmEnabled, enabled, IsVibrationEnabled);
+    }
+
+    public void RequestSaveFromJS()
+    {
+        // JS 브릿지에서 visibilitychange/pagehide 시 호출됨
+        if (CurrentState == GameState.Playing)
+        {
+            Debug.Log("[GameMgr] RequestSaveFromJS: Saving current board state...");
+            SaveCurrentBoardState();
+        }
+        else
+        {
+            SaveData();
+        }
     }
 
     public void SaveCurrentBoardState()
@@ -391,27 +456,25 @@ public class GameMgr : MonoBehaviour
         SaveDataModel data = new SaveDataModel
         {
             highScore = HighScore,
-            settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled },
+            settings = new SettingsModel { bgm = IsBgmEnabled, sfx = IsSfxEnabled, vibration = IsVibrationEnabled },
             hasSavedGame = true,
             currentScore = Score,
             activeAnimals = new List<AnimalSaveData>()
         };
 
-        GameObject[] animals = GameObject.FindGameObjectsWithTag("Animal");
-        foreach (GameObject go in animals)
+        foreach (Animal d in _activeAnimals)
         {
-            Animal d = go.GetComponent<Animal>();
             if (d != null && d.IsDropped && !d.IsMerged)
             {
-                Rigidbody2D rb = go.GetComponent<Rigidbody2D>();
+                Rigidbody2D rb = d.GetComponent<Rigidbody2D>();
                 Vector2 vel = rb != null ? rb.velocity : Vector2.zero;
 
                 data.activeAnimals.Add(new AnimalSaveData
                 {
                     level = d.Level,
-                    position = go.transform.position,
+                    position = d.transform.position,
                     velocity = vel,
-                    rotation = go.transform.eulerAngles.z
+                    rotation = d.transform.eulerAngles.z
                 });
             }
         }
@@ -432,7 +495,7 @@ public class GameMgr : MonoBehaviour
         SaveDataModel data = _loadedSaveData ?? new SaveDataModel();
 
         data.highScore = HighScore;
-        data.settings = new SettingsModel { sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
+        data.settings = new SettingsModel { bgm = IsBgmEnabled, sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
 
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString("GameData", json);

@@ -334,7 +334,7 @@ public class SpawnMgr : MonoBehaviour
 
         if (_currentAnimal != null)
         {
-            Destroy(_currentAnimal);
+            PoolMgr.Instance.ReturnAnimal(_currentAnimal.GetComponent<Animal>().Level, _currentAnimal);
             _currentAnimal = null;
         }
     }
@@ -345,7 +345,7 @@ public class SpawnMgr : MonoBehaviour
 
         if (_currentAnimal != null)
         {
-            Destroy(_currentAnimal);
+            PoolMgr.Instance.ReturnAnimal(_currentAnimal.GetComponent<Animal>().Level, _currentAnimal);
             _currentAnimal = null;
         }
 
@@ -377,7 +377,7 @@ public class SpawnMgr : MonoBehaviour
             prefab = _evolutionData.Levels[level - 1].Prefab;
 
         GameObject animalGo = (prefab != null)
-            ? Instantiate(prefab, spawnPos, Quaternion.identity)
+            ? PoolMgr.Instance.GetAnimal(prefab, level, spawnPos, Quaternion.identity)
             : CreatePlaceholderAnimal(level, spawnPos);
 
         _currentAnimal = animalGo;

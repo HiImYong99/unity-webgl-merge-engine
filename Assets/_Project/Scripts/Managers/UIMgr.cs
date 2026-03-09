@@ -36,7 +36,14 @@ public class UIMgr : MonoBehaviour
         else { Destroy(gameObject); return; }
 
         Co_FindMissingReferences();
+        
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // AppsInToss: HTML UI가 메인이므로 Unity UGUI 렌더링/터치 간섭 차단
+        if (gameObject.GetComponent<Canvas>() != null) gameObject.GetComponent<Canvas>().enabled = false;
         HideAllPanels();
+#else
+        HideAllPanels();
+#endif
     }
 
     /// <summary>모든 패널을 레이아웃에 맞게 숨김</summary>
@@ -230,9 +237,9 @@ public class UIMgr : MonoBehaviour
     {
         if (GameMgr.Instance != null && SoundMgr.Instance != null)
         {
+            // Unity UI의 단일 버튼은 BGM과 SFX를 동시에 토글하는 '마스터' 역할로 동작
             bool isNowEnabled = !GameMgr.Instance.IsSfxEnabled;
-            GameMgr.Instance.UpdateSettings(isNowEnabled, GameMgr.Instance.IsVibrationEnabled);
-            SoundMgr.Instance.SetMute(!isNowEnabled);
+            GameMgr.Instance.UpdateSettings(isNowEnabled, isNowEnabled, GameMgr.Instance.IsVibrationEnabled);
             UpdateSoundToggleUI();
         }
     }
@@ -248,6 +255,14 @@ public class UIMgr : MonoBehaviour
 
     private void OnAdReviveClicked()
     {
+        // 2배 결제(프리미엄) 유저라면 광고 없이 바로 부활
+        if (GameMgr.Instance != null && GameMgr.Instance.SpeedBoostActive)
+        {
+            if (BridgeMgr.Instance != null)
+                BridgeMgr.Instance.OnReviveSuccess();
+            return;
+        }
+
         if (BridgeMgr.Instance != null)
             BridgeMgr.Instance.RequestAd();
     }

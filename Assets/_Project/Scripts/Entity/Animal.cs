@@ -56,6 +56,18 @@ public class Animal : MonoBehaviour
         EnsureCircleCollider();
     }
 
+    private void OnEnable()
+    {
+        if (GameMgr.Instance != null)
+            GameMgr.Instance.RegisterAnimal(this);
+    }
+
+    private void OnDisable()
+    {
+        if (GameMgr.Instance != null)
+            GameMgr.Instance.UnregisterAnimal(this);
+    }
+
     private void Start()
     {
         if (PhysicsMgr.Instance != null && _cachedCol != null && _cachedCol.sharedMaterial == null)
@@ -86,6 +98,11 @@ public class Animal : MonoBehaviour
     {
         Level = level;
         _isDropped = dropped;
+        IsMerged = false;
+        _hasLanded = false;
+        _isSpawning = false;
+
+        if (_cachedCol != null) _cachedCol.enabled = true;
 
         int idx = Mathf.Clamp(level - 1, 0, LEVEL_DIAMETERS.Length - 1);
         float diameter = LEVEL_DIAMETERS[idx];
@@ -231,13 +248,18 @@ public class Animal : MonoBehaviour
             {
                 _hasLanded = true;
                 float speed = collision.relativeVelocity.magnitude;
+                float intensity = Mathf.Clamp01(speed / 8f);
+
                 if (speed > 1.0f)
                 {
                     int idx = Mathf.Clamp(Level - 1, 0, LEVEL_DIAMETERS.Length - 1);
-                    StartCoroutine(Co_LandingSquash(LEVEL_DIAMETERS[idx], Mathf.Clamp01(speed / 8f)));
+                    StartCoroutine(Co_LandingSquash(LEVEL_DIAMETERS[idx], intensity));
                 }
 
-                if (Level >= 4 && TossBridgeMgr.Instance != null) TossBridgeMgr.Instance.RequestVibrate("light");
+                if (SoundMgr.Instance != null)
+                    SoundMgr.Instance.PlayLand(intensity);
+
+                if (Level >= 4 && TossBridgeMgr.Instance != null && speed > 1.0f) TossBridgeMgr.Instance.RequestVibrate("light");
             }
         }
         CheckMerge(collision.gameObject);
@@ -292,6 +314,36 @@ public class Animal : MonoBehaviour
         transform.localScale = Vector3.one * diameter;
     }
 
+    /// <summary>
+    /// 머지 후 새 동물 생성 위치가 막혀있으면 위쪽 방향으로 빈 공간을 탐색한다.
+    /// 찾지 못하면 원래 위치 그대로 반환 (최후 폴백).
+    /// </summary>
+    private static Vector3 FindClearSpawnPosition(Vector3 basePos, float radius)
+    {
+        float checkRadius = radius * 0.85f;
+
+        const int MAX_TRIES = 8;
+        const float STEP_Y  = 0.25f;
+        const float MAX_Y   = 3.5f;
+
+        Vector3 candidate = basePos;
+        for (int i = 0; i < MAX_TRIES; i++)
+        {
+            // OverlapCircle로 해당 위치에 다른 콜라이더가 있는지 확인
+            Collider2D hit = Physics2D.OverlapCircle(candidate, checkRadius);
+            if (hit == null)
+                return candidate; // 빈 공간 발견
+
+            // 겹치면 위로 한 단계 올림
+            candidate.y = Mathf.Min(candidate.y + STEP_Y, MAX_Y - radius);
+            if (candidate.y >= MAX_Y - radius)
+                break; // 더 이상 올릴 수 없음
+        }
+
+        // 빈 공간을 찾지 못하면 원래 위치 반환 (물리 엔진이 밀어냄)
+        return basePos;
+    }
+
     private void Merge(Animal other)
     {
         if (GameMgr.Instance == null) return;
@@ -318,8 +370,9 @@ public class Animal : MonoBehaviour
             VFXMgr.Instance.SpawnScoreEffect(spawnPos, score, Level);
         }
 
-        if (CameraMgr.Instance != null)
-            CameraMgr.Instance.Shake(0.12f + (Level * 0.01f), 0.02f + (Level * 0.012f));
+        // 머지 시 카메라 진동(흔들림) 제거 요청
+        // if (CameraMgr.Instance != null)
+        //     CameraMgr.Instance.Shake(0.12f + (Level * 0.01f), 0.02f + (Level * 0.012f));
 
         if (SoundMgr.Instance != null) SoundMgr.Instance.PlayMerge(Level);
 
@@ -328,17 +381,11 @@ public class Animal : MonoBehaviour
         WebBridgeCallMerge(nextLevelForJS);
 #endif
 
-        if (TossBridgeMgr.Instance != null)
-        {
-            string haptic = Level >= 9 ? "heavy" : (Level >= 6 ? "medium" : "light");
-            TossBridgeMgr.Instance.RequestVibrate(haptic);
-        }
-
         if (Level >= MAX_LEVEL)
         {
             GameMgr.Instance.AddScore(score, MAX_LEVEL);
-            Destroy(gameObject);
-            Destroy(other.gameObject);
+            PoolMgr.Instance.ReturnAnimal(Level, gameObject);
+            PoolMgr.Instance.ReturnAnimal(other.Level, other.gameObject);
             return;
         }
 
@@ -348,15 +395,18 @@ public class Animal : MonoBehaviour
         // 컨테이너 내부로 클램핑 (벽 탈출 방지)
         int nextIdx = Mathf.Clamp(nextLevel - 1, 0, LEVEL_DIAMETERS.Length - 1);
         float nextRadius = LEVEL_DIAMETERS[nextIdx] * 0.5f;
-        float halfW = Mathf.Max(1.6f - nextRadius - 0.1f, 0.1f);
+        float halfW = Mathf.Max(1.6f - nextRadius - 0.05f, nextRadius);
         spawnPos.x = Mathf.Clamp(spawnPos.x, -halfW, halfW);
-        spawnPos.y = Mathf.Clamp(spawnPos.y, -1.5f + nextRadius + 0.05f, 3.5f - nextRadius);
+        spawnPos.y = Mathf.Clamp(spawnPos.y, -3.5f + nextRadius + 0.05f, 3.0f - nextRadius);
+
+        // 생성 위치에 공간이 없으면 위로 올려서 빈 공간 탐색
+        spawnPos = FindClearSpawnPosition(spawnPos, nextRadius);
 
         AnimalEvolutionData data = GameMgr.Instance.EvolutionData;
         GameObject nextPrefab = (data != null && nextLevel <= data.Levels.Length) ? data.Levels[nextLevel - 1].Prefab : null;
 
         GameObject newAnimal = (nextPrefab != null)
-            ? Instantiate(nextPrefab, spawnPos, Quaternion.identity)
+            ? PoolMgr.Instance.GetAnimal(nextPrefab, nextLevel, spawnPos, Quaternion.identity)
             : SpawnMgr.CreatePlaceholderForMerge(nextLevel, spawnPos);
 
         if (newAnimal != null)
@@ -375,7 +425,7 @@ public class Animal : MonoBehaviour
             }
         }
 
-        Destroy(gameObject);
-        Destroy(other.gameObject);
+        PoolMgr.Instance.ReturnAnimal(Level, gameObject);
+        PoolMgr.Instance.ReturnAnimal(other.Level, other.gameObject);
     }
 }

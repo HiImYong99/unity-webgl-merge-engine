@@ -16,78 +16,83 @@ MonoBehaviour:
   Levels:
   - Level: 1
     Name: 
-    NameKR: 병아리
-    FlavorText: 삐약삐약 귀여운 병아리에요!
+    NameKR: "\uBCD1\uC544\uB9AC"
+    FlavorText: "\uC090\uC57D\uC090\uC57D \uADC0\uC5EC\uC6B4 \uBCD1\uC544\uB9AC\uC5D0\uC694!"
     ScaleMultiplier: 1
     ScorePoint: 10
     Prefab: {fileID: 4208173620639405153, guid: 01e61d89630724c6f84f2dbb3b798aad, type: 3}
   - Level: 2
     Name: 
-    NameKR: 생쥐
-    FlavorText: 찍찍! 발빠른 생쥐가 나타났어요.
+    NameKR: "\uC0DD\uC950"
+    FlavorText: "\uCC0D\uCC0D! \uBC1C\uBE60\uB978 \uC0DD\uC950\uAC00 \uB098\uD0C0\uB0AC\uC5B4\uC694."
     ScaleMultiplier: 1.3
     ScorePoint: 20
     Prefab: {fileID: 5180809743165457921, guid: e58ffa5a353fe4b54a97f978521a99c1, type: 3}
   - Level: 3
     Name: 
-    NameKR: 고슴도치
-    FlavorText: 가시가 뾰족뾰족하지만 마음은 따뜻해요.
+    NameKR: "\uACE0\uC2B4\uB3C4\uCE58"
+    FlavorText: "\uAC00\uC2DC\uAC00 \uBFB0\uC871\uBFB0\uC871\uD558\uC9C0\uB9CC \uB9C8\uC74C\uC740
+      \uB530\uB73B\uD574\uC694."
     ScaleMultiplier: 1.6
     ScorePoint: 30
     Prefab: {fileID: 1667914905547828313, guid: 5e28c1535a2e049e9a3218169d32c592, type: 3}
   - Level: 4
     Name: 
-    NameKR: 토끼
-    FlavorText: 깡충깡충! 귀가 긴 토끼에요.
+    NameKR: "\uD1A0\uB07C"
+    FlavorText: "\uAE61\uCDA9\uAE61\uCDA9! \uADC0\uAC00 \uAE34 \uD1A0\uB07C\uC5D0\uC694."
     ScaleMultiplier: 1.9000001
     ScorePoint: 40
     Prefab: {fileID: 7941237071208183451, guid: 026f768e2fa044c5a86283bcadbaf102, type: 3}
   - Level: 5
     Name: 
-    NameKR: 고양이
-    FlavorText: 야옹~ 도도한 고양이가 찾아왔어요.
+    NameKR: "\uACE0\uC591\uC774"
+    FlavorText: "\uC57C\uC639~ \uB3C4\uB3C4\uD55C \uACE0\uC591\uC774\uAC00 \uCC3E\uC544\uC654\uC5B4\uC694."
     ScaleMultiplier: 2.2
     ScorePoint: 50
     Prefab: {fileID: 8391955642098230756, guid: 83ea932bbb77746d383021364a998506, type: 3}
   - Level: 6
     Name: 
-    NameKR: 시바견
-    FlavorText: 멍멍! 충성심 강한 시바견이에요.
+    NameKR: "\uC2DC\uBC14\uACAC"
+    FlavorText: "\uBA4D\uBA4D! \uCDA9\uC131\uC2EC \uAC15\uD55C \uC2DC\uBC14\uACAC\uC774\uC5D0\uC694."
     ScaleMultiplier: 2.5
     ScorePoint: 60
     Prefab: {fileID: 474633059665965488, guid: 69f543b2074164f7e8e5b250705c9144, type: 3}
   - Level: 7
     Name: 
-    NameKR: 양
-    FlavorText: 메에~ 포근포근한 털을 가진 양이에요.
+    NameKR: "\uC591"
+    FlavorText: "\uBA54\uC5D0~ \uD3EC\uADFC\uD3EC\uADFC\uD55C \uD138\uC744 \uAC00\uC9C4
+      \uC591\uC774\uC5D0\uC694."
     ScaleMultiplier: 2.8000002
     ScorePoint: 70
     Prefab: {fileID: 4759478002786523108, guid: 9ae862a47d5af479b962698f22ca0f17, type: 3}
   - Level: 8
     Name: 
-    NameKR: 원숭이
-    FlavorText: 우끼끼! 나무 타기를 좋아하는 원숭이에요.
+    NameKR: "\uC6D0\uC22D\uC774"
+    FlavorText: "\uC6B0\uB07C\uB07C! \uB098\uBB34 \uD0C0\uAE30\uB97C \uC88B\uC544\uD558\uB294
+      \uC6D0\uC22D\uC774\uC5D0\uC694."
     ScaleMultiplier: 3.1000001
     ScorePoint: 80
     Prefab: {fileID: 1307387603840650769, guid: 75f2387e2594d478f8138bf214d64888, type: 3}
   - Level: 9
     Name: 
-    NameKR: 돼지
-    FlavorText: 꿀꿀! 먹는 걸 좋아하는 귀여운 돼지에요.
+    NameKR: "\uB3FC\uC9C0"
+    FlavorText: "\uAFC0\uAFC0! \uBA39\uB294 \uAC78 \uC88B\uC544\uD558\uB294 \uADC0\uC5EC\uC6B4
+      \uB3FC\uC9C0\uC5D0\uC694."
     ScaleMultiplier: 3.4
     ScorePoint: 90
     Prefab: {fileID: 1211327985288275829, guid: 5227ad7c73cc0441b8e716911de1d268, type: 3}
   - Level: 10
     Name: 
-    NameKR: 팬더
-    FlavorText: 대나무를 좋아하는 느긋한 팬더에요.
+    NameKR: "\uD32C\uB354"
+    FlavorText: "\uB300\uB098\uBB34\uB97C \uC88B\uC544\uD558\uB294 \uB290\uAE0B\uD55C
+      \uD32C\uB354\uC5D0\uC694."
     ScaleMultiplier: 3.7
     ScorePoint: 100
     Prefab: {fileID: 8445856981204904254, guid: d3e03ef1b5b07433485c2beffca83549, type: 3}
   - Level: 11
     Name: 
-    NameKR: 사자
-    FlavorText: 어흥! 정글의 왕 사자가 등장했어요!
+    NameKR: "\uC0AC\uC790"
+    FlavorText: "\uC5B4\uD765! \uC815\uAE00\uC758 \uC655 \uC0AC\uC790\uAC00 \uB4F1\uC7A5\uD588\uC5B4\uC694!"
     ScaleMultiplier: 4
     ScorePoint: 110
     Prefab: {fileID: 7965796965674808762, guid: 53c906b95c25c46cebdfa70d1d5caad2, type: 3}

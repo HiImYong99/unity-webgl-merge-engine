@@ -20,7 +20,8 @@ public class SoundMgr : MonoBehaviour
     public AudioClip GameOverClip;
     public AudioClip ScoreTickClip;
 
-    private bool _isMuted = false;
+
+    private bool _isBgmMuted = false;
     private bool _isSfxMuted = false;
 
     private void Awake()
@@ -44,6 +45,7 @@ public class SoundMgr : MonoBehaviour
         if (DropClip == null) DropClip = Resources.Load<AudioClip>("Audio/SFX/DropSFX");
         if (GameOverClip == null) GameOverClip = Resources.Load<AudioClip>("Audio/SFX/GameOverSFX");
         if (ScoreTickClip == null) ScoreTickClip = Resources.Load<AudioClip>("Audio/SFX/ScoreSFX");
+
         
         if (MergeClips == null || MergeClips.Length == 0)
         {
@@ -64,13 +66,13 @@ public class SoundMgr : MonoBehaviour
         {
             BGMSource.clip = BgmClip;
             BGMSource.loop = true;
-            BGMSource.Play();
+            BGMSource.Play(); // [Task 5] 자동 재생 제거했으나, 유저 요청에 따라 로딩완료 직후 재생되도록 복구
         }
     }
 
     public void SetMute(bool mute)
     {
-        _isMuted = mute;
+        _isBgmMuted = mute;
         if (BGMSource != null) BGMSource.mute = mute;
     }
 
@@ -83,12 +85,18 @@ public class SoundMgr : MonoBehaviour
     // JS SendMessage 전용 (문자열 인자)
     public void SetBgmMuteFromJS(string mute)
     {
-        SetMute(mute == "1");
+        if (GameMgr.Instance != null)
+            GameMgr.Instance.SetBgmMuteFromJS(mute);
+        else
+            SetMute(mute == "1");
     }
 
     public void SetSfxMuteFromJS(string mute)
     {
-        SetSfxMute(mute == "1");
+        if (GameMgr.Instance != null)
+            GameMgr.Instance.SetSfxMuteFromJS(mute);
+        else
+            SetSfxMute(mute == "1");
     }
 
     public void ForcePlayBGM()
@@ -102,7 +110,7 @@ public class SoundMgr : MonoBehaviour
     /// <summary>병합 효과음 재생</summary>
     public void PlayMerge(int level)
     {
-        if (_isMuted || _isSfxMuted) return;
+        if (_isSfxMuted) return;
 
         AudioClip clip = null;
         if (MergeClips != null && MergeClips.Length > 0)
@@ -115,22 +123,32 @@ public class SoundMgr : MonoBehaviour
             SFXSource.PlayOneShot(clip, 0.8f);
     }
 
-    /// <summary>낙하 효과음 재생</summary>
+    /// <summary>드롭(투하) 효과음 재생</summary>
     public void PlayDrop()
     {
         // 사용하지 않음 (요청에 따라 비활성화)
     }
 
+    /// <summary>동물이 바닥/다른 동물에 착지할 때 효과음 재생 (DropClip 재사용)</summary>
+    public void PlayLand(float intensity)
+    {
+        if (_isSfxMuted) return;
+        if (DropClip == null) return;
+        // intensity: 0~1, 충돌 세기에 따라 볼륨 조절 (착지는 드롭보다 조용하게)
+        float volume = Mathf.Lerp(0.1f, 0.45f, intensity);
+        SFXSource.PlayOneShot(DropClip, volume);
+    }
+
     public void PlayScoreTick()
     {
-        if (_isMuted || _isSfxMuted) return;
+        if (_isSfxMuted) return;
         if (ScoreTickClip != null)
             SFXSource.PlayOneShot(ScoreTickClip, 0.4f);
     }
 
     public void PlayGameOver()
     {
-        if (_isMuted || _isSfxMuted) return;
+        if (_isSfxMuted) return;
         if (GameOverClip != null)
             SFXSource.PlayOneShot(GameOverClip, 1.0f);
     }

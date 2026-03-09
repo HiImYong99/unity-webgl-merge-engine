@@ -129,7 +129,6 @@ mergeInto(LibraryManager.library, {
   ShareResult: function(score, level, imageBase64) {
     var scoreStr = typeof score === "number" ? score.toString() : UTF8ToString(score);
     var levelStr = typeof level === "number" ? level.toString() : UTF8ToString(level);
-    var imgStr = typeof imageBase64 === "string" ? imageBase64 : UTF8ToString(imageBase64);
 
     console.log("[WebBridge] ShareResult: Score=" + scoreStr + ", Level=" + levelStr);
 
@@ -138,23 +137,6 @@ mergeInto(LibraryManager.library, {
             title: '애니멀 팝!',
             text: '애니멀 팝에서 ' + scoreStr + '점을 달성했어요! 🐾',
         };
-
-        if (imgStr && imgStr.startsWith('data:image/')) {
-            try {
-                var arr = imgStr.split(',');
-                var mime = arr[0].match(/:(.*?);/)[1];
-                var bstr = atob(arr[1]);
-                var n = bstr.length;
-                var u8arr = new Uint8Array(n);
-                while (n--) { u8arr[n] = bstr.charCodeAt(n); }
-                var file = new File([u8arr], 'result.png', { type: mime });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    shareData.files = [file];
-                }
-            } catch (e) {
-                console.error('[WebBridge] base64 변환 실패', e);
-            }
-        }
 
         navigator.share(shareData).catch(function(err) { console.error(err); });
     }

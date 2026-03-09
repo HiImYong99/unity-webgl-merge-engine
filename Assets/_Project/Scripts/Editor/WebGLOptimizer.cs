@@ -33,9 +33,16 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         EditorUserBuildSettings.webGLBuildSubtarget = WebGLTextureSubtarget.ASTC;
 
         // ─── WebGL 메모리 최적화 ───────────────────────────────────
-        // 앱인토스는 메모리 제약이 있으므로 힙 크기 제한
-        // 애니멀 팝 같은 캐주얼 게임은 256MB 이면 충분
-        PlayerSettings.WebGL.memorySize = 256;
+        // Unity 2022.3+: 고정 메모리(memorySize) 대신 WebGL Memory Growth 활성화 권장
+        // OOM(Out of Memory) 방지를 위해 필요에 따라 힙 메모리를 자동 확장함.
+        // 초기 메모리는 128~256MB 정도로 시작하되, 성장을 허용하여 크래시 방지.
+        // [참고] WebGL2.0 + ASTC 환경에서는 메모리 효율이 높지만 일부 구형 PC 브라우저에서 호환성 주의
+        
+        // PlayerSettings.WebGL.memorySize = 256; // [LEGACY] 제거
+        // 2022.1+ 에서 memorySize는 deprecated 되었을 수 있으며, initialMemorySize를 사용함.
+#if UNITY_2021_1_OR_NEWER
+        // PlayerSettings.WebGL.initialMemorySize = 256; 
+#endif
 
         // ─── 기타 성능 설정 ────────────────────────────────────────
         // 예외 처리 최소화 (성능 향상)
@@ -92,7 +99,7 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         PlayerSettings.WebGL.decompressionFallback = true;
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
         EditorUserBuildSettings.webGLBuildSubtarget = WebGLTextureSubtarget.ASTC;
-        PlayerSettings.WebGL.memorySize = 256;
+        // PlayerSettings.WebGL.memorySize = 256; // 제거
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.Minimal);
         SetAnimalPopTemplate();

@@ -288,7 +288,7 @@
         /* 플레이 타임 박스 (하단 중앙으로 이동) */
         .hud-timer-box {
             position: fixed;
-            bottom: calc(var(--safe-bottom) + 110px);
+            bottom: calc(var(--safe-bottom) + 20px);
             left: 50%;
             transform: translate(-50%, 12px);
             z-index: 155;
@@ -450,7 +450,7 @@
            설정 버튼 (우하단)
         ════════════════════════════════════════════════ */
         #settings-fab {
-            position: fixed; bottom: calc(var(--safe-bottom) + 110px); right: 20px;
+            position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
             z-index: 155;
             width: 48px; height: 48px; border-radius: 50%;
             background: rgba(255,255,255,0.96);
@@ -469,7 +469,7 @@
         ════════════════════════════════════════════════ */
         #dex-bar {
             position: fixed;
-            bottom: calc(var(--safe-bottom) + 170px);
+            bottom: calc(var(--safe-bottom) + 80px);
             left: 50%; transform: translateX(-50%) translateY(8px);
             z-index: 50;
             background: rgba(255,255,255,0.96);
@@ -533,7 +533,7 @@
         #dex-tooltip.show { opacity: 1; transform: translateY(0); }
 
         @media (max-width: 480px) {
-            #dex-bar { bottom: calc(var(--safe-bottom) + 170px); padding: 6px 8px; gap: 4px; }
+            #dex-bar { bottom: calc(var(--safe-bottom) + 80px); padding: 6px 8px; gap: 4px; }
             .dex-slot { width: 24px; height: 24px; border-radius: 8px; }
             .dex-slot img { width: 20px; height: 20px; }
         }
@@ -963,8 +963,32 @@
                 img.src = 'sprites/Animal_' + lv + '.png';
                 img.alt = 'Lv.' + lv;
                 slot.appendChild(img);
-                slot.addEventListener('click',    function(e) { e.stopPropagation(); showDexTooltip(slot, lv); });
-                slot.addEventListener('touchend', function(e) { e.stopPropagation(); e.preventDefault(); showDexTooltip(slot, lv); }, { passive: false });
+
+                var startX, startY;
+                slot.addEventListener('touchstart', function(e) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                slot.addEventListener('touchend', function(e) {
+                    var endX = e.changedTouches[0].clientX;
+                    var endY = e.changedTouches[0].clientY;
+                    var dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    
+                    // 드래그 중(이동 거리가 10px 이상)이면 툴팁 표시 안 함
+                    if (dist < 10) {
+                        e.stopPropagation();
+                        showDexTooltip(slot, lv);
+                    }
+                }, { passive: false });
+
+                slot.addEventListener('click', function(e) {
+                    // 터치 이벤트가 지원되지 않는 환경(PC 등)을 위한 예외 처리
+                    if (window.ontouchstart === undefined) {
+                        e.stopPropagation();
+                        showDexTooltip(slot, lv);
+                    }
+                });
                 dexSlots.appendChild(slot);
             })(i);
         }
@@ -1194,6 +1218,7 @@
         setTimeout(function() { showHUD(true); }, 200);
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
+        unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
     }
 
     // ════════════════════════════════════════════════════
@@ -1202,7 +1227,10 @@
     function onReviveClicked() {
         if (!unityInstance) return;
         resumeWebGLAudio();
-        if (!_lastAdWatched) {
+        // 2배 결제(프리미엄) 유저라면 광고 없이 바로 부활
+        if (_premiumSpeedOwned) {
+            unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
+        } else if (!_lastAdWatched) {
             unityInstance.SendMessage('BridgeManager', 'RequestAd');
         } else if (_lastSpareLives > 0) {
             unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
@@ -1448,9 +1476,14 @@
             var canRevive = !_lastAdWatched || (_lastSpareLives > 0 && _lastSpareLives < maxRevives);
             if (canRevive) {
                 reviveBtn.style.display = 'block';
-                reviveBtn.textContent = _lastAdWatched
-                    ? '이어서 도전하기 (' + _lastSpareLives + '회 남음)'
-                    : '광고 보고 이어서 도전하기';
+                // 프리미엄 유저라면 광고 안내 생략
+                if (_premiumSpeedOwned) {
+                    reviveBtn.textContent = '부활해서 이어서 하기';
+                } else {
+                    reviveBtn.textContent = _lastAdWatched
+                        ? '이어서 도전하기 (' + _lastSpareLives + '회 남음)'
+                        : '광고 보고 이어서 도전하기';
+                }
             } else {
                 reviveBtn.style.display = 'none';
             }
@@ -1476,6 +1509,11 @@
         showHUD(false);
         goOverlay.classList.remove('visible');
         showLanding();
+
+        // ── 로딩완료 시 바로 배경음악 재생 ──
+        if (unityInstance && typeof bgmMuted !== 'undefined' && !bgmMuted) {
+            unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+        }
     };
 
 
@@ -1574,6 +1612,21 @@
     // (HUD가 표시된 후 버튼이 DOM에 있을 때 적용됨)
     document.addEventListener('DOMContentLoaded', function() {
         if (_premiumSpeedOwned) { _premiumSpeedOn = false; _refreshSpeedBtn(); }
+    });
+    // ════════════════════════════════════════════════════
+    //  데이터 영속화 최적화 (Task 3)
+    // ════════════════════════════════════════════════════
+    window.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden' && unityInstance) {
+            console.log("[JS] Visibility changed to hidden. Requesting save...");
+            unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+        }
+    });
+    window.addEventListener('pagehide', function() {
+        if (unityInstance) {
+            console.log("[JS] Page hide. Requesting save...");
+            unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+        }
     });
     </script>
 </body>
