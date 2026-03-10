@@ -1183,14 +1183,14 @@
     var _reviveAdUnregister = null;
 
     window._preloadReviveAd = function() {
-        if (typeof window.loadFullScreenAd !== 'function') return;
-        if (!window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) return;
+        if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') return;
+        if (!window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) return;
 
         // 이전 리스너 정리
         if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
         _reviveAdLoaded = false;
 
-        _reviveAdUnregister = window.loadFullScreenAd({
+        _reviveAdUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
             options: { adGroupId: REVIVE_AD_ID },
             onEvent: function(event) {
                 if (event.type === 'loaded') {

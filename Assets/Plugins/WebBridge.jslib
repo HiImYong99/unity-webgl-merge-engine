@@ -28,8 +28,8 @@ mergeInto(LibraryManager.library, {
     var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
 
     // AppsInToss SDK 미지원 환경 (브라우저/에디터) 폴백
-    if (typeof window.loadFullScreenAd !== 'function' ||
-        !window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) {
+    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function' ||
+        !window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) {
       console.warn('[WebBridge] loadFullScreenAd 미지원 환경 — 즉시 성공 시뮬레이션');
       setTimeout(function() {
         SendMessage('BridgeManager', 'OnReviveSuccess');
@@ -37,14 +37,14 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    var loadUnregister = window.loadFullScreenAd({
+    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
       options: { adGroupId: REVIVE_AD_ID },
       onEvent: function(event) {
         if (event.type !== 'loaded') return;
         console.log('[WebBridge] 부활 광고 loaded → show');
         loadUnregister && loadUnregister();
 
-        var showUnregister = window.showFullScreenAd({
+        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
           options: { adGroupId: REVIVE_AD_ID },
           onEvent: function(ev) {
             if (ev.type === 'userEarnedReward') {
@@ -79,8 +79,8 @@ mergeInto(LibraryManager.library, {
     var SPEED_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
 
     // AppsInToss SDK 미지원 환경 (브라우저/에디터) 폴백
-    if (typeof window.loadFullScreenAd !== 'function' ||
-        !window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) {
+    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function' ||
+        !window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) {
       console.warn('[WebBridge] loadFullScreenAd 미지원 환경 — 즉시 성공 시뮬레이션');
       setTimeout(function() {
         SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
@@ -88,14 +88,14 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    var loadUnregister = window.loadFullScreenAd({
+    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
       options: { adGroupId: SPEED_AD_ID },
       onEvent: function(event) {
         if (event.type !== 'loaded') return;
         console.log('[WebBridge] 2배속 광고 loaded → show');
         loadUnregister && loadUnregister();
 
-        var showUnregister = window.showFullScreenAd({
+        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
           options: { adGroupId: SPEED_AD_ID },
           onEvent: function(ev) {
             if (ev.type === 'userEarnedReward') {
