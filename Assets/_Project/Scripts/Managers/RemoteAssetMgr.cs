@@ -69,71 +69,24 @@ public class RemoteAssetMgr : MonoBehaviour
     /// </summary>
     private Sprite CreateTightSprite(int level, Texture2D tex)
     {
+        // 강제로 Bilinear 필터링을 설정하여 도트(계단 현상)를 방지하고 부드럽게 렌더링
+        tex.filterMode = FilterMode.Bilinear;
+        // 외곽선에 까만 줄이 생기지 않도록 Clamp 보장
+        tex.wrapMode = TextureWrapMode.Clamp;
+
         int W = tex.width, H = tex.height;
-        float ppu = 100f;
+        
+        // 여백(약 12%)을 고려하여 PPU를 설정, Collider 크기와 Visual 크기를 맞춤
+        float ppu = Mathf.Max(W, H) * 0.88f; 
         Vector2 pivot = new Vector2(0.5f, 0.5f);
-
-        try
-        {
-            Color32[] pixels = tex.GetPixels32();
-            
-            // 1) 픽셀 질량 중심(Center of Mass) 계산
-            long sumX = 0, sumY = 0;
-            int count = 0;
-            byte alphaThresh = 150;
-
-            for (int y = 0; y < H; y++)
-            {
-                for (int x = 0; x < W; x++)
-                {
-                    if (pixels[y * W + x].a > alphaThresh)
-                    {
-                        sumX += x;
-                        sumY += y;
-                        count++;
-                    }
-                }
-            }
-
-            if (count > 0)
-            {
-                int cx = (int)(sumX / count);
-                int cy = (int)(sumY / count);
-
-                // 2) 질량 중심에서 십자(Cross) 스캔하여 본체 반지름 도출
-                float rRight = 0, rLeft = 0, rUp = 0, rDown = 0;
-
-                for (int x = cx; x < W; x++) { if (pixels[cy * W + x].a < alphaThresh) { rRight = x - cx; break; } if (x == W - 1) rRight = x - cx; }
-                for (int x = cx; x >= 0; x--) { if (pixels[cy * W + x].a < alphaThresh) { rLeft = cx - x; break; } if (x == 0) rLeft = cx; }
-                for (int y = cy; y < H; y++) { if (pixels[y * W + cx].a < alphaThresh) { rUp = y - cy; break; } if (y == H - 1) rUp = y - cy; }
-                for (int y = cy; y >= 0; y--) { if (pixels[y * W + cx].a < alphaThresh) { rDown = cy - y; break; } if (y == 0) rDown = cy; }
-
-                float avgR = (rRight + rLeft + rUp + rDown) / 4f;
-
-                // 3) 피벗 및 PPU 설정
-                // 본체의 지름(avgR * 2)을 PPU로 설정 → 본체의 시각적 크기가 정확히 1.0 unit이 됨
-                ppu = avgR * 2f;
-                pivot = new Vector2((float)cx / W, (float)cy / H);
-
-                Debug.Log($"[RemoteAssetMgr] Lv{level}: CoM=({cx},{cy}), R={avgR:F1}, PPU={ppu:F1}, Pivot=({pivot.x:F3},{pivot.y:F3})");
-            }
-            else
-            {
-                ppu = Mathf.Max(W, H);
-                Debug.LogWarning($"[RemoteAssetMgr] Lv{level}: 픽셀 감지 실패. 기본값 사용");
-            }
-        }
-        catch (System.Exception e) 
-        { 
-            Debug.LogError($"[RemoteAssetMgr] Lv{level}: GetPixels32 FAILED - {e.Message}");
-            ppu = Mathf.Max(W, H);
-        }
 
         Sprite sprite = Sprite.Create(
             tex,
             new Rect(0, 0, W, H),
             pivot,
-            ppu
+            ppu,
+            0,
+            SpriteMeshType.FullRect // 외곽 메시 최적화 및 렌더 깨짐 방지
         );
         _spriteCache[level] = sprite;
         return sprite;
@@ -151,11 +104,22 @@ public class RemoteAssetMgr : MonoBehaviour
             if (uwr.result == UnityWebRequest.Result.Success)
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
-                callback?.Invoke(CreateTightSprite(level, texture));
+                if (texture != null)
+                {
+                    callback?.Invoke(CreateTightSprite(level, texture));
+                    yield break;
+                }
+            }
+            
+            Debug.LogError($"[RemoteAssetMgr] CDN Download failed for level {level}: {uwr.error}");
+            // Fallback to local Resources to mitigate CORS issues
+            Texture2D localTex = Resources.Load<Texture2D>($"Animals/Animal_{level}");
+            if (localTex != null)
+            {
+                callback?.Invoke(CreateTightSprite(level, localTex));
             }
             else
             {
-                Debug.LogError($"[RemoteAssetMgr] CDN Download failed for level {level}: {uwr.error}");
                 callback?.Invoke(null);
             }
         }

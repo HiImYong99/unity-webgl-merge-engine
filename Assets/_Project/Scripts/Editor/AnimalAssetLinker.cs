@@ -7,7 +7,10 @@ public class AnimalAssetLinker : EditorWindow
     private const string SPRITE_PATH = "Assets/_Project/Resources/Animals/";
     private const string PREFAB_PATH = "Assets/_Project/Prefabs/Animals/";
     private const string DATA_PATH = "Assets/_Project/Data/AnimalEvolutionData.asset";
-    private const string SPRITES_WEBGL_PATH = "Assets/WebGLTemplates/AnimalPop/sprites/";
+    private readonly static string[] WEBGL_TEMPLATE_PATHS = {
+        "Assets/WebGLTemplates/AnimalPop/TemplateData/sprites/",
+        "Assets/WebGLTemplates/AITTemplate/TemplateData/sprites/" // AIT Build Package 지원
+    };
 
     // [MenuItem("AnimalPop/Link Individual Sprites", false, 11)] // Moved to IntegratedMenu
     public static void LinkIndividualSprites()
@@ -52,9 +55,12 @@ public class AnimalAssetLinker : EditorWindow
             }
 
             // 2. sprites/ WebGL 폴더 동기화
-            if (Directory.Exists(SPRITES_WEBGL_PATH))
+            foreach (var templatePath in WEBGL_TEMPLATE_PATHS)
             {
-                string destPath = SPRITES_WEBGL_PATH + spriteName + ".png";
+                if (!Directory.Exists(templatePath))
+                    Directory.CreateDirectory(templatePath);
+                
+                string destPath = templatePath + spriteName + ".png";
                 File.Copy(fullSpritePath, destPath, overwrite: true);
             }
 

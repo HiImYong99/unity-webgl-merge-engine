@@ -17,7 +17,10 @@ public class FloatingScore : MonoBehaviour
         if (_cachedFont == null)
             _cachedFont = Resources.Load<Font>("Fonts/LilitaOne-Regular");
 
-        _textMesh = gameObject.AddComponent<TextMesh>();
+        _textMesh = GetComponent<TextMesh>();
+        if (_textMesh == null)
+            _textMesh = gameObject.AddComponent<TextMesh>();
+
         _textMesh.text = "+" + score.ToString("N0");
         _textMesh.characterSize = 0.07f;
         _textMesh.fontSize = 36;
@@ -76,6 +79,13 @@ public class FloatingScore : MonoBehaviour
             yield return null;
         }
 
-        Destroy(gameObject);
+        if (PoolMgr.Instance != null)
+        {
+            PoolMgr.Instance.ReturnScoreText(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 }

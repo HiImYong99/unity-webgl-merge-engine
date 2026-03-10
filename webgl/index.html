@@ -998,7 +998,7 @@
                 slot.className = 'dex-slot';
                 slot.id = 'dex-slot-' + lv;
                 var img = document.createElement('img');
-                img.src = 'sprites/Animal_' + lv + '.png';
+                img.src = 'TemplateData/sprites/Animal_' + lv + '.png';
                 img.alt = 'Lv.' + lv;
                 slot.appendChild(img);
 
@@ -1133,9 +1133,9 @@
     //  Unity 초기화
     // ════════════════════════════════════════════════════
     var config = {
-        dataUrl:            "Build/a8548f2efea869ca0d090f8c6292b614.data.unityweb",
-        frameworkUrl:       "Build/29ce6e13582f6140c7596293266553b7.framework.js.unityweb",
-        codeUrl:            "Build/52e6e2d78f964d108a31463864e92a2f.wasm.unityweb",
+        dataUrl:            "Build/fe63ce360ef3a53c5c5c91e3d2ef4056.data.unityweb",
+        frameworkUrl:       "Build/c2ec6b07c4ab2c4789bfb48190795af3.framework.js.unityweb",
+        codeUrl:            "Build/7928caa7a0e6ab526d3f0cfcfaa883e7.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName:        "DefaultCompany",
         productName:        "animal-pop",
@@ -1474,7 +1474,7 @@
     // 다음 동물 업데이트
     window.updateNextFromUnity = function(level) {
         if (nextImg) {
-            nextImg.src = 'sprites/Animal_' + level + '.png';
+            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.png';
             nextImg.classList.remove('pop');
             void nextImg.offsetWidth;
             nextImg.classList.add('pop');

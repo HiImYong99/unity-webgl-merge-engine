@@ -66,7 +66,15 @@ public class GameMgr : MonoBehaviour
     // ===== Fallout 시스템 (Kill Zone) =====
     private const float CONTAINER_MIN_X = -2.0f;  // 용기 좌측 경계 (외벽 포함)
     private const float CONTAINER_MAX_X = 2.0f;   // 용기 우측 경계 (외벽 포함)
-    private const float KILL_ZONE_Y = 3.5f;       // 킬존 Y: 컨테이너 상단 높이. 이 위에서 X 범위 밖으로 나가면 게임오버
+    private float GetKillZoneY()
+    {
+        if (Camera.main != null)
+        {
+            // 사용자의 디바이스 화면 비율/안전 영역에 따라 변경되는 카메라의 상단을 게임오버 라인 기준으로 잡음
+            return Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 1f, 0f)).y - 0.5f;
+        }
+        return 3.5f;
+    }
     private float _gameOverDetectionCooldown = 0f; // 복구 후 즉시 게임오버 방지용
     private List<Animal> _activeAnimals = new List<Animal>();
 
@@ -123,9 +131,9 @@ public class GameMgr : MonoBehaviour
             float x = animal.transform.position.x;
             float y = animal.transform.position.y;
 
-            // 용기 X 범위 밖으로 벗어난 동물이 킬존 위에 있으면 게임오버
+            // 용기 X 범위 밖으로 벗어난 동물은 무조건 게임오버 (떨어져내리는 중이어도 판정되도록 강제)
             bool outsideX = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
-            if (outsideX && y > KILL_ZONE_Y)
+            if (outsideX)
             {
                 TriggerGameOver();
                 return;
@@ -195,7 +203,8 @@ public class GameMgr : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Playing;
-        Time.timeScale = 1.0f; // 추가: 게임 시작 시 속도 초기화
+        Time.timeScale = 1.0f; // 게임 시작 시 속도 초기화
+        Time.fixedDeltaTime = 0.02f; // 물리 엔진 업데이트 주기 동기화 초기화
         HasRevived = false;
         AdWatched = false;
         SpareLives = 0;
@@ -272,6 +281,7 @@ public class GameMgr : MonoBehaviour
 
         SpeedBoostActive = true;
         Time.timeScale = 2.0f;
+        Time.fixedDeltaTime = 0.02f * Time.timeScale; // 충돌 터널링을 방지하기 위해 갱신 주기 비례 동기화
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         try { NotifySpeedBoostActivatedJS(); } catch { }
@@ -286,6 +296,7 @@ public class GameMgr : MonoBehaviour
     {
         SpeedBoostActive = (multiplier > 1f);
         Time.timeScale = multiplier;
+        Time.fixedDeltaTime = 0.02f * multiplier;
     }
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -326,8 +337,9 @@ public class GameMgr : MonoBehaviour
             float x = animal.transform.position.x;
             float y = animal.transform.position.y;
             bool outside = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
+            float killZone = GetKillZoneY();
 
-            if (outside || y > KILL_ZONE_Y + 1.0f || y < -3.5f)
+            if (outside || y > killZone + 1.0f || y < -3.5f)
             {
                 Destroy(animal.gameObject);
             }

@@ -122,7 +122,12 @@ public class Animal : MonoBehaviour
 
             _cachedRb.collisionDetectionMode = _isDropped ?
                 CollisionDetectionMode2D.Continuous : CollisionDetectionMode2D.Discrete;
+            
+            // WebGL 환경에서 동그란 동물들이 계속 부비적거리는(Jittering) 현상 방지용 최적화 설정
             _cachedRb.interpolation = _isDropped ? RigidbodyInterpolation2D.Interpolate : RigidbodyInterpolation2D.None;
+            _cachedRb.drag = _isDropped ? 0.35f : 0f;          // 선형 감쇠 (미끄러짐 억제)
+            _cachedRb.angularDrag = _isDropped ? 2.5f : 0f;    // 회전 감쇠 (계속 돌아가는 현상 억제)
+            _cachedRb.sleepMode = RigidbodySleepMode2D.StartAwake;
         }
 
         // 스프라이트 로드 (RemoteAssetMgr 통해 비동기 처리)

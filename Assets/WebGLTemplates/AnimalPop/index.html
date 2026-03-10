@@ -998,7 +998,7 @@
                 slot.className = 'dex-slot';
                 slot.id = 'dex-slot-' + lv;
                 var img = document.createElement('img');
-                img.src = 'sprites/Animal_' + lv + '.png';
+                img.src = 'TemplateData/sprites/Animal_' + lv + '.png';
                 img.alt = 'Lv.' + lv;
                 slot.appendChild(img);
 
@@ -1474,7 +1474,7 @@
     // 다음 동물 업데이트
     window.updateNextFromUnity = function(level) {
         if (nextImg) {
-            nextImg.src = 'sprites/Animal_' + level + '.png';
+            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.png';
             nextImg.classList.remove('pop');
             void nextImg.offsetWidth;
             nextImg.classList.add('pop');

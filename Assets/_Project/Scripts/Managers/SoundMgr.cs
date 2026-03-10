@@ -60,13 +60,27 @@ public class SoundMgr : MonoBehaviour
             Debug.LogWarning("[SoundMgr] AudioSource가 인스펙터에서 할당되지 않았으며, 컴포넌트를 찾을 수 없습니다.");
     }
 
+    private bool _hasStartedBgm = false;
+
     private void Start()
     {
         if (BGMSource != null && BgmClip != null)
         {
             BGMSource.clip = BgmClip;
             BGMSource.loop = true;
-            BGMSource.Play(); // [Task 5] 자동 재생 제거했으나, 유저 요청에 따라 로딩완료 직후 재생되도록 복구
+            // Play() removed to prevent WebGL auto-play blocking errors. Mute is handled by SetMute later.
+        }
+    }
+
+    private void Update()
+    {
+        if (!_hasStartedBgm && (Input.GetMouseButtonDown(0) || Input.touchCount > 0))
+        {
+            _hasStartedBgm = true;
+            if (BGMSource != null && BgmClip != null && !BGMSource.isPlaying)
+            {
+                BGMSource.Play();
+            }
         }
     }
 
@@ -107,10 +121,17 @@ public class SoundMgr : MonoBehaviour
         }
     }
 
+    private float _lastMergeTime = 0f;
+    private int _mergeSoundCountInFrame = 0;
+
     /// <summary>병합 효과음 재생</summary>
     public void PlayMerge(int level)
     {
         if (_isSfxMuted) return;
+
+        // WebGL 오디오 버퍼 오버플로우 방지: 0.03초 이내 중복 재생은 무시
+        if (Time.unscaledTime - _lastMergeTime < 0.03f) return;
+        _lastMergeTime = Time.unscaledTime;
 
         AudioClip clip = null;
         if (MergeClips != null && MergeClips.Length > 0)
@@ -120,7 +141,9 @@ public class SoundMgr : MonoBehaviour
         }
 
         if (clip != null)
-            SFXSource.PlayOneShot(clip, 0.8f);
+        {
+            SFXSource.PlayOneShot(clip, 0.7f);
+        }
     }
 
     /// <summary>드롭(투하) 효과음 재생</summary>
@@ -129,21 +152,34 @@ public class SoundMgr : MonoBehaviour
         // 사용하지 않음 (요청에 따라 비활성화)
     }
 
+    private float _lastLandTime = 0f;
+
     /// <summary>동물이 바닥/다른 동물에 착지할 때 효과음 재생 (DropClip 재사용)</summary>
     public void PlayLand(float intensity)
     {
         if (_isSfxMuted) return;
         if (DropClip == null) return;
+        
+        // 동시다발적 착지음으로 인한 오디오 버퍼 지지직 현상 방지
+        if (Time.unscaledTime - _lastLandTime < 0.05f) return;
+        _lastLandTime = Time.unscaledTime;
+
         // intensity: 0~1, 충돌 세기에 따라 볼륨 조절 (착지는 드롭보다 조용하게)
-        float volume = Mathf.Lerp(0.1f, 0.45f, intensity);
+        float volume = Mathf.Lerp(0.05f, 0.35f, intensity);
         SFXSource.PlayOneShot(DropClip, volume);
     }
+
+    private float _lastScoreTickTime = 0f;
 
     public void PlayScoreTick()
     {
         if (_isSfxMuted) return;
+        
+        if (Time.unscaledTime - _lastScoreTickTime < 0.04f) return;
+        _lastScoreTickTime = Time.unscaledTime;
+
         if (ScoreTickClip != null)
-            SFXSource.PlayOneShot(ScoreTickClip, 0.4f);
+            SFXSource.PlayOneShot(ScoreTickClip, 0.35f);
     }
 
     public void PlayGameOver()

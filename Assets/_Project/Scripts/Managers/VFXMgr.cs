@@ -69,20 +69,17 @@ public class VFXMgr : MonoBehaviour
         Vector3 vfxPos = new Vector3(position.x, position.y, -2.0f);
         GameObject go;
 
-        if (ScoreTextPrefab != null) go = Instantiate(ScoreTextPrefab, vfxPos, Quaternion.identity);
+        if (PoolMgr.Instance != null)
+        {
+            go = PoolMgr.Instance.GetScoreText(ScoreTextPrefab, vfxPos);
+        }
         else
         {
-            go = new GameObject("DynamicScoreText");
-            go.transform.position = vfxPos;
-        }
-
-        // 텍스트 외 모든 잡동사니 제거
-        foreach (Transform child in go.GetComponentsInChildren<Transform>(true))
-        {
-            if (child == null || child == go.transform) continue;
-            if (child.GetComponent<FloatingScore>() == null && child.GetComponentInChildren<FloatingScore>(true) == null)
+            if (ScoreTextPrefab != null) go = Instantiate(ScoreTextPrefab, vfxPos, Quaternion.identity);
+            else
             {
-                Destroy(child.gameObject);
+                go = new GameObject("DynamicScoreText");
+                go.transform.position = vfxPos;
             }
         }
 

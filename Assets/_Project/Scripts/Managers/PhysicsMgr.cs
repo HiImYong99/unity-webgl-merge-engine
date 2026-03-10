@@ -31,8 +31,8 @@ public class PhysicsMgr : MonoBehaviour
         // 폴백 재질 생성 (반발계수 낮음, 마찰력 적절)
         var mat = new PhysicsMaterial2D("AnimalDefault")
         {
-            bounciness = 0.08f,
-            friction = 0.22f
+            bounciness = 0.01f,
+            friction = 0.45f
         };
         return mat;
     }

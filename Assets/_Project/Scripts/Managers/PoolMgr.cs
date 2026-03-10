@@ -24,6 +24,7 @@ public class PoolMgr : MonoBehaviour
 
     // 레벨별 동물 프리팹 풀 (1~11레벨)
     private Dictionary<int, Queue<GameObject>> _animalPool = new Dictionary<int, Queue<GameObject>>();
+    private Queue<GameObject> _scorePool = new Queue<GameObject>();
 
     private void Awake()
     {
@@ -79,6 +80,42 @@ public class PoolMgr : MonoBehaviour
         }
         
         _animalPool[level].Enqueue(animalObj);
+    }
+
+    /// <summary>
+    /// 점수 텍스트를 풀에서 가져옴.
+    /// </summary>
+    public GameObject GetScoreText(GameObject originalPrefab, Vector3 position)
+    {
+        GameObject go;
+        if (_scorePool.Count > 0)
+        {
+            go = _scorePool.Dequeue();
+            go.transform.position = position;
+            go.transform.rotation = Quaternion.identity;
+            go.SetActive(true);
+        }
+        else
+        {
+            if (originalPrefab != null)
+                go = Instantiate(originalPrefab, position, Quaternion.identity);
+            else
+                go = new GameObject("DynamicScoreText");
+
+            var fs = go.GetComponent<FloatingScore>();
+            if (fs == null) go.AddComponent<FloatingScore>();
+        }
+        return go;
+    }
+
+    /// <summary>
+    /// 점수 텍스트를 풀로 반환함.
+    /// </summary>
+    public void ReturnScoreText(GameObject go)
+    {
+        if (go == null) return;
+        go.SetActive(false);
+        _scorePool.Enqueue(go);
     }
 
     /// <summary>
