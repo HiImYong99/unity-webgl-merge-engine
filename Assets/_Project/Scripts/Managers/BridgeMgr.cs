@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 /// <summary>
-/// AppsInToss 및 일반 웹 환경 통합 브릿지 매니저
+/// AppsInToss 웹 환경 / 네이티브(Android) 통합 브릿지 매니저
+/// google-play 브랜치: #else 블록이 Android 네이티브 동작을 담당
 /// </summary>
 public class BridgeMgr : MonoBehaviour
 {
@@ -48,10 +49,16 @@ public class BridgeMgr : MonoBehaviour
     private static void TossAppLogin() => Instance.OnLoginSuccess("mock_user_" + UnityEngine.Random.Range(100, 999));
     private static void TossGetSafeArea() => Instance.OnSafeAreaReceived("0,0,0,0");
     private static void TossShare(string m) => Instance.OnShareSuccess("");
-    private static void TossVibrate(string s) { }
-    private static void TossExitApp() { 
+    private static void TossVibrate(string s) {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        Handheld.Vibrate();
+#endif
+    }
+    private static void TossExitApp() {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
 #endif
     }
     private static void TossSubmitLeaderboardScore(int s) { Debug.Log($"[BridgeMgr MOCK] Submit Score: {s}"); }
