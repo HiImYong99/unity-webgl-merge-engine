@@ -203,13 +203,19 @@ public class GameMgr : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Playing;
-        Time.timeScale = 1.0f; // 게임 시작 시 속도 초기화
-        Time.fixedDeltaTime = 0.02f; // 물리 엔진 업데이트 주기 동기화 초기화
+        // [수정] 게임 시작 시 SpeedBoostActive 상태에 따라 TimeScale 유지
+        // 단, 세션(광고) 활성화라면 여기서 초기화할지 선택. 
+        // 영구 구매 상태(_premiumSpeedOn)가 JS에서 관리되므로, 여기서는 현재의 SpeedBoostActive 상태를 유지합니다.
+        // 만약 광고 보상형이 '이번 판만'이라면 아래 SpeedBoostActive = false를 유지하되, 
+        // permanent 체크 로직이 필요함. 일단은 사용자가 명시적으로 'OFF'하기 전까지는 유지하도록 변경.
+        
+        SetSpeedMultiplier(SpeedBoostActive ? 2.0f : 1.0f);
+        
         HasRevived = false;
         AdWatched = false;
         SpareLives = 0;
-        SpeedBoostActive = false;
-        _gameOverDetectionCooldown = 1.0f; // 시작 직후 이전 프레임 잔여 동물로 인한 오판 방지
+        // SpeedBoostActive = false; // [제거] 게임 재시작 시 속도 초기화 방지
+        _gameOverDetectionCooldown = 1.0f;
 
         // 기존 동물 정리
         for (int i = _activeAnimals.Count - 1; i >= 0; i--)
@@ -247,6 +253,11 @@ public class GameMgr : MonoBehaviour
             HighScore = Score;
         }
 
+        if (BridgeMgr.Instance != null)
+        {
+            BridgeMgr.Instance.SubmitLeaderboardScore(Score);
+        }
+
         ClearSavedGame();
         SaveData();
 
@@ -279,9 +290,7 @@ public class GameMgr : MonoBehaviour
         if (CurrentState != GameState.Playing) return;
         if (SpeedBoostActive) return;
 
-        SpeedBoostActive = true;
-        Time.timeScale = 2.0f;
-        Time.fixedDeltaTime = 0.02f * Time.timeScale; // 충돌 터널링을 방지하기 위해 갱신 주기 비례 동기화
+        SetSpeedMultiplier(2.0f);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         try { NotifySpeedBoostActivatedJS(); } catch { }
@@ -294,9 +303,10 @@ public class GameMgr : MonoBehaviour
     /// </summary>
     public void SetSpeedMultiplier(float multiplier)
     {
-        SpeedBoostActive = (multiplier > 1f);
+        SpeedBoostActive = (multiplier > 1.1f);
         Time.timeScale = multiplier;
-        Time.fixedDeltaTime = 0.02f * multiplier;
+        // 2배속 시 물리가 튀는 것을 방지하기 위해 fixedDeltaTime을 0.02f로 고정하거나 0.01f로 낮춰 정밀도 향상
+        Time.fixedDeltaTime = 0.015f; // 약간 더 정밀하게 설정
     }
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -313,6 +323,9 @@ public class GameMgr : MonoBehaviour
         if (SpareLives >= MAX_REVIVES) return;
 
         CurrentState = GameState.Playing;
+        // [수정] 부활 시에도 배속 상태 유지
+        Time.timeScale = SpeedBoostActive ? 2.0f : 1.0f;
+        Time.fixedDeltaTime = 0.02f;
         AdWatched = true;
         SpareLives++;
 
@@ -394,8 +407,8 @@ public class GameMgr : MonoBehaviour
             UIMgr.Instance.UpdateScore(Score);
             if (!IsLoggedIn)
             {
-                if (TossBridgeMgr.Instance != null)
-                    TossBridgeMgr.Instance.RequestLogin();
+                if (BridgeMgr.Instance != null)
+                BridgeMgr.Instance.RequestLogin();
                 else
                     UIMgr.Instance.ShowLandingPage(true);
             }

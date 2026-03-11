@@ -203,19 +203,10 @@ public class SpawnMgr : MonoBehaviour
         }
     }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void notifyDangerZoneFromUnity(bool active);
     private static void NotifyDangerZone(bool active)
     {
-        try { notifyDangerZoneFromUnity(active); } catch { }
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.NotifyDanger(active);
     }
-#else
-    private static void NotifyDangerZone(bool active)
-    {
-        Debug.Log($"[SpawnMgr] Danger Zone: {active}");
-    }
-#endif
 
     private void Update()
     {
@@ -490,7 +481,9 @@ public class SpawnMgr : MonoBehaviour
         CanSpawn = false;
         _totalDropCount++;
 
-        Invoke(nameof(ResetSpawn), SpawnCooldown);
+        // [수정] Invoke는 Time.timeScale의 영향을 받지 않으므로 직접 계산하여 호출 (2배속 시 쿨다운 절반)
+        float actualDelay = SpawnCooldown / Time.timeScale;
+        Invoke(nameof(ResetSpawn), actualDelay);
     }
 
     private void ResetSpawn()

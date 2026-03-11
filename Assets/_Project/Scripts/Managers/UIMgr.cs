@@ -162,17 +162,10 @@ public class UIMgr : MonoBehaviour
 #endif
     }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void _ShowHtmlLanding(int bestScore);
-
     private static void Co_ShowHtmlLanding(int bestScore)
     {
-        try { _ShowHtmlLanding(bestScore); } catch { }
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.ShowLandingUI(bestScore);
     }
-#else
-    private static void Co_ShowHtmlLanding(int bestScore) { }
-#endif
 
     public void UpdateScore(int score)
     {
@@ -182,9 +175,7 @@ public class UIMgr : MonoBehaviour
             ScoreText.color = new Color(0.44f, 0.25f, 0.25f);
         }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-        try { UpdateScoreJS(score); } catch { }
-#endif
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.UpdateScore(score);
     }
 
     public void UpdateNextGuide(int nextLevel)
@@ -196,9 +187,7 @@ public class UIMgr : MonoBehaviour
             NextGuideText.text = animalEmojis[idx] + " Lv." + nextLevel;
         }
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-        try { UpdateNextJS(nextLevel); } catch { }
-#endif
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.UpdateNext(nextLevel);
     }
 
     public void ShowGameOver()
@@ -212,12 +201,10 @@ public class UIMgr : MonoBehaviour
         if (HighScoreText != null && GameMgr.Instance != null)
             HighScoreText.text = GameMgr.Instance.HighScore.ToString("N0");
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-        if (GameMgr.Instance != null)
+        if (GameMgr.Instance != null && BridgeMgr.Instance != null)
         {
-            try { ShowGameOverJS(GameMgr.Instance.Score, GameMgr.Instance.HighScore, GameMgr.Instance.AdWatched, GameMgr.Instance.SpareLives); } catch { }
+            BridgeMgr.Instance.ShowGameOver(GameMgr.Instance.Score, GameMgr.Instance.HighScore, GameMgr.Instance.AdWatched, GameMgr.Instance.SpareLives);
         }
-#endif
     }
 
     public void HideGameOver()
@@ -278,27 +265,4 @@ public class UIMgr : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.LoadScene(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
-
-
-    // WebGL Bridge
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void updateScoreFromUnity(int score);
-    private static void UpdateScoreJS(int score) { updateScoreFromUnity(score); }
-
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void updateNextFromUnity(int level);
-    private static void UpdateNextJS(int level) { updateNextFromUnity(level); }
-
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void showGameOverFromUnity(int score, int best, bool adWatched, int spareLives);
-    private static void ShowGameOverJS(int score, int best, bool adWatched, int spareLives) { 
-        showGameOverFromUnity(score, best, adWatched, spareLives); 
-    }
-
-#else
-    private static void UpdateScoreJS(int score) { }
-    private static void UpdateNextJS(int level) { }
-    private static void ShowGameOverJS(int score, int best, bool adWatched, int spareLives) { }
-#endif
 }

@@ -7,12 +7,10 @@ using System.Runtime.InteropServices;
 /// </summary>
 public class Animal : MonoBehaviour
 {
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [DllImport("__Internal")] private static extern void onMergeFromUnity(int level);
-    private static void WebBridgeCallMerge(int level) { try { onMergeFromUnity(level); } catch {} }
-#else
-    private static void WebBridgeCallMerge(int level) {}
-#endif
+    private static void WebBridgeCallMerge(int level)
+    {
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.NotifyMerge(level);
+    }
 
     public int Level { get; private set; }
     public bool IsMerged { get; private set; } = false;
@@ -241,7 +239,7 @@ public class Animal : MonoBehaviour
                 if (SoundMgr.Instance != null)
                     SoundMgr.Instance.PlayLand(intensity);
 
-                if (Level >= 4 && TossBridgeMgr.Instance != null && speed > 1.0f) TossBridgeMgr.Instance.RequestVibrate("light");
+                if (Level >= 4 && BridgeMgr.Instance != null && speed > 1.0f) BridgeMgr.Instance.RequestVibrate("light");
             }
         }
         CheckMerge(collision.gameObject);

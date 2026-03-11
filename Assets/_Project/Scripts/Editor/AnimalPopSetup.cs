@@ -13,7 +13,7 @@ public class AnimalPopSetup : EditorWindow
     private static readonly string[] SCENE_ROOT_OBJECT_NAMES = new[]
     {
         "GameMgr", "SpawnMgr", "PhysicsMgr", "SoundMgr", "VFXMgr", "RemoteAssetMgr",
-        "BridgeMgr", "TossBridgeMgr", "ResultCardMgr",
+        "BridgeMgr", "ResultCardMgr",
         "Canvas", "EventSystem", "UIMgr",
         "MainCamera", "Directional Light",
         "GameContainer", "Background"
@@ -169,7 +169,6 @@ public class AnimalPopSetup : EditorWindow
         snd.SFXSource = new GameObject("SFXSource", typeof(AudioSource)).GetComponent<AudioSource>();
         snd.SFXSource.transform.SetParent(goSound.transform);
 
-        new GameObject("TossBridgeManager").AddComponent<TossBridgeMgr>();
         new GameObject("BridgeManager").AddComponent<BridgeMgr>();
         new GameObject("ResultCard").AddComponent<ResultCardMgr>();
     }

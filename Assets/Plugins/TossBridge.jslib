@@ -1,208 +1,177 @@
 /**
- * TossBridge.jslib – AppsInToss 공식 API + HTML 오버레이 연동
+ * TossBridge.jslib – AppsInToss 공식 API + 게임 엔진 연동 통합 브릿지
+ * (WebBridge.jslib과 TossBridge.jslib을 통합함)
  */
 mergeInto(LibraryManager.library, {
 
-  // ── HTML 랜딩 오버레이 표시 (Unity 준비 완료 시 호출)
+  // ─────────────────────────────────────────────────
+  // 1. 시스템 및 데이터 관리 (Reliability)
+  // ─────────────────────────────────────────────────
+
+  // [Issue 2 해결] IndexedDB 비동기 유실 방지를 위한 localStorage 동기 백업
+  SyncSaveToLocalStorage: function(keyPtr, valuePtr) {
+    var key = UTF8ToString(keyPtr);
+    var value = UTF8ToString(valuePtr);
+    try {
+      localStorage.setItem(key, value);
+      console.log('[TossBridge] SyncSave Success:', key);
+    } catch(e) {
+      console.error('[TossBridge] SyncSave Failed:', e);
+    }
+  },
+
+  // HTML 랜딩 오버레이 표시
   _ShowHtmlLanding: function(bestScore) {
     var score = bestScore || 0;
-    console.log('[TossBridge] ShowHtmlLanding, best:', score);
-    // index.html의 window._ShowHtmlLanding 호출
     if (typeof window._ShowHtmlLanding === 'function') {
       window._ShowHtmlLanding(score);
     }
-    // localStorage에 최고점수 동기화
     try { localStorage.setItem('dessertpop_best', score.toString()); } catch(e) {}
   },
 
   // ─────────────────────────────────────────────────
-  // 1. 로그인 / 사용자 인증
+  // 2. 인게임 HUD 및 이벤트 통신 (Unity -> JS)
+  // ─────────────────────────────────────────────────
+  updateScoreFromUnity: function(score) {
+    if (typeof window.updateScoreFromUnity === 'function') window.updateScoreFromUnity(score);
+  },
+
+  updateNextFromUnity: function(level) {
+    if (typeof window.updateNextFromUnity === 'function') window.updateNextFromUnity(level);
+  },
+
+  showGameOverFromUnity: function(score, best, adWatched, spareLives) {
+    if (typeof window.showGameOverFromUnity === 'function') window.showGameOverFromUnity(score, best, adWatched, spareLives);
+  },
+
+  notifySpeedBoostActivatedFromUnity: function() {
+    if (typeof window.notifySpeedBoostActivatedFromUnity === 'function') window.notifySpeedBoostActivatedFromUnity();
+  },
+
+  notifyDangerZoneFromUnity: function(active) {
+    if (typeof window.notifyDangerZoneFromUnity === 'function') window.notifyDangerZoneFromUnity(active ? 1 : 0);
+  },
+
+  notifyNewHighScoreFromUnity: function(score) {
+    if (typeof window.notifyNewHighScoreFromUnity === 'function') window.notifyNewHighScoreFromUnity(score);
+  },
+
+  onMergeFromUnity: function(level) {
+    if (typeof window.onMergeFromUnity === 'function') window.onMergeFromUnity(level);
+  },
+
+  // ─────────────────────────────────────────────────
+  // 3. 광고 및 결제 (Interstitial / Rewarded)
+  // ─────────────────────────────────────────────────
+  
+  // 부활/2배속 보상형 광고 통합 호출
+  // adType: 0 (부활), 1 (2배속)
+  ShowTossAd: function(adType) {
+    console.log('[TossBridge] ShowTossAd called, type:', adType);
+    
+    var adId = 'ait-ad-test-rewarded-id'; // TODO: SKU별 ID가 다를 경우 분기 처리
+    
+    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
+      console.warn('[TossBridge] AppsInToss SDK Not Found - Simulating Success');
+      setTimeout(function() {
+        if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
+        else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+      }, 500);
+      return;
+    }
+
+    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
+      options: { adGroupId: adId },
+      onEvent: function(event) {
+        if (event.type !== 'loaded') return;
+        loadUnregister && loadUnregister();
+
+        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
+          options: { adGroupId: adId },
+          onEvent: function(ev) {
+            if (ev.type === 'userEarnedReward') {
+               if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
+               else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+            }
+            if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
+              showUnregister && showUnregister();
+            }
+          }
+        });
+      }
+    });
+  },
+
+  // ─────────────────────────────────────────────────
+  // 4. 플랫폼 네이티브 기능 (Login, Share, Vibrate, etc.)
   // ─────────────────────────────────────────────────
   TossAppLogin: function() {
-    console.log('[TossBridge] AppLogin called.');
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.appLogin === 'function';
-    // Legacy support: apps-in-toss/web-framework
-    var hasLegacySDK = window.tossFramework && typeof window.tossFramework.appLogin === 'function';
-
-    if (hasTossSDK) {
-      window.AppsInToss.appLogin()
-        .then(function(result) {
-          var code = (result && result.authorizationCode) ? result.authorizationCode : 'ait_user_' + Date.now();
-          console.log('[TossBridge] AIT Login Success:', code);
-          SendMessage('TossBridgeManager', 'OnLoginSuccess', code);
-        })
-        .catch(function(err) {
-          console.error('[TossBridge] AIT Login Failed:', err);
-          SendMessage('TossBridgeManager', 'OnLoginFailed', err ? err.toString() : 'unknown_error');
-        });
-    } else if (hasLegacySDK) {
-      window.tossFramework.appLogin()
-        .then(function(result) {
-          var code = (result && result.authorizationCode) ? result.authorizationCode : 'legacy_user_' + Date.now();
-          SendMessage('TossBridgeManager', 'OnLoginSuccess', code);
-        })
-        .catch(function(err) {
-          SendMessage('TossBridgeManager', 'OnLoginFailed', err ? err.toString() : 'unknown_error');
-        });
+    if (window.AppsInToss && typeof window.AppsInToss.getUserKeyForGame === 'function') {
+      // [Guide] 게임 전용 로그인(hash)을 사용하면 약관 동의 절차 없이 즉시 유저를 식별할 수 있어 이탈률이 줄어듭니다.
+      window.AppsInToss.getUserKeyForGame().then(function(res) {
+        SendMessage('BridgeManager', 'OnLoginSuccess', res.hash || '');
+      }).catch(function(e) {
+        // 폴백: getUserKeyForGame 미지원 버전이면 appLogin 시도
+        if (typeof window.AppsInToss.appLogin === 'function') {
+           window.AppsInToss.appLogin().then(function(res) {
+             SendMessage('BridgeManager', 'OnLoginSuccess', res.authorizationCode || '');
+           }).catch(function(err) { SendMessage('BridgeManager', 'OnLoginFailed', err.toString()); });
+        } else {
+           SendMessage('BridgeManager', 'OnLoginFailed', e.toString());
+        }
+      });
+    } else if (window.AppsInToss && typeof window.AppsInToss.appLogin === 'function') {
+      window.AppsInToss.appLogin().then(function(res) {
+        SendMessage('BridgeManager', 'OnLoginSuccess', res.authorizationCode || '');
+      }).catch(function(e) {
+        SendMessage('BridgeManager', 'OnLoginFailed', e.toString());
+      });
     } else {
-      // 로컬/일반 브라우저 Fallback
-      console.warn('[TossBridge] AppsInToss SDK not found. Simulating login success for local dev.');
-      setTimeout(function() {
-        SendMessage('TossBridgeManager', 'OnLoginSuccess', 'local_browser_user_' + Date.now());
-      }, 300);
+      setTimeout(function() { SendMessage('BridgeManager', 'OnLoginSuccess', 'local_user'); }, 200);
     }
   },
 
-  // ─────────────────────────────────────────────────
-  // 2. Safe Area 조회 (토스 상단바 고려)
-  // ─────────────────────────────────────────────────
+  // [Guide] 게임 종료 시 네이티브 리더보드에 점수를 제출하여 소셜 기능을 연동합니다.
+  TossSubmitLeaderboardScore: function(score) {
+    if (window.AppsInToss && typeof window.AppsInToss.submitGameCenterLeaderBoardScore === 'function') {
+      window.AppsInToss.submitGameCenterLeaderBoardScore({ score: score }).catch(function(e) {
+        console.error('[TossBridge] SubmitScore Failed:', e);
+      });
+    }
+  },
+
   TossGetSafeArea: function() {
-    console.log('[TossBridge] GetSafeArea called.');
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.getSafeAreaInsets === 'function';
-
-    if (hasTossSDK) {
-      window.AppsInToss.getSafeAreaInsets()
-        .then(function(insets) {
-          // insets: { top, bottom, left, right } (pixels)
-          var top    = (insets && insets.top)    ? insets.top    : 0;
-          var bottom = (insets && insets.bottom) ? insets.bottom : 0;
-          var left   = (insets && insets.left)   ? insets.left   : 0;
-          var right  = (insets && insets.right)  ? insets.right  : 0;
-          var payload = top + ',' + bottom + ',' + left + ',' + right;
-          console.log('[TossBridge] SafeArea:', payload);
-          SendMessage('TossBridgeManager', 'OnSafeAreaReceived', payload);
-        })
-        .catch(function(err) {
-          console.error('[TossBridge] GetSafeArea failed:', err);
-          // 실패 시 기본값(0,0,0,0) 전송
-          SendMessage('TossBridgeManager', 'OnSafeAreaReceived', '0,0,0,0');
-        });
+    if (window.AppsInToss && typeof window.AppsInToss.getSafeAreaInsets === 'function') {
+      window.AppsInToss.getSafeAreaInsets().then(function(insets) {
+        var payload = insets.top + ',' + insets.bottom + ',' + insets.left + ',' + insets.right;
+        SendMessage('BridgeManager', 'OnSafeAreaReceived', payload);
+      });
     } else {
-      // CSS env() 기반 Fallback (일반 브라우저/iOS Safari)
-      try {
-        var el = document.createElement('div');
-        el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:env(safe-area-inset-left,0px);width:1px;height:1px;pointer-events:none;opacity:0;';
-        document.body.appendChild(el);
-        var top    = parseFloat(getComputedStyle(el).top)  || 0;
-        var left   = parseFloat(getComputedStyle(el).left) || 0;
-        document.body.removeChild(el);
-        // bottom은 CSS로 간단히 얻기 어려워 0으로, 실제 기기는 SDK 통해 받아야 함
-        var payload = top + ',0,' + left + ',0';
-        console.log('[TossBridge] SafeArea (CSS fallback):', payload);
-        SendMessage('TossBridgeManager', 'OnSafeAreaReceived', payload);
-      } catch(e) {
-        SendMessage('TossBridgeManager', 'OnSafeAreaReceived', '44,0,0,0'); // 기본 iPhone X 상단바 높이
-      }
+      SendMessage('BridgeManager', 'OnSafeAreaReceived', '0,0,0,0');
     }
   },
 
-  // ─────────────────────────────────────────────────
-  // 3. 공유하기 (네이티브 공유 시트)
-  // ─────────────────────────────────────────────────
-  TossShare: function(messagePtr) {
-    var message = UTF8ToString(messagePtr);
-    console.log('[TossBridge] Share called:', message);
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.share === 'function';
-
-    if (hasTossSDK) {
-      // 앱인토스 전용 네이티브 공유
-      window.AppsInToss.share({ message: message })
-        .then(function() {
-          console.log('[TossBridge] Share success');
-          SendMessage('TossBridgeManager', 'OnShareSuccess', '');
-        })
-        .catch(function(err) {
-          console.error('[TossBridge] Share failed:', err);
-          SendMessage('TossBridgeManager', 'OnShareFailed', err ? err.toString() : 'share_failed');
-        });
+  TossShare: function(msgPtr) {
+    var msg = UTF8ToString(msgPtr);
+    if (window.AppsInToss && typeof window.AppsInToss.share === 'function') {
+      window.AppsInToss.share({ message: msg });
     } else if (navigator.share) {
-      // Web Share API Fallback
-      navigator.share({ title: '디저트 팝', text: message })
-        .then(function() { console.log('[TossBridge] Web Share success'); })
-        .catch(function(err) { console.error('[TossBridge] Web Share failed:', err); });
-    } else {
-      // Clipboard Fallback
-      console.warn('[TossBridge] No share API available. Copying to clipboard.');
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(message).then(function() {
-          console.log('[TossBridge] Copied to clipboard:', message);
-        });
-      }
+      navigator.share({ title: '애니멀 팝!', text: msg, url: window.location.href });
     }
   },
 
-  // ─────────────────────────────────────────────────
-  // 4. 햅틱 피드백 (진동)
-  // ─────────────────────────────────────────────────
   TossVibrate: function(stylePtr) {
-    var style = UTF8ToString(stylePtr); // "light", "medium", "heavy", "success", "error"
-    console.log('[TossBridge] Vibrate called, style:', style);
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.generateHapticFeedback === 'function';
-
-    if (hasTossSDK) {
-      window.AppsInToss.generateHapticFeedback({ style: style })
-        .then(function() { console.log('[TossBridge] Haptic success'); })
-        .catch(function(err) { console.error('[TossBridge] Haptic failed:', err); });
+    var style = UTF8ToString(stylePtr);
+    if (window.AppsInToss && typeof window.AppsInToss.generateHapticFeedback === 'function') {
+      window.AppsInToss.generateHapticFeedback({ style: style });
     } else if (navigator.vibrate) {
-      // Web Vibration API Fallback
-      var duration = (style === 'heavy') ? 200 : (style === 'medium') ? 100 : 50;
-      navigator.vibrate(duration);
-    } else {
-      console.warn('[TossBridge] No vibration API available.');
+      navigator.vibrate(50);
     }
   },
 
-  // ─────────────────────────────────────────────────
-  // 5. 광고 (인앱 광고) - 부활 아이템
-  // ─────────────────────────────────────────────────
-  TossShowAd: function() {
-    console.log('[TossBridge] ShowAd called.');
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.showInterstitialAd === 'function';
-
-    if (hasTossSDK) {
-      window.AppsInToss.showInterstitialAd()
-        .then(function(result) {
-          if (result && result.watched) {
-            console.log('[TossBridge] Ad watched successfully.');
-            SendMessage('TossBridgeManager', 'OnAdComplete', '');
-          } else {
-            console.log('[TossBridge] Ad skipped or failed.');
-            SendMessage('TossBridgeManager', 'OnAdFailed', 'ad_skipped');
-          }
-        })
-        .catch(function(err) {
-          console.error('[TossBridge] Ad error:', err);
-          SendMessage('TossBridgeManager', 'OnAdFailed', err ? err.toString() : 'ad_error');
-        });
-    } else {
-      // 로컬 테스트 Fallback: 1초 후 광고 시청 완료 시뮬레이션
-      console.warn('[TossBridge] No Ad SDK. Simulating ad completion in 1s.');
-      setTimeout(function() {
-        console.log('[TossBridge] Simulated Ad Complete!');
-        SendMessage('TossBridgeManager', 'OnAdComplete', '');
-      }, 1000);
-    }
-  },
-
-  // ─────────────────────────────────────────────────
-  // 6. 앱 종료 (미니앱 닫기)
-  // ─────────────────────────────────────────────────
   TossExitApp: function() {
-    console.log('[TossBridge] ExitApp called.');
-
-    var hasTossSDK = window.AppsInToss && typeof window.AppsInToss.close === 'function';
-
-    if (hasTossSDK) {
-      window.AppsInToss.close();
-    } else if (window.Toss && window.Toss.close) {
-      window.Toss.close();
-    } else {
-      window.close();
-    }
-  },
+    if (window.AppsInToss && typeof window.AppsInToss.close === 'function') window.AppsInToss.close();
+    else if (window.Toss && window.Toss.close) window.Toss.close();
+    else window.close();
+  }
 });

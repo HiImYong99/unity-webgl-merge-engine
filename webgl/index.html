@@ -771,6 +771,10 @@
                 <span class="lg-best-val" id="html-best-score">0</span>
             </div>
             <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
+            <div class="lg-rating-bar" style="margin-top:20px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <div style="background:#00a854; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:4px;">전체이용가</div>
+                <div style="font-size:10px; color:var(--text-tertiary); font-weight:600;">게임물관리위원회 심의 준수</div>
+            </div>
             <div class="lg-howto">동물을 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
         </div>
     </div>
@@ -1133,9 +1137,9 @@
     //  Unity 초기화
     // ════════════════════════════════════════════════════
     var config = {
-        dataUrl:            "Build/fe63ce360ef3a53c5c5c91e3d2ef4056.data.unityweb",
-        frameworkUrl:       "Build/c2ec6b07c4ab2c4789bfb48190795af3.framework.js.unityweb",
-        codeUrl:            "Build/7928caa7a0e6ab526d3f0cfcfaa883e7.wasm.unityweb",
+        dataUrl:            "Build/55bdead7b1d9a06561a42239aaead4ba.data.unityweb",
+        frameworkUrl:       "Build/67a9ff93c005aa9b320a2f463991bb60.framework.js.unityweb",
+        codeUrl:            "Build/3ddf4538981bfe5af7b50a620f242adb.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName:        "DefaultCompany",
         productName:        "animal-pop",
@@ -1183,14 +1187,14 @@
     var _reviveAdUnregister = null;
 
     window._preloadReviveAd = function() {
-        if (typeof window.loadFullScreenAd !== 'function') return;
-        if (!window.loadFullScreenAd.isSupported || !window.loadFullScreenAd.isSupported()) return;
+        if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') return;
+        if (!window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) return;
 
         // 이전 리스너 정리
         if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
         _reviveAdLoaded = false;
 
-        _reviveAdUnregister = window.loadFullScreenAd({
+        _reviveAdUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
             options: { adGroupId: REVIVE_AD_ID },
             onEvent: function(event) {
                 if (event.type === 'loaded') {

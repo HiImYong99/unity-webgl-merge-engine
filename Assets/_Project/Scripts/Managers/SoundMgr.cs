@@ -122,7 +122,6 @@ public class SoundMgr : MonoBehaviour
     }
 
     private float _lastMergeTime = 0f;
-    private int _mergeSoundCountInFrame = 0;
 
     /// <summary>병합 효과음 재생</summary>
     public void PlayMerge(int level)
