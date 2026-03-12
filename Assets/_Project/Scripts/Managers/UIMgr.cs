@@ -21,7 +21,6 @@ public class UIMgr : MonoBehaviour
 
     [Header("Buttons")]
     public Button ApplicationStartButton;
-    public Button AdReviveButton;
     public Button ShareButton;
     public Button RestartButton;
     public Button SoundToggleButton;
@@ -29,6 +28,9 @@ public class UIMgr : MonoBehaviour
 
     [Header("HUD")]
     public GameObject HUDPanel;
+
+    [Header("Android GameOver")]
+    public Text GameOverScoreText; // 이번 세션 점수 (Android GameOver 패널용)
 
     private void Awake()
     {
@@ -63,7 +65,6 @@ public class UIMgr : MonoBehaviour
         // 버튼 리스너 등록
         if (ApplicationStartButton != null) ApplicationStartButton.onClick.AddListener(OnApplicationStartClicked);
         if (SoundToggleButton != null) SoundToggleButton.onClick.AddListener(OnSoundToggleClicked);
-        if (AdReviveButton != null) AdReviveButton.onClick.AddListener(OnAdReviveClicked);
         if (ShareButton != null) ShareButton.onClick.AddListener(OnShareClicked);
         if (RestartButton != null) RestartButton.onClick.AddListener(OnRestartClicked);
 
@@ -196,15 +197,16 @@ public class UIMgr : MonoBehaviour
         if (GameOverPanel != null) GameOverPanel.SetActive(false);
 #else
         if (GameOverPanel != null) GameOverPanel.SetActive(true);
+        // Android: 이번 세션 점수와 최고 점수를 각각 표시
+        if (GameOverScoreText != null && GameMgr.Instance != null)
+            GameOverScoreText.text = GameMgr.Instance.Score.ToString("N0");
 #endif
 
         if (HighScoreText != null && GameMgr.Instance != null)
             HighScoreText.text = GameMgr.Instance.HighScore.ToString("N0");
 
         if (GameMgr.Instance != null && BridgeMgr.Instance != null)
-        {
-            BridgeMgr.Instance.ShowGameOver(GameMgr.Instance.Score, GameMgr.Instance.HighScore, GameMgr.Instance.AdWatched, GameMgr.Instance.SpareLives);
-        }
+            BridgeMgr.Instance.ShowGameOver(GameMgr.Instance.Score, GameMgr.Instance.HighScore);
     }
 
     public void HideGameOver()
@@ -238,20 +240,6 @@ public class UIMgr : MonoBehaviour
             SoundToggleText.text = GameMgr.Instance.IsSfxEnabled ? "❤️" : "🤍";
             SoundToggleText.color = new Color(1f, 0.41f, 0.71f);
         }
-    }
-
-    private void OnAdReviveClicked()
-    {
-        // 2배 결제(프리미엄) 유저라면 광고 없이 바로 부활
-        if (GameMgr.Instance != null && GameMgr.Instance.SpeedBoostActive)
-        {
-            if (BridgeMgr.Instance != null)
-                BridgeMgr.Instance.OnReviveSuccess();
-            return;
-        }
-
-        if (BridgeMgr.Instance != null)
-            BridgeMgr.Instance.RequestAd();
     }
 
     private void OnShareClicked()

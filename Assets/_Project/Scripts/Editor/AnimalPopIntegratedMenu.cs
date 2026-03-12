@@ -3,7 +3,29 @@ using UnityEditor;
 
 public class AnimalPopIntegratedMenu
 {
-    [MenuItem("AnimalPop/🚀 1-Step Full Production Setup", false, 0)]
+    [MenuItem("AnimalPop/🤖 1-Step Android Production Setup", false, 0)]
+    public static void AndroidProductionSetup()
+    {
+        if (!EditorUtility.DisplayDialog("Android Full Setup",
+            "Android 출시용 전체 설정을 수행합니다:\n" +
+            "1. Android 씬 구성 (LandingPanel / HUD / GameOver UI)\n" +
+            "2. 동물 스프라이트 배경 제거 및 프리팹 연결\n" +
+            "3. 효과음 자동 할당\n\n계속하시겠습니까?", "예", "취소")) return;
+
+        AnimalPopSetup.SetupAndroidSceneNoDialog();
+        AnimalBackgroundRemover.RemoveAllAnimalBackgrounds();
+        AnimalAssetLinker.LinkIndividualSprites();
+        AnimalPopSetup.LinkAudioAssets();
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        EditorUtility.DisplayDialog("Setup Complete",
+            "🤖 Android 전체 설정이 완료되었습니다!\n" +
+            "File > Build Settings에서 Android 플랫폼으로 전환 후 빌드하세요.", "확인");
+    }
+
+    [MenuItem("AnimalPop/🚀 1-Step Full Production Setup (WebGL)", false, 1)]
     public static void FullProductionSetup()
     {
         if (!EditorUtility.DisplayDialog("Full Setup",
@@ -14,17 +36,10 @@ public class AnimalPopIntegratedMenu
             "4. 앱인토스 최적화 빌드 설정 적용\n\n" +
             "계속하시겠습니까?", "예", "취소")) return;
 
-        // 1. Scene Setup
         AnimalPopSetup.AutoSetupSceneNoDialog();
-
-        // 2. Sprite Processing (Background Removal & Centering)
         AnimalBackgroundRemover.RemoveAllAnimalBackgrounds();
-
-        // 3. Asset Link (Sprites + SFX)
         AnimalAssetLinker.LinkIndividualSprites();
         AnimalPopSetup.LinkAudioAssets();
-
-        // 3. WebGL Optimization
         WebGLOptimizer.ApplySettingsManuallyNoDialog();
 
         AssetDatabase.SaveAssets();

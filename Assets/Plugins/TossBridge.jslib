@@ -44,10 +44,6 @@ mergeInto(LibraryManager.library, {
     if (typeof window.showGameOverFromUnity === 'function') window.showGameOverFromUnity(score, best, adWatched, spareLives);
   },
 
-  notifySpeedBoostActivatedFromUnity: function() {
-    if (typeof window.notifySpeedBoostActivatedFromUnity === 'function') window.notifySpeedBoostActivatedFromUnity();
-  },
-
   notifyDangerZoneFromUnity: function(active) {
     if (typeof window.notifyDangerZoneFromUnity === 'function') window.notifyDangerZoneFromUnity(active ? 1 : 0);
   },
@@ -61,49 +57,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // ─────────────────────────────────────────────────
-  // 3. 광고 및 결제 (Interstitial / Rewarded)
-  // ─────────────────────────────────────────────────
-  
-  // 부활/2배속 보상형 광고 통합 호출
-  // adType: 0 (부활), 1 (2배속)
-  ShowTossAd: function(adType) {
-    console.log('[TossBridge] ShowTossAd called, type:', adType);
-    
-    var adId = 'ait-ad-test-rewarded-id'; // TODO: SKU별 ID가 다를 경우 분기 처리
-    
-    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
-      console.warn('[TossBridge] AppsInToss SDK Not Found - Simulating Success');
-      setTimeout(function() {
-        if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
-        else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-      }, 500);
-      return;
-    }
-
-    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
-      options: { adGroupId: adId },
-      onEvent: function(event) {
-        if (event.type !== 'loaded') return;
-        loadUnregister && loadUnregister();
-
-        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
-          options: { adGroupId: adId },
-          onEvent: function(ev) {
-            if (ev.type === 'userEarnedReward') {
-               if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
-               else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-            }
-            if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
-              showUnregister && showUnregister();
-            }
-          }
-        });
-      }
-    });
-  },
-
-  // ─────────────────────────────────────────────────
-  // 4. 플랫폼 네이티브 기능 (Login, Share, Vibrate, etc.)
+  // 3. 플랫폼 네이티브 기능 (Login, Share, etc.)
   // ─────────────────────────────────────────────────
   TossAppLogin: function() {
     if (window.AppsInToss && typeof window.AppsInToss.getUserKeyForGame === 'function') {
@@ -160,18 +114,34 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  TossVibrate: function(stylePtr) {
-    var style = UTF8ToString(stylePtr);
-    if (window.AppsInToss && typeof window.AppsInToss.generateHapticFeedback === 'function') {
-      window.AppsInToss.generateHapticFeedback({ style: style });
-    } else if (navigator.vibrate) {
-      navigator.vibrate(50);
-    }
-  },
-
   TossExitApp: function() {
     if (window.AppsInToss && typeof window.AppsInToss.close === 'function') window.AppsInToss.close();
     else if (window.Toss && window.Toss.close) window.Toss.close();
     else window.close();
+  },
+
+  // ─────────────────────────────────────────────────
+  // 4. Google Play 인앱 결제 (Android 래퍼 전용)
+  // ─────────────────────────────────────────────────
+
+  // 결제 바텀시트 요청
+  RequestPurchase: function(productIdPtr) {
+    var productId = UTF8ToString(productIdPtr);
+    if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
+      window.AndroidBridge.launchPurchase(productId);
+    } else {
+      // 에디터/WebGL 데스크탑 – 모의 성공 (테스트용)
+      console.log('[TossBridge] IAP mock purchase: ' + productId);
+      setTimeout(function() {
+        SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|mock_token_' + Date.now());
+      }, 800);
+    }
+  },
+
+  // 기구매 복원 요청
+  RestorePurchases: function() {
+    if (window.AndroidBridge && typeof window.AndroidBridge.restorePurchases === 'function') {
+      window.AndroidBridge.restorePurchases();
+    }
   }
 });

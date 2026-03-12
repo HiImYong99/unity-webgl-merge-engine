@@ -1,0 +1,75 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.animalpop.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.animalpop.app"
+        minSdk 24
+        targetSdk 35
+        versionCode 2
+        versionName "1.0.1"
+
+        // 64-bit 지원 (구글 플레이 필수)
+        ndk {
+            abiFilters "arm64-v8a", "x86_64"
+        }
+    }
+
+    // ── 릴리즈 서명 설정 ──
+    // 빌드 전: KEYSTORE_PATH, KEYSTORE_PASS, KEY_ALIAS, KEY_PASS 환경변수 또는
+    //          local.properties에 설정하세요.
+    signingConfigs {
+        release {
+            def props = new Properties()
+            def propsFile = rootProject.file('signing.properties')
+            if (propsFile.exists()) props.load(new FileInputStream(propsFile))
+
+            storeFile     file(props.getProperty('storeFile',     System.getenv('KEYSTORE_PATH') ?: '../user.keystore'))
+            storePassword        props.getProperty('storePassword',     System.getenv('KEYSTORE_PASS') ?: '')
+            keyAlias             props.getProperty('keyAlias',          System.getenv('KEY_ALIAS')     ?: 'animalpop')
+            keyPassword          props.getProperty('keyPassword',       System.getenv('KEY_PASS')      ?: '')
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // WebGL 빌드 파일(.wasm, .br 등) 압축 제외
+    aaptOptions {
+        noCompress 'wasm', 'br', 'unityweb', 'data'
+    }
+
+    bundle {
+        language { enableSplit = false }
+        density   { enableSplit = true }
+        abi       { enableSplit = true }
+    }
+}
+
+dependencies {
+    // AdMob SDK (Google Mobile Ads)
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
+    // WebViewAssetLoader – WASM/gzip 파일 로컬 HTTPS 서빙용 (file:// MIME 문제 해결)
+    implementation 'androidx.webkit:webkit:1.8.0'
+    // Google Play Billing Library
+    implementation 'com.android.billingclient:billing:7.1.1'
+}

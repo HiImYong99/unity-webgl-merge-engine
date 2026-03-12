@@ -235,37 +235,6 @@
         }
         .hud-new-best.show { opacity: 1; transform: scale(1); }
 
-        /* 스피드 부스트 버튼 */
-        .hud-speed-btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-            align-self: flex-start;
-            background: rgba(255,255,255,0.96);
-            border: 1.5px solid var(--toss-blue);
-            border-radius: var(--radius-md);
-            padding: 8px 16px;
-            box-shadow: var(--shadow-sm);
-            font-size: 12px; font-weight: 700; color: var(--toss-blue);
-            cursor: pointer; white-space: nowrap;
-            transition: background .15s, opacity .15s;
-        }
-        .hud-speed-btn:active { background: rgba(49,130,246,0.08); }
-        .hud-speed-btn.boosted {
-            background: var(--toss-blue); color: #fff;
-            border-color: var(--toss-blue);
-            cursor: default; pointer-events: none;
-        }
-        .hud-speed-btn.hidden { display: none; }
-        /* 영구 구매자: 토글 가능 */
-        .hud-speed-btn.premium {
-            background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
-            border-color: #7c3aed; color: #7c3aed;
-            cursor: pointer; pointer-events: auto;
-        }
-        .hud-speed-btn.premium:active { filter: brightness(0.94); }
-        .hud-speed-btn.premium.speed-on {
-            background: linear-gradient(135deg, #7c3aed 0%, #3182f6 100%);
-            color: #fff; border-color: #7c3aed;
-        }
 
         /* 다음 동물 박스 */
         .hud-next-box {
@@ -792,9 +761,6 @@
                 <img class="hud-next-img" id="next-img" src="" alt="다음 동물">
             </div>
         </div>
-        <button class="hud-speed-btn" id="speed-boost-btn" onclick="onSpeedBoostClicked()">
-            ⚡ 광고보고 2배속
-        </button>
     </div>
 
     <!-- ── 플레이 타임 (하단 중앙) ── -->
@@ -875,11 +841,7 @@
                 </div>
             </div>
             <div class="go-btn-stack">
-                <button id="go-btn-revive" class="go-btn go-btn-ad" onclick="onReviveClicked()" style="display:none">
-                    <div id="go-btn-revive-badge" class="go-btn-ad-badge">총 2번 기회!</div>
-                    <span id="go-btn-revive-text">📺 광고 보고 이어서 하기</span>
-                </button>
-                <button id="go-btn-restart" class="go-btn go-btn-secondary" onclick="onRestartClicked()">처음부터 다시하기</button>
+                <button id="go-btn-restart" class="go-btn go-btn-primary" onclick="onRestartClicked()">다시 도전하기</button>
                 <button class="go-btn go-btn-ghost" onclick="onShareClicked()">📤 결과 공유하기</button>
             </div>
         </div>
@@ -1073,7 +1035,6 @@
     var gameReady     = false;
     var bgmMuted      = false;
     var sfxMuted      = false;
-    var _lastAdWatched  = false;
 
     // 플레이 타이머
     var _timerEl      = document.getElementById('play-timer');
@@ -1106,8 +1067,6 @@
         if (_timerRafId) { cancelAnimationFrame(_timerRafId); _timerRafId = null; }
         _timerPaused = Date.now() - _timerStart;
     }
-    var _lastSpareLives = 0;
-
     // 로컬 점수 추적
     var _currentDisplayScore = 0;
 
@@ -1171,43 +1130,10 @@
 
         updateLocalBestScore();
 
-        // Unity 로드 완료 후 부활 광고 프리로드
-        // (dismissed 이후 jslib에서 _preloadReviveAd 재호출)
-        _preloadReviveAd();
     }).catch(function(err) {
         loadText.textContent = '로딩에 실패했어요 😢';
         console.error(err);
     });
-
-    // ════════════════════════════════════════════════════
-    //  광고 프리로드 (앱인토스 loadFullScreenAd)
-    // ════════════════════════════════════════════════════
-    var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
-    var _reviveAdLoaded = false;
-    var _reviveAdUnregister = null;
-
-    window._preloadReviveAd = function() {
-        if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') return;
-        if (!window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) return;
-
-        // 이전 리스너 정리
-        if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
-        _reviveAdLoaded = false;
-
-        _reviveAdUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
-            options: { adGroupId: REVIVE_AD_ID },
-            onEvent: function(event) {
-                if (event.type === 'loaded') {
-                    console.log('[Ad] 부활 광고 프리로드 완료');
-                    _reviveAdLoaded = true;
-                }
-            },
-            onError: function(err) {
-                console.warn('[Ad] 부활 광고 프리로드 실패:', err);
-                _reviveAdLoaded = false;
-            }
-        });
-    };
 
     // ════════════════════════════════════════════════════
     //  HUD / 상태 유틸
@@ -1266,197 +1192,10 @@
     // ════════════════════════════════════════════════════
     //  게임 오버 버튼
     // ════════════════════════════════════════════════════
-    function onReviveClicked() {
-        if (!unityInstance) return;
-        resumeWebGLAudio();
-        // 2배 결제(프리미엄) 유저라면 광고 없이 바로 부활
-        if (_premiumSpeedOwned) {
-            unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
-        } else if (!_lastAdWatched) {
-            unityInstance.SendMessage('BridgeManager', 'RequestAd');
-        } else if (_lastSpareLives > 0) {
-            unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
-        } else { return; }
-        goOverlay.classList.remove('visible');
-        resumePlayTimer();
-        showHUD(true);
-    }
-
     function onShareClicked() {
         if (unityInstance) unityInstance.SendMessage('ResultCard', 'CaptureAndShare');
     }
     function onRestartClicked() { restartGame(); }
-
-    // ── 스피드 부스트 ──
-    var _speedBoostActive = false;
-    var _speedBoostBtn = null;
-    var _premiumSpeedOwned = false;   // 영구 구매 여부
-    var _premiumSpeedOn    = false;   // 영구 구매자의 현재 ON/OFF 상태
-    var SPEED_SKU = 'double_speed_permanent';
-
-    // localStorage에서 영구 구매 상태 복원
-    try {
-        _premiumSpeedOwned = localStorage.getItem('animalpop_premium_speed') === '1';
-    } catch(e){}
-
-    function _getSpeedBtn() {
-        if (!_speedBoostBtn) _speedBoostBtn = document.getElementById('speed-boost-btn');
-        return _speedBoostBtn;
-    }
-
-    // 버튼 UI를 현재 상태에 맞게 갱신
-    function _refreshSpeedBtn() {
-        var btn = _getSpeedBtn();
-        if (!btn) return;
-        if (_premiumSpeedOwned) {
-            btn.classList.remove('boosted');
-            btn.classList.add('premium');
-            btn.onclick = onPremiumSpeedToggle;
-            if (_premiumSpeedOn) {
-                btn.classList.add('speed-on');
-                btn.innerHTML = '⚡ 2배속 ON';
-            } else {
-                btn.classList.remove('speed-on');
-                btn.innerHTML = '⚡ 2배속 OFF';
-            }
-        } else if (_speedBoostActive) {
-            btn.classList.add('boosted');
-            btn.classList.remove('premium', 'speed-on');
-            btn.onclick = null;
-            btn.innerHTML = '⚡ 2배속 ON!';
-        } else {
-            btn.classList.remove('boosted', 'premium', 'speed-on');
-            btn.onclick = onSpeedBoostClicked;
-            btn.innerHTML = '⚡ 광고보고 2배속';
-        }
-    }
-
-    // 영구 구매자: 토글
-    function onPremiumSpeedToggle() {
-        if (!_premiumSpeedOwned) return;
-        _premiumSpeedOn = !_premiumSpeedOn;
-        _refreshSpeedBtn();
-        if (unityInstance) {
-            unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', _premiumSpeedOn ? '2' : '1');
-        }
-    }
-
-    // 일반 유저: 광고 시청 or 결제 선택
-    function onSpeedBoostClicked() {
-        if (_speedBoostActive || _premiumSpeedOwned) return;
-        // 결제 시트: 광고 시청 / 990원 결제
-        _showSpeedChoiceSheet();
-    }
-
-    // 선택 바텀시트 표시
-    function _showSpeedChoiceSheet() {
-        var existing = document.getElementById('speed-choice-sheet');
-        if (existing) { existing.remove(); }
-
-        var sheet = document.createElement('div');
-        sheet.id = 'speed-choice-sheet';
-        sheet.style.cssText = [
-            'position:fixed;inset:0;z-index:300;display:flex;align-items:flex-end;',
-            'justify-content:center;background:rgba(0,0,0,0.45);'
-        ].join('');
-        sheet.innerHTML = [
-            '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;',
-            'padding:24px 20px 36px;box-shadow:0 -8px 32px rgba(0,0,0,0.12);">',
-            '  <div style="width:36px;height:4px;background:#e5e8eb;border-radius:99px;margin:0 auto 20px;"></div>',
-            '  <div style="font-size:17px;font-weight:800;color:#191f28;margin-bottom:4px;text-align:center;">⚡ 2배속 활성화</div>',
-            '  <div style="font-size:13px;color:#8b95a1;text-align:center;margin-bottom:22px;">원하는 방법을 선택하세요</div>',
-            '  <button id="sc-btn-ad" style="width:100%;padding:16px;background:#3182f6;color:#fff;',
-            '    border:none;border-radius:14px;font-size:15px;font-weight:700;margin-bottom:10px;',
-            '    cursor:pointer;font-family:inherit;">📺 광고 보고 지금만 2배속</button>',
-            '  <button id="sc-btn-iap" style="width:100%;padding:16px;background:linear-gradient(135deg,#7c3aed,#3182f6);',
-            '    color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;',
-            '    cursor:pointer;font-family:inherit;">👑 990원 결제하고 평생 2배속 ON/OFF</button>',
-            '  <button id="sc-btn-cancel" style="width:100%;padding:14px;background:none;',
-            '    color:#8b95a1;border:none;font-size:14px;font-weight:600;margin-top:4px;',
-            '    cursor:pointer;font-family:inherit;">취소</button>',
-            '</div>'
-        ].join('');
-
-        document.body.appendChild(sheet);
-
-        document.getElementById('sc-btn-ad').onclick = function() {
-            sheet.remove();
-            if (unityInstance) unityInstance.SendMessage('BridgeManager', 'RequestSpeedBoostAd');
-        };
-        document.getElementById('sc-btn-iap').onclick = function() {
-            sheet.remove();
-            _purchasePremiumSpeed();
-        };
-        document.getElementById('sc-btn-cancel').onclick = function() { sheet.remove(); };
-        sheet.addEventListener('click', function(e) { if (e.target === sheet) sheet.remove(); });
-    }
-
-    // 앱인토스 IAP 결제
-    function _purchasePremiumSpeed() {
-        if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
-            console.warn('[IAP] AppsInToss IAP를 사용할 수 없는 환경이에요.');
-            // 개발 환경 테스트용 폴백
-            if (confirm('[개발] IAP 미지원 환경. 구매 성공 시뮬레이션?')) {
-                _onPremiumSpeedGranted();
-            }
-            return;
-        }
-
-        var cleanup = window.AppsInToss.IAP.createOneTimePurchaseOrder({
-            options: {
-                sku: SPEED_SKU,
-                processProductGrant: function(params) {
-                    _onPremiumSpeedGranted();
-                    return true;
-                }
-            },
-            onEvent: function(event) {
-                if (event.type === 'success') { cleanup && cleanup(); }
-            },
-            onError: function(error) {
-                console.error('[IAP] 결제 실패:', error);
-                cleanup && cleanup();
-            }
-        });
-    }
-
-    // 영구 구매 지급 처리
-    function _onPremiumSpeedGranted() {
-        _premiumSpeedOwned = true;
-        _premiumSpeedOn    = true;   // 구매 즉시 ON
-        try { localStorage.setItem('animalpop_premium_speed', '1'); } catch(e){}
-        _refreshSpeedBtn();
-        if (unityInstance) {
-            unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
-        }
-    }
-
-    // 앱 시작 시 미지급된 주문 복구 (getPendingOrders)
-    function _recoverPendingSpeedOrders() {
-        if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) return;
-        window.AppsInToss.IAP.getPendingOrders().then(function(res) {
-            if (!res) return;
-            var orders = res.orders || [];
-            var hasSpeed = orders.some(function(o) { return o.sku === SPEED_SKU; });
-            if (hasSpeed) _onPremiumSpeedGranted();
-        }).catch(function(e) { console.warn('[IAP] getPendingOrders 실패:', e); });
-    }
-    _recoverPendingSpeedOrders();
-
-    // Unity → JS: 스피드부스트 광고 요청 (jslib에서 window 함수로 호출)
-    window.showSpeedBoostAdFromUnity = function() {
-        console.log("[JS] showSpeedBoostAdFromUnity: 광고 표시");
-        // 테스트용: 1초 후 성공 콜백
-        setTimeout(function() {
-            if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-        }, 1000);
-    };
-
-    // Unity → JS: 스피드부스트 활성화 완료 알림
-    window.notifySpeedBoostActivatedFromUnity = function() {
-        _speedBoostActive = true;
-        _refreshSpeedBtn();
-    };
 
     // ════════════════════════════════════════════════════
     //  Unity → JS 콜백
@@ -1498,11 +1237,9 @@
     };
 
     // 게임 오버
-    window.showGameOverFromUnity = function(score, best, adWatched, spareLives) {
+    window.showGameOverFromUnity = function(score, best) {
         var scoreNum = Number(score);
         var bestNum  = Number(best);
-        _lastAdWatched  = adWatched;
-        _lastSpareLives = spareLives;
 
         if (goScoreEl) goScoreEl.textContent = scoreNum.toLocaleString('ko-KR');
         if (goBestEl)  goBestEl.textContent  = bestNum.toLocaleString('ko-KR');
@@ -1511,46 +1248,6 @@
         if (goBestBadge) goBestBadge.style.display = isNewBest ? 'inline-block' : 'none';
         if (goBestEl)    goBestEl.className = 'go-score-val' + (isNewBest ? ' is-best' : '');
         if (goSubText)   goSubText.textContent = isNewBest ? '🎉 신기록 달성!' : '수고했어요 😊';
-
-        var reviveBtn = document.getElementById('go-btn-revive');
-        var reviveText = document.getElementById('go-btn-revive-text');
-        var reviveBadge = document.getElementById('go-btn-revive-badge');
-        var restartBtn = document.getElementById('go-btn-restart');
-
-        if (reviveBtn && reviveText && restartBtn) {
-            var maxRevives = 2;
-            var canRevive = !_lastAdWatched || (_lastSpareLives > 0 && _lastSpareLives < maxRevives);
-            if (canRevive) {
-                reviveBtn.style.display = 'flex';
-                restartBtn.className = 'go-btn go-btn-secondary';
-                // 프리미엄 유저라면 광고 안내 생략
-                if (_premiumSpeedOwned) {
-                    reviveText.innerHTML = '✨ 바로 이어서 하기';
-                    if (reviveBadge) {
-                        reviveBadge.style.display = 'block';
-                        reviveBadge.innerText = _lastAdWatched ? '마지막 기회!' : '총 2번 기회!';
-                    }
-                } else {
-                    if (_lastAdWatched) {
-                        reviveText.innerHTML = '📺 직전부터 계속하기';
-                        if (reviveBadge) {
-                            reviveBadge.style.display = 'block';
-                            reviveBadge.innerText = '마지막 기회!';
-                        }
-                    } else {
-                        reviveText.innerHTML = '📺 광고 보고 이어서 하기';
-                        if (reviveBadge) {
-                            reviveBadge.style.display = 'block';
-                            reviveBadge.innerText = '총 2번 기회!';
-                        }
-                    }
-                }
-            } else {
-                reviveBtn.style.display = 'none';
-                restartBtn.className = 'go-btn go-btn-primary';
-                restartBtn.innerHTML = '다시 도전하기';
-            }
-        }
 
         pausePlayTimer();
         showHUD(false);
@@ -1639,15 +1336,6 @@
         if (newBestBadge) newBestBadge.classList.remove('show');
         _currentDisplayScore = 0;
         if (scoreEl) scoreEl.textContent = '0';
-        // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
-        _speedBoostActive = false;
-        _refreshSpeedBtn();
-        // 영구 구매자 & ON 상태면 게임 재시작 시에도 2배속 적용
-        if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
-            setTimeout(function() {
-                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
-            }, 300);
-        }
         resetSidePanel();
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
@@ -1671,11 +1359,6 @@
         sfxMuted = localStorage.getItem('animalpop_sfx') === '0';
     } catch(e){}
 
-    // 영구 구매 상태에 따라 버튼 초기 UI 설정
-    // (HUD가 표시된 후 버튼이 DOM에 있을 때 적용됨)
-    document.addEventListener('DOMContentLoaded', function() {
-        if (_premiumSpeedOwned) { _premiumSpeedOn = false; _refreshSpeedBtn(); }
-    });
     // ════════════════════════════════════════════════════
     //  데이터 영속화 최적화 (Task 3)
     // ════════════════════════════════════════════════════

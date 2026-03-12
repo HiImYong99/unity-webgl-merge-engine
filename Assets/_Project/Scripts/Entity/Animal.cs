@@ -239,7 +239,6 @@ public class Animal : MonoBehaviour
                 if (SoundMgr.Instance != null)
                     SoundMgr.Instance.PlayLand(intensity);
 
-                if (Level >= 4 && BridgeMgr.Instance != null && speed > 1.0f) BridgeMgr.Instance.RequestVibrate("light");
             }
         }
         CheckMerge(collision.gameObject);

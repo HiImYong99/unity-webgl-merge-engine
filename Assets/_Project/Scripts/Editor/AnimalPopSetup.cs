@@ -185,6 +185,272 @@ public class AnimalPopSetup : EditorWindow
         new GameObject("UIMgr").AddComponent<UIMgr>();
     }
 
+    // ================================================================
+    //  Android 출시용 씬 구성
+    // ================================================================
+
+    [MenuItem("AnimalPop/📱 Setup Android Scene", false, 2)]
+    public static void SetupAndroidScene()
+    {
+        if (EditorUtility.DisplayDialog(
+            "📱 Android Scene Setup",
+            "기존 씬을 Android 출시용으로 재구성합니다.\n" +
+            "• LandingPanel / HUDPanel / GameOverPanel 생성\n" +
+            "• 모든 버튼 자동 연결\n" +
+            "• Safe Area (노치) 지원\n\n계속하시겠습니까?",
+            "예 - Android로 구성",
+            "취소"))
+        {
+            SetupAndroidSceneNoDialog();
+            EditorUtility.DisplayDialog("✅ 완료!", "Android 씬 구성이 완료되었습니다!\nUnity에서 Android 빌드하세요.", "확인");
+        }
+    }
+
+    public static void SetupAndroidSceneNoDialog()
+    {
+        EnsureTags();
+        if (!AssetDatabase.IsValidFolder("Assets/_Project/Data"))
+            AssetDatabase.CreateFolder("Assets/_Project", "Data");
+
+        ClearScene();
+        CreateCamera();
+        CreateBackground();
+        CreateGameContainer();
+        CreateCoreManagers();
+        CreateAndroidUI();
+        CreateDefaultData();
+
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+    }
+
+    private static void CreateAndroidUI()
+    {
+        // EventSystem
+        GameObject esGo = new GameObject("EventSystem");
+        esGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
+        esGo.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+
+        // Canvas (1080×1920 기준)
+        GameObject canvasGo = new GameObject("Canvas");
+        Canvas canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 10;
+        CanvasScaler scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080, 1920);
+        scaler.matchWidthOrHeight = 0.5f;
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // SafeArea 컨테이너 (노치 대응)
+        GameObject safeAreaGo = new GameObject("SafeArea");
+        safeAreaGo.transform.SetParent(canvasGo.transform, false);
+        RectTransform safeAreaRT = safeAreaGo.AddComponent<RectTransform>();
+        safeAreaRT.anchorMin = Vector2.zero;
+        safeAreaRT.anchorMax = Vector2.one;
+        safeAreaRT.offsetMin = safeAreaRT.offsetMax = Vector2.zero;
+        safeAreaGo.AddComponent<SafeArea>();
+        Transform uiRoot = safeAreaGo.transform;
+
+        // UIMgr
+        GameObject uiMgrGo = new GameObject("UIMgr");
+        UIMgr uiMgr = uiMgrGo.AddComponent<UIMgr>();
+
+        // ── Landing Panel ──────────────────────────────────────────────
+        GameObject landingPanel = MakeFullscreenPanel(uiRoot, "LandingPanel", new Color(0.06f, 0.04f, 0.14f, 0.97f));
+
+        Text titleText = MakeText(landingPanel.transform, "TitleText", "🐾 애니멀 팝",
+            80, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        SetAnchored(titleText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 350), new Vector2(960, 110));
+
+        Text subText = MakeText(landingPanel.transform, "SubtitleText", "같은 동물을 합쳐 더 크게 키워요!",
+            34, FontStyle.Normal, new Color(0.78f, 0.78f, 1f), TextAnchor.MiddleCenter);
+        SetAnchored(subText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 255), new Vector2(880, 52));
+
+        GameObject divider = MakeImage(landingPanel.transform, "Divider", new Color(1f, 1f, 1f, 0.15f));
+        SetAnchored(divider.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 190), new Vector2(700, 2));
+
+        Text bestLabel = MakeText(landingPanel.transform, "BestLabel", "최고 기록",
+            30, FontStyle.Normal, new Color(0.65f, 0.65f, 0.9f), TextAnchor.MiddleCenter);
+        SetAnchored(bestLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 120), new Vector2(500, 44));
+
+        Text landingHSText = MakeText(landingPanel.transform, "LandingHighScoreText", "0",
+            68, FontStyle.Bold, new Color(1f, 0.87f, 0.3f), TextAnchor.MiddleCenter);
+        SetAnchored(landingHSText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 25), new Vector2(700, 90));
+
+        Button startBtn = MakeButton(landingPanel.transform, "StartButton",
+            "시작하기  ▶", new Color(0.19f, 0.51f, 0.96f), Color.white, 48);
+        SetAnchored(startBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, -130), new Vector2(680, 110));
+
+        // ── HUD Panel ──────────────────────────────────────────────────
+        GameObject hudPanel = new GameObject("HUDPanel");
+        hudPanel.transform.SetParent(uiRoot, false);
+        RectTransform hudRT = hudPanel.AddComponent<RectTransform>();
+        hudRT.anchorMin = Vector2.zero;
+        hudRT.anchorMax = Vector2.one;
+        hudRT.offsetMin = hudRT.offsetMax = Vector2.zero;
+        hudPanel.SetActive(false);
+
+        // 상단 배경바
+        GameObject hudBar = MakeImage(hudPanel.transform, "HUDBar", new Color(1f, 0.97f, 0.93f, 0.88f));
+        SetAnchored(hudBar.GetComponent<RectTransform>(), new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(0, -70), new Vector2(0, 140));
+
+        // 현재 점수
+        Text scoreText = MakeText(hudPanel.transform, "Text_Score", "0",
+            64, FontStyle.Bold, new Color(0.18f, 0.1f, 0.08f), TextAnchor.MiddleCenter);
+        SetAnchored(scoreText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -52), new Vector2(500, 80));
+
+        // 최고 기록 (소형)
+        Text hudBestText = MakeText(hudPanel.transform, "HUDBestLabel", "최고: 0",
+            26, FontStyle.Normal, new Color(0.45f, 0.3f, 0.25f), TextAnchor.MiddleCenter);
+        SetAnchored(hudBestText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -110), new Vector2(380, 36));
+
+        // 다음 동물 (우측)
+        Text nextGuideText = MakeText(hudPanel.transform, "NextGuideText", "다음: 🐥",
+            30, FontStyle.Normal, new Color(0.3f, 0.18f, 0.45f), TextAnchor.MiddleRight);
+        SetAnchored(nextGuideText.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f),
+            new Vector2(-24, -60), new Vector2(260, 50));
+
+        // 사운드 토글 버튼 (좌측)
+        Button soundBtn = MakeButton(hudPanel.transform, "SoundButton",
+            "🔊", new Color(0.9f, 0.88f, 1f, 0.75f), new Color(0.25f, 0.15f, 0.4f), 36);
+        SetAnchored(soundBtn.GetComponent<RectTransform>(), new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(60, -60), new Vector2(80, 80));
+        Text soundBtnText = soundBtn.GetComponentInChildren<Text>();
+
+        // ── GameOver Panel ─────────────────────────────────────────────
+        GameObject gameOverPanel = MakeFullscreenPanel(uiRoot, "GameOverPanel", new Color(0f, 0f, 0f, 0.72f));
+        gameOverPanel.SetActive(false);
+
+        // 카드 배경
+        GameObject card = MakeImage(gameOverPanel.transform, "Card", new Color(0.09f, 0.06f, 0.18f, 1f));
+        SetAnchored(card.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0, 40), new Vector2(860, 960));
+        Transform cardT = card.transform;
+
+        Text goTitle = MakeText(cardT, "GameOverTitle", "게임 오버 🎮",
+            52, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+        SetAnchored(goTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -80), new Vector2(800, 70));
+
+        Text sessionLabel = MakeText(cardT, "SessionScoreLabel", "이번 점수",
+            28, FontStyle.Normal, new Color(0.68f, 0.68f, 0.95f), TextAnchor.MiddleCenter);
+        SetAnchored(sessionLabel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -170), new Vector2(700, 40));
+
+        // 세션 점수 (GameOverScoreText)
+        Text sessionScoreText = MakeText(cardT, "SessionScoreText", "0",
+            80, FontStyle.Bold, new Color(1f, 0.87f, 0.3f), TextAnchor.MiddleCenter);
+        SetAnchored(sessionScoreText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -280), new Vector2(700, 100));
+
+        Text bestRecordLabel = MakeText(cardT, "BestRecordLabel", "최고 기록",
+            26, FontStyle.Normal, new Color(0.68f, 0.68f, 0.95f), TextAnchor.MiddleCenter);
+        SetAnchored(bestRecordLabel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -390), new Vector2(700, 40));
+
+        // 최고 점수 (HighScoreText)
+        Text highScoreText = MakeText(cardT, "HighScoreText", "0",
+            48, FontStyle.Bold, new Color(0.95f, 0.7f, 0.2f), TextAnchor.MiddleCenter);
+        SetAnchored(highScoreText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -460), new Vector2(700, 65));
+
+        // 다시하기
+        Button restartBtn = MakeButton(cardT, "RestartButton",
+            "🔄  다시하기", new Color(0.19f, 0.51f, 0.96f), Color.white, 38);
+        SetAnchored(restartBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -700), new Vector2(760, 95));
+
+        // 공유
+        Button shareBtn = MakeButton(cardT, "ShareButton",
+            "📤  결과 공유", new Color(0.22f, 0.62f, 0.36f), Color.white, 32);
+        SetAnchored(shareBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0, -815), new Vector2(760, 78));
+
+        // ── UIMgr 레퍼런스 연결 ────────────────────────────────────────
+        uiMgr.LandingPanel = landingPanel;
+        uiMgr.HUDPanel = hudPanel;
+        uiMgr.GameOverPanel = gameOverPanel;
+        uiMgr.LandingHighScoreText = landingHSText;
+        uiMgr.ScoreText = scoreText;
+        uiMgr.HighScoreText = highScoreText;
+        uiMgr.GameOverScoreText = sessionScoreText;
+        uiMgr.NextGuideText = nextGuideText;
+        uiMgr.ApplicationStartButton = startBtn;
+        uiMgr.RestartButton = restartBtn;
+        uiMgr.ShareButton = shareBtn;
+        uiMgr.SoundToggleButton = soundBtn;
+        uiMgr.SoundToggleText = soundBtnText;
+    }
+
+    // ── UI 헬퍼 ─────────────────────────────────────────────────────
+
+    private static GameObject MakeFullscreenPanel(Transform parent, string name, Color bgColor)
+    {
+        GameObject go = MakeImage(parent, name, bgColor);
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        return go;
+    }
+
+    private static GameObject MakeImage(Transform parent, string name, Color color)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.AddComponent<Image>().color = color;
+        return go;
+    }
+
+    private static Text MakeText(Transform parent, string name, string content,
+        int fontSize, FontStyle style, Color color, TextAnchor anchor)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        Text t = go.AddComponent<Text>();
+        t.text = content;
+        t.fontSize = fontSize;
+        t.fontStyle = style;
+        t.color = color;
+        t.alignment = anchor;
+        t.horizontalOverflow = HorizontalWrapMode.Wrap;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
+        Font builtinFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (builtinFont != null) t.font = builtinFont;
+        return t;
+    }
+
+    private static Button MakeButton(Transform parent, string name,
+        string labelText, Color bgColor, Color textColor, int fontSize)
+    {
+        GameObject go = MakeImage(parent, name, bgColor);
+        Button btn = go.AddComponent<Button>();
+        Text label = MakeText(go.transform, "Label", labelText,
+            fontSize, FontStyle.Bold, textColor, TextAnchor.MiddleCenter);
+        SetAnchored(label.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        return btn;
+    }
+
+    private static void SetAnchored(RectTransform rt,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 sizeDelta)
+    {
+        rt.anchorMin = anchorMin;
+        rt.anchorMax = anchorMax;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = anchoredPos;
+        rt.sizeDelta = sizeDelta;
+    }
+
     public static void LinkAudioAssets()
     {
         SoundMgr snd = FindObjectOfType<SoundMgr>();

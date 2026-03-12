@@ -99,3 +99,18 @@ ProjectSettings/ProjectVersion.txt
 # Apps in Toss SDK - 자동 보호 패턴
 **/AITCredentials.asset
 **/AITCredentials.asset.meta
+
+# Android Keystore & 서명 설정 (절대 커밋 금지)
+*.keystore
+*.jks
+android-wrapper/signing.properties
+android-wrapper/local.properties
+
+# 빌드 산출물 (루트)
+*.aab
+*.apk
+
+# Android Gradle 빌드 캐시
+android-wrapper/.gradle/
+android-wrapper/app/build/
+android-wrapper/build/

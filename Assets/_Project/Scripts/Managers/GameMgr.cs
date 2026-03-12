@@ -47,10 +47,7 @@ public class GameMgr : MonoBehaviour
     public int Score { get; private set; }
     public int HighScore { get; private set; }
     public GameState CurrentState { get; private set; }
-    public bool HasRevived { get; private set; } // Legacy - keeping for compat
-    public bool AdWatched { get; private set; } = false;
-    public int SpareLives { get; private set; } = 0;
-    public bool SpeedBoostActive { get; private set; } = false;
+    public bool HasRevived { get; private set; }
 
     public string UserIdentifier { get; private set; }
     public bool IsLoggedIn { get; private set; }
@@ -62,6 +59,10 @@ public class GameMgr : MonoBehaviour
     // Fields
     private SaveDataModel _loadedSaveData;
     public AnimalEvolutionData EvolutionData;
+
+    // ================================================================
+
+    // ================================================================
 
     // ===== Fallout 시스템 (Kill Zone) =====
     private const float CONTAINER_MIN_X = -2.0f;  // 용기 좌측 경계 (외벽 포함)
@@ -106,13 +107,6 @@ public class GameMgr : MonoBehaviour
         {
             TriggerGameOver();
             return;
-        }
-
-        // [Debug] 게임 속도 가속 (G 키)
-        if (Input.GetKeyDown(KeyCode.G))
-        {
-            Time.timeScale = (Time.timeScale > 1.0f) ? 1.0f : 3.0f;
-            Debug.Log($"[Debug] TimeScale: {Time.timeScale}");
         }
 
         // ===== Fallout 게임 오버 판정 =====
@@ -203,18 +197,9 @@ public class GameMgr : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Playing;
-        // [수정] 게임 시작 시 SpeedBoostActive 상태에 따라 TimeScale 유지
-        // 단, 세션(광고) 활성화라면 여기서 초기화할지 선택. 
-        // 영구 구매 상태(_premiumSpeedOn)가 JS에서 관리되므로, 여기서는 현재의 SpeedBoostActive 상태를 유지합니다.
-        // 만약 광고 보상형이 '이번 판만'이라면 아래 SpeedBoostActive = false를 유지하되, 
-        // permanent 체크 로직이 필요함. 일단은 사용자가 명시적으로 'OFF'하기 전까지는 유지하도록 변경.
-        
-        SetSpeedMultiplier(SpeedBoostActive ? 2.0f : 1.0f);
-        
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
         HasRevived = false;
-        AdWatched = false;
-        SpareLives = 0;
-        // SpeedBoostActive = false; // [제거] 게임 재시작 시 속도 초기화 방지
         _gameOverDetectionCooldown = 1.0f;
 
         // 기존 동물 정리
@@ -254,17 +239,48 @@ public class GameMgr : MonoBehaviour
         }
 
         if (BridgeMgr.Instance != null)
-        {
             BridgeMgr.Instance.SubmitLeaderboardScore(Score);
-        }
 
         ClearSavedGame();
         SaveData();
 
         if (UIMgr.Instance != null)
-        {
             UIMgr.Instance.ShowGameOver();
+    }
+
+    /// <summary>
+    /// 광고 시청 후 게임 계속하기 (JS → SendMessage로 호출)
+    /// 위험 구역 동물 제거 후 Playing 상태로 복귀
+    /// </summary>
+    public void ContinueGameAfterAd(string _)
+    {
+        if (CurrentState != GameState.GameOver) return;
+        if (HasRevived) return; // 한 판에 한 번만 허용
+
+        HasRevived = true;
+        CurrentState = GameState.Playing;
+        _gameOverDetectionCooldown = 2.0f; // 복귀 직후 즉시 게임오버 방지
+
+        // 킬존 위의 동물 중 위험 구역(상단 30%) 동물만 제거
+        float killY = GetKillZoneY();
+        float dangerThreshold = killY * 0.7f; // 위험 구역 상단 기준
+        for (int i = _activeAnimals.Count - 1; i >= 0; i--)
+        {
+            if (_activeAnimals[i] == null) { _activeAnimals.RemoveAt(i); continue; }
+            if (_activeAnimals[i].transform.position.y > dangerThreshold)
+            {
+                Destroy(_activeAnimals[i].gameObject);
+                _activeAnimals.RemoveAt(i);
+            }
         }
+
+        if (UIMgr.Instance != null)
+        {
+            UIMgr.Instance.ShowHUD(true);
+        }
+
+        if (SpawnMgr.Instance != null)
+            SpawnMgr.Instance.PrepareNextAnimal();
     }
 
     public void ClearSavedGame()
@@ -279,86 +295,6 @@ public class GameMgr : MonoBehaviour
 
     /// <summary>
     /// 광고 시청 후 부활 처리
-    /// </summary>
-    private const int MAX_REVIVES = 2;
-
-    /// <summary>
-    /// 광고 시청 후 게임속도 2배 부스트 활성화 (이번 판 내내 유지)
-    /// </summary>
-    public void ActivateSpeedBoost()
-    {
-        if (CurrentState != GameState.Playing) return;
-        if (SpeedBoostActive) return;
-
-        SetSpeedMultiplier(2.0f);
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-        try { NotifySpeedBoostActivatedJS(); } catch { }
-#endif
-    }
-
-    /// <summary>
-    /// 영구 구매자 2배속 ON/OFF (JS에서 직접 호출)
-    /// multiplier: 1f = 일반, 2f = 2배속
-    /// </summary>
-    public void SetSpeedMultiplier(float multiplier)
-    {
-        SpeedBoostActive = (multiplier > 1.1f);
-        Time.timeScale = multiplier;
-        // 2배속 시 물리가 튀는 것을 방지하기 위해 fixedDeltaTime을 0.02f로 고정하거나 0.01f로 낮춰 정밀도 향상
-        Time.fixedDeltaTime = 0.015f; // 약간 더 정밀하게 설정
-    }
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [System.Runtime.InteropServices.DllImport("__Internal")]
-    private static extern void notifySpeedBoostActivatedFromUnity();
-    private static void NotifySpeedBoostActivatedJS() { notifySpeedBoostActivatedFromUnity(); }
-#else
-    private static void NotifySpeedBoostActivatedJS() { }
-#endif
-
-    public void Revive()
-    {
-        if (CurrentState != GameState.GameOver) return;
-        if (SpareLives >= MAX_REVIVES) return;
-
-        CurrentState = GameState.Playing;
-        // [수정] 부활 시에도 배속 상태 유지
-        Time.timeScale = SpeedBoostActive ? 2.0f : 1.0f;
-        Time.fixedDeltaTime = 0.02f;
-        AdWatched = true;
-        SpareLives++;
-
-        _gameOverDetectionCooldown = 1.5f;
-        ClearFallingAnimals();
-
-        if (UIMgr.Instance != null) UIMgr.Instance.HideGameOver();
-        if (SpawnMgr.Instance != null)
-        {
-            SpawnMgr.Instance.CanSpawn = true;
-            SpawnMgr.Instance.PrepareNextAnimal();
-        }
-    }
-
-    private void ClearFallingAnimals()
-    {
-        for (int i = _activeAnimals.Count - 1; i >= 0; i--)
-        {
-            Animal animal = _activeAnimals[i];
-            if (animal == null) continue;
-
-            float x = animal.transform.position.x;
-            float y = animal.transform.position.y;
-            bool outside = x < CONTAINER_MIN_X || x > CONTAINER_MAX_X;
-            float killZone = GetKillZoneY();
-
-            if (outside || y > killZone + 1.0f || y < -3.5f)
-            {
-                Destroy(animal.gameObject);
-            }
-        }
-    }
-
     private void LoadData()
     {
         if (PlayerPrefs.HasKey("GameData"))

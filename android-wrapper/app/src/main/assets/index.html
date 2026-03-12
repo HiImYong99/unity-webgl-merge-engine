@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>애니멀 팝 🐾</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ════════════════════════════════════════════════
+           RESET & CSS VARIABLES
+        ════════════════════════════════════════════════ */
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+        :root {
+            /* Toss Design System */
+            --toss-blue:        #3182f6;
+            --toss-blue-dark:   #1b64da;
+            --toss-blue-light:  #ebf3fe;
+            --text-primary:     #191f28;
+            --text-secondary:   #4e5968;
+            --text-tertiary:    #8b95a1;
+            --bg-surface:       #ffffff;
+            --bg-surface-02:    #f9fafb;
+            --line-01:          #e5e8eb;
+
+            /* Premium Pastel Palette */
+            --pastel-pink:   #ffe4ed;
+            --pastel-purple: #f0e6ff;
+            --pastel-blue:   #e3f0ff;
+            --pastel-gold:   #fff4d6;
+
+            --radius-sm:  10px;
+            --radius-md:  16px;
+            --radius-lg:  24px;
+            --radius-xl:  32px;
+
+            --shadow-sm:  0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md:  0 8px 24px rgba(0,0,0,0.08);
+            --shadow-lg:  0 20px 60px rgba(0,0,0,0.10);
+            --shadow-glow-pink:   0 0 24px rgba(255,100,150,0.3);
+            --shadow-glow-blue:   0 0 24px rgba(49,130,246,0.35);
+
+            --safe-top:    env(safe-area-inset-top,    0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left:   env(safe-area-inset-left,   0px);
+            --safe-right:  env(safe-area-inset-right,  0px);
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #e8f3e8;
+            color: var(--text-primary);
+            overflow: hidden;
+            touch-action: none;
+            width: 100vw; height: 100vh;
+            -webkit-user-select:none; user-select:none;
+        }
+
+        /* 배경 — 심플한 단색 (앱인토스: 장식 이펙트 금지) */
+        .bg-mesh { display: none; }
+        .blob    { display: none; }
+
+        /* ════════════════════════════════════════════════
+           UNITY CANVAS — 전체화면 (앱인토스 fullscreen 필수)
+        ════════════════════════════════════════════════ */
+        #unity-container {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+        }
+        #unity-canvas {
+            width: 100%; height: 100%; background: transparent !important; display: block;
+        }
+
+        /* game-frame 제거 */
+        .game-frame { display: none; }
+
+        /* ════════════════════════════════════════════════
+           LOADING OVERLAY
+        ════════════════════════════════════════════════ */
+        #loading-overlay {
+            position:fixed; inset:0; z-index:300;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:16px;
+            background: #e8f3e8;
+            opacity:1; transition:opacity .5s;
+            pointer-events:auto;
+        }
+        #loading-overlay.hidden { opacity:0; pointer-events:none; }
+
+        .load-icon {
+            font-size: 52px;
+            animation: loadBounce 1.4s ease-in-out infinite;
+            filter: drop-shadow(0 4px 12px rgba(255,100,150,0.3));
+        }
+        @keyframes loadBounce {
+            0%,100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-14px) scale(1.05); }
+        }
+        .load-bar-bg {
+            width: 160px; height: 3px;
+            background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
+        }
+        .load-bar-fill {
+            height: 100%; width: 0%; background: var(--toss-blue);
+            border-radius: 99px; transition: width .25s ease;
+        }
+        .load-text {
+            font-size: 13px; font-weight: 700; color: var(--text-tertiary);
+        }
+
+        /* ════════════════════════════════════════════════
+           LANDING OVERLAY
+        ════════════════════════════════════════════════ */
+        #landing-overlay {
+            position:fixed; inset:0; z-index:200;
+            display:flex; align-items:center; justify-content:center;
+            padding: 24px;
+            background: #e8f3e8;
+            opacity:0; pointer-events:none;
+            transition: opacity .4s;
+        }
+        #landing-overlay.visible { opacity:1; pointer-events:auto; }
+
+        .lg-card {
+            width: 100%; max-width: 360px;
+            background: #fff;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--line-01);
+            box-shadow: var(--shadow-lg);
+            padding: 36px 28px 28px;
+            text-align: center;
+            animation: cardIn .5s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes cardIn {
+            from { transform: translateY(32px) scale(0.95); opacity: 0; }
+            to   { transform: translateY(0)    scale(1);    opacity: 1; }
+        }
+
+        .lg-badge {
+            display: inline-block;
+            background: var(--toss-blue-light);
+            color: var(--toss-blue); font-size: 11px; font-weight: 800;
+            padding: 4px 14px; border-radius: 99px;
+            margin-bottom: 20px; letter-spacing: 0.06em;
+        }
+
+        .lg-title-wrap { margin-bottom: 28px; }
+        .lg-title {
+            font-family: 'Nunito', sans-serif;
+            font-size: 48px; font-weight: 900; line-height: 1.1;
+            color: var(--text-primary);
+        }
+        .lg-title-accent {
+            font-family: 'Nunito', sans-serif;
+            font-size: 62px; font-weight: 900;
+            color: var(--toss-blue);
+        }
+        .lg-sub {
+            font-size: 14px; font-weight: 600;
+            color: var(--text-secondary); margin-top: 10px;
+        }
+
+        .lg-best-row {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            background: rgba(49,130,246,0.08);
+            border-radius: var(--radius-md); padding: 14px 20px;
+            margin-bottom: 20px;
+        }
+        .lg-best-lbl { font-size: 13px; font-weight: 700; color: var(--text-tertiary); }
+        .lg-best-val { font-size: 28px; font-weight: 900; color: var(--toss-blue); }
+
+        .lg-start-btn {
+            font-family: inherit; font-size: 17px; font-weight: 700; color: #fff;
+            background: var(--toss-blue); border: none; border-radius: var(--radius-md);
+            padding: 18px 0; width: 100%; cursor: pointer;
+            box-shadow: 0 4px 14px rgba(49,130,246,0.28);
+            transition: all .15s;
+        }
+        .lg-start-btn:active { background: var(--toss-blue-dark); transform: scale(0.98); }
+
+        .lg-howto {
+            font-size: 12px; color: var(--text-tertiary);
+            margin-top: 14px; line-height: 1.6;
+        }
+
+        /* ════════════════════════════════════════════════
+           GAME HUD
+        ════════════════════════════════════════════════ */
+        #game-hud {
+            position: fixed;
+            top:  calc(var(--safe-top) + 20px);
+            left: 20px; right: 20px;
+            z-index: 50;
+            display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+            pointer-events: none;
+            opacity: 0; transform: translateY(-12px);
+            transition: opacity .35s, transform .35s;
+        }
+        #game-hud.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        #game-hud > * { pointer-events: auto; }
+        .hud-top-row { display: flex; justify-content: space-between; align-items: flex-start; }
+
+        /* 점수 박스 */
+        .hud-score-box {
+            background: rgba(255,255,255,0.96);
+            border-radius: var(--radius-md); padding: 12px 20px;
+            box-shadow: var(--shadow-sm);
+            min-width: 130px;
+            position: relative; overflow: hidden;
+        }
+        .hud-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); letter-spacing: .04em; }
+        .hud-score-val {
+            font-size: 30px; font-weight: 900; color: var(--text-primary);
+            line-height: 1.1; transition: transform .1s;
+        }
+        .hud-score-val.bump {
+            animation: scoreBump .2s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes scoreBump {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.18); color: #ff5988; }
+            100% { transform: scale(1); }
+        }
+
+        /* 신기록 배지 */
+        .hud-new-best {
+            position: absolute; top: 6px; right: 8px;
+            font-size: 9px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, #ff5988, #ff9800);
+            padding: 2px 7px; border-radius: 99px;
+            opacity: 0; transform: scale(0.7);
+            transition: opacity .3s, transform .3s;
+        }
+        .hud-new-best.show { opacity: 1; transform: scale(1); }
+
+
+        /* 다음 동물 박스 */
+        .hud-next-box {
+            background: rgba(255,255,255,0.96);
+            border-radius: var(--radius-md); padding: 10px 14px;
+            box-shadow: var(--shadow-sm);
+            text-align: center; min-width: 84px;
+        }
+        .hud-next-img {
+            width: 46px; height: 46px; object-fit: contain; display: block; margin: 4px auto 0;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+            transition: transform .2s cubic-bezier(.22,1,.36,1);
+        }
+        .hud-next-img.pop { animation: nextPop .25s cubic-bezier(.22,1,.36,1); }
+        @keyframes nextPop {
+            from { transform: scale(0.6) rotate(-10deg); }
+            to   { transform: scale(1)   rotate(0deg); }
+        }
+
+        /* 플레이 타임 박스 (하단 중앙으로 이동) */
+        .hud-timer-box {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 20px);
+            left: 50%;
+            transform: translate(-50%, 12px);
+            z-index: 155;
+            background: rgba(255,255,255,0.96);
+            border-radius: var(--radius-md); padding: 8px 14px;
+            box-shadow: var(--shadow-sm);
+            text-align: center; min-width: 80px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s, transform .35s;
+        }
+        .hud-timer-box.visible {
+            opacity: 1; transform: translate(-50%, 0); pointer-events: auto;
+        }
+        .hud-timer-box .hud-label { 
+            font-size: 9px; font-weight: 700; color: var(--text-tertiary); 
+            line-height: 1; margin-bottom: 2px;
+        }
+        .hud-timer-val {
+            font-size: 18px; font-weight: 800; color: var(--text-primary);
+            line-height: 1.1; font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
+        /* ════════════════════════════════════════════════
+           위험 구역 경고 배너 (데드라인)
+        ════════════════════════════════════════════════ */
+        #danger-banner {
+            position: fixed;
+            left: 20px; right: 20px;
+            top: calc(var(--safe-top) + 100px);
+            z-index: 55;
+            background: linear-gradient(135deg,
+                rgba(255,80,80,0.92) 0%,
+                rgba(255,140,0,0.92) 100%);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
+            padding: 10px 18px;
+            display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 4px 16px rgba(255,80,80,0.4);
+            color: #fff;
+            opacity: 0; transform: translateY(-8px) scale(0.97);
+            pointer-events: none;
+            transition: opacity .3s, transform .3s;
+        }
+        #danger-banner.visible {
+            opacity: 1; transform: translateY(0) scale(1);
+            animation: dangerPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes dangerPulse {
+            0%,100% { box-shadow: 0 4px 16px rgba(255,80,80,0.35); }
+            50%      { box-shadow: 0 4px 28px rgba(255,80,80,0.65); }
+        }
+        .danger-icon { font-size: 20px; flex-shrink: 0; }
+        .danger-text { font-size: 13px; font-weight: 700; line-height: 1.3; }
+
+        /* ════════════════════════════════════════════════
+           사이드 패널 (게임 박스 좌우)
+        ════════════════════════════════════════════════ */
+
+        .side-panel {
+            position: fixed;
+            top: 50%; transform: translateY(-50%);
+            z-index: 45;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 14px;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s;
+        }
+        .side-panel.visible { opacity: 1; }
+        #side-left  { left:  16px; }
+        #side-right { right: 16px; }
+
+        /* 패널 카드 */
+        .sp-card {
+            background: rgba(255,255,255,0.96);
+            border-radius: 18px;
+            box-shadow: var(--shadow-sm);
+            padding: 10px 8px;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 4px; width: 50px;
+            text-align: center;
+        }
+        .sp-icon { font-size: 18px; line-height: 1; }
+        .sp-label {
+            font-size: 8px; font-weight: 700;
+            color: var(--text-tertiary); letter-spacing: .04em;
+            line-height: 1; white-space: nowrap;
+        }
+        .sp-value {
+            font-size: 15px; font-weight: 900;
+            color: var(--text-primary); line-height: 1;
+        }
+        .sp-value.highlight { color: var(--toss-blue); }
+
+
+        /* 모바일(480px 이하): 사이드 패널 위치 조정 */
+        @media (max-width: 480px) {
+            #side-left  { left:  12px; }
+            #side-right { right: 12px; }
+            .sp-card { width: 40px; padding: 8px 4px; }
+            .sp-icon { font-size: 14px; }
+            .sp-label { font-size: 7px; }
+            .sp-value { font-size: 13px; }
+        }
+
+        /* 대형 화면(플립 펼침/태블릿/iPad): UI를 게임 중앙 영역 기준으로 고정 */
+        @media (min-width: 481px) {
+            /* HUD: 게임 너비(440px) 기준으로 중앙 정렬 */
+            #game-hud {
+                left: 50%;
+                right: auto;
+                width: min(440px, 96vw);
+                transform: translateX(-50%) translateY(-12px);
+            }
+            #game-hud.visible {
+                transform: translateX(-50%) translateY(0);
+            }
+            /* 사이드 패널: 게임 컨테이너(440px 절반=220px) 바로 바깥에 배치 */
+            #side-left  { left:  calc(50% - 220px - 64px); }
+            #side-right { right: calc(50% - 220px - 64px); }
+            /* danger 배너도 HUD 너비에 맞춤 */
+            #danger-banner {
+                left: 50%;
+                right: auto;
+                width: min(440px, 96vw);
+                transform: translateX(-50%) translateY(-8px) scale(0.97);
+            }
+            #danger-banner.visible {
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+        }
+
+        /* ════════════════════════════════════════════════
+           모바일 미니 스탯 바 (480px 이하 전용) — 사이드로 대체됨
+        ════════════════════════════════════════════════ */
+        #mobile-stat-bar {
+            display: none;
+        }
+
+        .msb-item {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 1px; flex: 1;
+        }
+        .msb-item + .msb-item {
+            border-left: 1px solid rgba(0,0,0,0.06);
+        }
+        .msb-icon { font-size: 14px; line-height: 1; }
+        .msb-val  {
+            font-size: 14px; font-weight: 900; color: var(--text-primary);
+            line-height: 1; font-variant-numeric: tabular-nums;
+        }
+        .msb-val.highlight { color: var(--toss-blue); }
+        .msb-lbl  {
+            font-size: 8px; font-weight: 700; color: var(--text-tertiary);
+            letter-spacing: .03em; line-height: 1;
+        }
+
+        /* ════════════════════════════════════════════════
+           설정 버튼 (우하단)
+        ════════════════════════════════════════════════ */
+        #settings-fab {
+            position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
+            z-index: 155;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: rgba(255,255,255,0.96);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform .15s, opacity .3s;
+            opacity: 0; pointer-events: none;
+            font-size: 24px; line-height: 1;
+        }
+        #settings-fab.visible { opacity: 1; pointer-events: auto; }
+        #settings-fab:active { transform: scale(0.88); }
+
+        /* ════════════════════════════════════════════════
+           동물 도감 바 (하단)
+        ════════════════════════════════════════════════ */
+        #dex-bar {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 80px);
+            left: 50%; transform: translateX(-50%) translateY(8px);
+            z-index: 50;
+            background: rgba(255,255,255,0.96);
+            border-radius: 20px;
+            box-shadow: var(--shadow-sm);
+            padding: 8px 12px;
+            display: flex; align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s, transform .35s;
+            width: calc(min(96vw, 440px) - 32px);
+            max-width: 408px;
+            overflow: hidden; /* 내부 스크롤 컨테이너 클리핑 */
+        }
+        #dex-bar.visible {
+            opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+        }
+        .dex-slots {
+            display: flex; align-items: center; gap: 6px;
+            overflow-x: auto; overflow-y: hidden;
+            flex: 1;
+            /* 스크롤바 숨기기 */
+            -ms-overflow-style: none; scrollbar-width: none;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px; /* 터치 영역 확보 */
+        }
+        .dex-slots::-webkit-scrollbar { display: none; }
+        /* 스크롤 가능 힌트 그라데이션 페이드 */
+        #dex-bar::after {
+            content: '';
+            position: absolute; right: 12px; top: 0; bottom: 0; width: 24px;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.95));
+            pointer-events: none; border-radius: 0 20px 20px 0;
+        }
+        .dex-slot {
+            width: 28px; height: 28px; border-radius: 10px;
+            background: rgba(0,0,0,0.04);
+            flex-shrink: 0; /* 스크롤 시 찌그러짐 방지 */
+            scroll-snap-align: start;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; flex-shrink: 0;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform .2s cubic-bezier(.22,1,.36,1);
+        }
+        .dex-slot:active { transform: scale(0.88); }
+        .dex-slot img {
+            width: 24px; height: 24px; object-fit: contain;
+            filter: grayscale(1) opacity(0.2);
+            transition: filter .3s;
+        }
+        .dex-slot.found img {
+            filter: grayscale(0) opacity(1) drop-shadow(0 1px 3px rgba(0,0,0,0.15));
+        }
+        .dex-slot.found { background: rgba(49,130,246,0.07); }
+        .dex-slot.pop-in {
+            animation: dexPop .4s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes dexPop {
+            0%   { transform: scale(0.5); }
+            60%  { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+
+        /* 도감 툴팁 */
+        #dex-tooltip {
+            position: fixed; z-index: 9999;
+            background: rgba(30,30,40,0.88);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            color: #fff; border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px; font-weight: 700;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0; transform: translateY(4px);
+            transition: opacity .15s, transform .15s;
+        }
+        #dex-tooltip.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 480px) {
+            #dex-bar { bottom: calc(var(--safe-bottom) + 80px); padding: 6px 8px; gap: 4px; }
+            .dex-slot { width: 24px; height: 24px; border-radius: 8px; }
+            .dex-slot img { width: 20px; height: 20px; }
+        }
+
+        /* ════════════════════════════════════════════════
+           GAME OVER OVERLAY
+        ════════════════════════════════════════════════ */
+        #gameover-overlay {
+            position: fixed; inset: 0; z-index: 150;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6);
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s;
+        }
+        #gameover-overlay.visible { opacity: 1; pointer-events: auto; }
+
+        .go-card {
+            background: #fff;
+            border-radius: var(--radius-xl);
+            padding: 32px 24px 28px;
+            width: calc(100% - 48px); max-width: 360px;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+            animation: cardIn .4s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        .go-emoji { font-size: 48px; margin-bottom: 10px; display: block; }
+        .go-title { font-size: 22px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+        .go-sub   { font-size: 13px; color: var(--text-tertiary); margin-bottom: 20px; }
+
+        .go-scores {
+            background: var(--bg-surface-02); border-radius: var(--radius-md);
+            padding: 16px; margin-bottom: 20px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        .go-score-block { text-align: center; }
+        .go-score-lbl { font-size: 11px; font-weight: 700; color: var(--text-tertiary); letter-spacing:.05em; }
+        .go-score-val { font-size: 36px; font-weight: 900; color: var(--text-primary); line-height: 1.1; }
+        .go-score-val.is-best { color: var(--toss-blue); }
+        .go-best-badge {
+            font-size: 10px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, #ff5988, #ff9800);
+            padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px;
+        }
+
+        /* ── 힌트 버튼 ── */
+        .hint-btn {
+            background: linear-gradient(135deg, #fff4d6, #ffe099);
+            border: none; border-radius: 99px;
+            padding: 6px 14px; font-size: 14px; font-weight: 700;
+            color: #7a5900; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255,180,0,0.3);
+            align-self: center;
+        }
+        .hint-btn:active { transform: scale(0.92); }
+
+        /* ── IAP 버튼 ── */
+        .iap-btn {
+            background: linear-gradient(135deg, #191f28, #2d3748);
+            color: #fff; font-size: 15px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .iap-btn:active { filter: brightness(0.85); transform: scale(0.97); }
+        .iap-owned {
+            text-align: center; font-size: 13px; font-weight: 600;
+            color: #00b259; padding: 10px 0 4px;
+        }
+
+        .go-btn-stack { display: flex; flex-direction: column; gap: 10px; }
+        .go-btn {
+            font-family: inherit; width: 100%; padding: 17px;
+            border: none; border-radius: var(--radius-md);
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: transform .12s cubic-bezier(.22,1,.36,1), box-shadow .12s, filter .12s;
+            position: relative; /* overflow: hidden 대신 visible 사용 (배지용) */
+            letter-spacing: -0.01em;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+        }
+
+        /* 광고 부활 (전환율 극대화 디자인) */
+        .go-btn-ad {
+            background: linear-gradient(135deg, #3182f6, #4facfe);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(49,130,246,0.35);
+            animation: ad-pulse 2.5s infinite;
+        }
+        .go-btn-ad:active { transform: scale(0.96); filter: brightness(0.92); }
+        .go-btn-ad-badge {
+            position: absolute;
+            top: -12px;
+            right: -8px;
+            background: #ff5988;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 99px;
+            box-shadow: 0 4px 12px rgba(255,89,136,0.4);
+            animation: bounce-badge 1s infinite alternate;
+            z-index: 10;
+        }
+        @keyframes ad-pulse {
+            0%   { box-shadow: 0 6px 20px rgba(49,130,246,0.35); }
+            50%  { box-shadow: 0 6px 28px rgba(49,130,246,0.6); transform: scale(1.02); }
+            100% { box-shadow: 0 6px 20px rgba(49,130,246,0.35); }
+        }
+        @keyframes bounce-badge {
+            from { transform: translateY(0) rotate(5deg); }
+            to   { transform: translateY(-4px) rotate(5deg); }
+        }
+
+        /* 메인 버튼 (부활 불가 시 재시작 버튼으로 사용) */
+        .go-btn-primary {
+            background: var(--toss-blue);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(49,130,246,0.32);
+        }
+        .go-btn-primary:active { transform: scale(0.96); filter: brightness(0.92); }
+
+        /* 보조 버튼 (부활 가능할 때 재시작 버튼을 덜 눈에 띄게) */
+        .go-btn-secondary {
+            background: var(--bg-surface-02);
+            color: var(--text-secondary);
+            box-shadow: none;
+        }
+        .go-btn-secondary:active { background: var(--line-01); transform: scale(0.96); }
+
+        /* 공유 버튼 — 텍스트만 (TDS TextButton 느낌) */
+        .go-btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            box-shadow: none;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .go-btn-ghost:active { background: var(--bg-surface-02); transform: scale(0.96); }
+
+        /* ════════════════════════════════════════════════
+           SETTINGS BOTTOM SHEET (TDS Style)
+        ════════════════════════════════════════════════ */
+        #settings-overlay {
+            position: fixed; inset: 0; z-index: 160;
+            background: rgba(0,0,0,0.45);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s;
+        }
+        #settings-overlay.visible { opacity: 1; pointer-events: auto; }
+
+        .sht {
+            background: var(--bg-surface);
+            border-radius: 20px 20px 0 0;
+            width: 100%; max-width: 480px;
+            padding: 12px 24px calc(var(--safe-bottom) + 24px);
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
+            transform: translateY(100%);
+            transition: transform .35s cubic-bezier(.22,1,.36,1);
+        }
+        #settings-overlay.visible .sht { transform: translateY(0); }
+
+        .sht-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--line-01); margin: 0 auto 20px; }
+        .sht-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .sht-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line-01); }
+        .sht-row:last-of-type { border-bottom: none; }
+        .sht-left { display: flex; align-items: center; gap: 14px; }
+        .sht-icon { font-size: 22px; }
+        .sht-lbl { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .sht-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+        /* TDS 토글 */
+        .tog { position: relative; width: 48px; height: 28px; cursor: pointer; flex-shrink: 0; }
+        .tog-input { display: none; }
+        .tog-track {
+            position: absolute; inset: 0;
+            background: var(--line-01); border-radius: 99px;
+            transition: background .2s;
+        }
+        .tog-input:checked + .tog-track { background: var(--toss-blue); }
+        .tog-thumb {
+            position: absolute; top: 2px; left: 2px;
+            width: 24px; height: 24px;
+            background: #fff; border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: left .2s cubic-bezier(.22,1,.36,1);
+        }
+        .tog-input:checked ~ .tog-thumb { left: 22px; }
+
+        .sht-btn {
+            font-family: inherit; width: 100%; padding: 16px;
+            border: none; border-radius: var(--radius-md);
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            margin-top: 10px; transition: background .15s;
+        }
+        .sht-primary { background: var(--toss-blue); color: #fff; }
+        .sht-primary:active { background: var(--toss-blue-dark); }
+        .sht-ghost   { background: transparent; color: var(--text-secondary); }
+        .sht-ghost:active { background: var(--bg-surface-02); }
+
+        /* ════════════════════════════════════════════════
+           가로 회전 차단 — 모바일(태블릿 제외) landscape
+        ════════════════════════════════════════════════ */
+        @media (max-width: 896px) and (orientation: landscape) {
+            #rotate-overlay { display: flex !important; }
+        }
+        #rotate-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 9999;
+            background: #191f28;
+            flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px;
+            color: #fff;
+            text-align: center;
+            padding: 24px;
+        }
+        .rotate-icon { font-size: 56px; animation: rotatePulse 1.6s ease-in-out infinite; }
+        @keyframes rotatePulse {
+            0%,100% { transform: rotate(0deg); }
+            50%      { transform: rotate(-90deg); }
+        }
+        .rotate-title { font-size: 18px; font-weight: 800; }
+        .rotate-sub   { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+    </style>
+</head>
+
+<body>
+    <!-- 가로 회전 차단 -->
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <div class="rotate-title">세로로 돌려주세요</div>
+        <div class="rotate-sub">애니멀 팝은 세로 화면에서<br>더 잘 즐길 수 있어요!</div>
+    </div>
+
+    <!-- Unity Canvas -->
+    <div id="unity-container">
+        <canvas id="unity-canvas" data-pixel-art="true"></canvas>
+    </div>
+
+    <!-- ── 로딩 ── -->
+    <div id="loading-overlay">
+        <div class="load-icon">🐾</div>
+        <div class="load-bar-bg"><div class="load-bar-fill" id="loading-fill"></div></div>
+        <div class="load-text" id="loading-text">준비 중이에요...</div>
+    </div>
+
+    <!-- ── 랜딩 ── -->
+    <div id="landing-overlay">
+        <div class="lg-card">
+            <div class="lg-badge">ANIMAL POP 🐾</div>
+            <div class="lg-title-wrap">
+                <div class="lg-title">애니멀</div>
+                <div class="lg-title-accent">팝!</div>
+                <div class="lg-sub">같은 동물을 합쳐 더 크게 만들어보세요</div>
+            </div>
+            <div class="lg-best-row">
+                <span style="font-size:18px">✨</span>
+                <span class="lg-best-lbl">최고 기록</span>
+                <span class="lg-best-val" id="html-best-score">0</span>
+            </div>
+            <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
+            <div class="lg-howto">동물을 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
+        </div>
+    </div>
+
+    <!-- ── HUD ── -->
+    <div id="game-hud">
+        <div class="hud-top-row">
+            <div class="hud-score-box">
+                <div class="hud-label">점수</div>
+                <div class="hud-score-val" id="score">0</div>
+                <div class="hud-new-best" id="new-best-badge">신기록!</div>
+            </div>
+            <div class="hud-next-box">
+                <div class="hud-label">다음</div>
+                <img class="hud-next-img" id="next-img" src="" alt="다음 동물">
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 플레이 타임 (하단 중앙) ── -->
+    <div id="hud-timer" class="hud-timer-box">
+        <div class="hud-label">시간</div>
+        <div class="hud-timer-val" id="play-timer">00:00</div>
+    </div>
+
+    <!-- ── 위험 구역 경고 배너 ── -->
+    <div id="danger-banner">
+        <span class="danger-icon">⚠️</span>
+        <div class="danger-text">
+            위험! 동물이 너무 높이 쌓였어요<br>
+            <span style="font-size:11px;opacity:.85">빨리 합쳐서 공간을 만들어요!</span>
+        </div>
+    </div>
+
+    <!-- ── 사이드 패널 좌 (드롭 수) ── -->
+    <div id="side-left" class="side-panel">
+        <div class="sp-card">
+            <div class="sp-icon">🎯</div>
+            <div class="sp-label">드롭</div>
+            <div class="sp-value" id="sp-drop">0</div>
+        </div>
+    </div>
+
+    <!-- ── 사이드 패널 우 (병합) ── -->
+    <div id="side-right" class="side-panel">
+        <div class="sp-card">
+            <div class="sp-icon">⭐</div>
+            <div class="sp-label">병합</div>
+            <div class="sp-value" id="sp-merge">0</div>
+        </div>
+    </div>
+
+
+    <!-- ── 모바일 미니 스탯 바 (480px 이하 전용) ── -->
+    <div id="mobile-stat-bar">
+        <div class="msb-item">
+            <span class="msb-icon">🎯</span>
+            <span class="msb-val" id="msb-drop">0</span>
+            <span class="msb-lbl">드롭</span>
+        </div>
+        <div class="msb-item">
+            <span class="msb-icon">⭐</span>
+            <span class="msb-val" id="msb-merge">0</span>
+            <span class="msb-lbl">병합</span>
+        </div>
+    </div>
+
+
+    <!-- ── 동물 도감 바 ── -->
+    <div id="dex-bar">
+        <div class="dex-slots" id="dex-slots"></div>
+    </div>
+    <div id="dex-tooltip"></div>
+
+    <!-- ── 설정 FAB ── -->
+    <div id="settings-fab" onclick="openSettings()">
+        ⚙️
+    </div>
+
+    <!-- ── 게임 오버 ── -->
+    <div id="gameover-overlay">
+        <div class="go-card">
+            <span class="go-emoji">🐾</span>
+            <div class="go-title">게임이 끝났어요!</div>
+            <div class="go-sub" id="go-sub-text">수고했어요 😊</div>
+            <div class="go-scores">
+                <div class="go-score-block">
+                    <div class="go-score-lbl">점수</div>
+                    <div class="go-score-val" id="go-score">0</div>
+                </div>
+                <div class="go-score-block">
+                    <div class="go-score-lbl">최고 기록</div>
+                    <div class="go-score-val" id="go-best">0</div>
+                    <div class="go-best-badge" id="go-best-badge" style="display:none">NEW!</div>
+                </div>
+            </div>
+            <div class="go-btn-stack">
+                <!-- 광고 보고 계속하기 (Android 네이티브 AdMob 보상형 광고) -->
+                <div id="go-btn-ad-wrap" style="position:relative; display:none;">
+                    <button id="go-btn-ad" class="go-btn go-btn-ad" onclick="onWatchAdClicked()">
+                        📺 광고 보고 계속하기
+                    </button>
+                    <div class="go-btn-ad-badge" id="go-ad-badge">FREE</div>
+                </div>
+                <button id="go-btn-restart" class="go-btn go-btn-primary" onclick="onRestartClicked()">다시 도전하기</button>
+                <button class="go-btn go-btn-ghost" onclick="onShareClicked()">📤 결과 공유하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 설정 패널 ── -->
+    <div id="settings-overlay" onclick="closeSettingsIfOutside(event)">
+        <div class="sht">
+            <div class="sht-handle"></div>
+            <h2 class="sht-title">설정</h2>
+            <div class="sht-row">
+                <div class="sht-left">
+                    <div class="sht-icon">🎵</div>
+                    <div>
+                        <div class="sht-lbl">배경음악</div>
+                        <div class="sht-sub">BGM을 켜거나 끌 수 있어요</div>
+                    </div>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" class="tog-input" id="toggle-bgm" checked onchange="onBgmToggle(this)">
+                    <div class="tog-track"></div><div class="tog-thumb"></div>
+                </label>
+            </div>
+            <div class="sht-row">
+                <div class="sht-left">
+                    <div class="sht-icon">🔊</div>
+                    <div>
+                        <div class="sht-lbl">효과음</div>
+                        <div class="sht-sub">효과음을 켜거나 끌 수 있어요</div>
+                    </div>
+                </div>
+                <label class="tog">
+                    <input type="checkbox" class="tog-input" id="toggle-sfx" checked onchange="onSfxToggle(this)">
+                    <div class="tog-track"></div><div class="tog-thumb"></div>
+                </label>
+            </div>
+            <!-- 결제 버튼 (미구매 시에만 노출) -->
+            <div id="iap-section" style="margin-top:8px;">
+                <button id="iap-btn" class="sht-btn iap-btn" onclick="onPurchaseClicked()">
+                    ✨ 광고 영구 제거 · <strong>990원</strong>
+                </button>
+                <div id="iap-owned-msg" class="iap-owned" style="display:none">
+                    ✅ 프리미엄 이용 중 · 광고 없음
+                </div>
+                <button class="sht-btn sht-ghost" onclick="onRestorePurchasesClicked()" style="font-size:12px;padding:10px">이전 구매 복원</button>
+            </div>
+            <button class="sht-btn sht-primary" onclick="onRestartFromSettings()">처음부터 다시 할게요</button>
+            <button class="sht-btn sht-ghost" onclick="closeSettings()">닫기</button>
+        </div>
+    </div>
+
+    <script src="Build/916a570da3f960f57b7a78eb131d82d9.loader.js"></script>
+    <script>
+    // ════════════════════════════════════════════════════
+    //  DOM References
+    // ════════════════════════════════════════════════════
+    var canvas       = document.getElementById('unity-canvas');
+    var loadFill     = document.getElementById('loading-fill');
+    var loadText     = document.getElementById('loading-text');
+    var loadOverlay  = document.getElementById('loading-overlay');
+    var landingDiv   = document.getElementById('landing-overlay');
+    var gameHud      = document.getElementById('game-hud');
+    var scoreEl      = document.getElementById('score');
+    var nextImg      = document.getElementById('next-img');
+    var goOverlay    = document.getElementById('gameover-overlay');
+    var goScoreEl    = document.getElementById('go-score');
+    var goBestEl     = document.getElementById('go-best');
+    var goBestBadge  = document.getElementById('go-best-badge');
+    var goSubText    = document.getElementById('go-sub-text');
+
+    var dangerBanner = document.getElementById('danger-banner');
+    var settingsFab  = document.getElementById('settings-fab');
+    var newBestBadge = document.getElementById('new-best-badge');
+    var hudTimer     = document.getElementById('hud-timer');
+    var sideLeft     = document.getElementById('side-left');
+    var sideRight    = document.getElementById('side-right');
+    var spDrop       = document.getElementById('sp-drop');
+    var spMerge      = document.getElementById('sp-merge');
+    var dexBar       = document.getElementById('dex-bar');
+    var dexSlots     = document.getElementById('dex-slots');
+
+    // 모바일 미니 스탯 바
+    var mobileStatBar = document.getElementById('mobile-stat-bar');
+    var msbDrop       = document.getElementById('msb-drop');
+    var msbMerge      = document.getElementById('msb-merge');
+
+    // 사이드 패널 상태
+    var _dropCount   = 0;
+    var _mergeCount  = 0;
+
+    function resetSidePanel() {
+        _dropCount = 0; _mergeCount = 0;
+        if (spDrop)    spDrop.textContent   = '0';
+        if (spMerge)   spMerge.textContent  = '0';
+        if (msbDrop)   msbDrop.textContent   = '0';
+        if (msbMerge)  msbMerge.textContent  = '0';
+        resetDex();
+    }
+
+    // ── 동물 도감 ──
+    var DEX_TOTAL = 11;
+    var _dexFound = new Array(DEX_TOTAL + 1).fill(false); // index 1~11
+    var DEX_NAMES = ['', '병아리', '생쥐', '고슴도치', '토끼', '고양이', '시바견', '양', '원숭이', '돼지', '팬더', '사자'];
+    var dexTooltip = document.getElementById('dex-tooltip');
+    var _dexTipTimer = null;
+
+    function showDexTooltip(slot, level) {
+        if (!dexTooltip) return;
+        var found = _dexFound[level];
+        dexTooltip.textContent = found
+            ? 'Lv.' + level + ' ' + DEX_NAMES[level]
+            : 'Lv.' + level + ' ???';
+
+        // 위치 계산: 슬롯의 실제 화면 좌표 기준으로 바로 위에 배치
+        dexTooltip.style.visibility = 'hidden';
+        dexTooltip.style.left = '0px';
+        dexTooltip.style.top  = '0px';
+        dexTooltip.classList.add('show');
+
+        var r   = slot.getBoundingClientRect();
+        var tipW = dexTooltip.offsetWidth  || 80;
+        var tipH = dexTooltip.offsetHeight || 28;
+        var GAP  = 6; // 슬롯과 툴팁 사이 간격
+
+        // 수평: 슬롯 중앙 정렬, 화면 경계 클램프
+        var left = r.left + r.width / 2 - tipW / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+
+        // 수직: 슬롯 바로 위 (도감 바가 하단에 있으므로 위쪽 공간에 표시)
+        var top = r.top - tipH - GAP;
+        // 만약 화면 상단을 벗어나면 슬롯 아래쪽으로 반전
+        if (top < 8) top = r.bottom + GAP;
+
+        dexTooltip.style.left = left + 'px';
+        dexTooltip.style.top  = top + 'px';
+        dexTooltip.style.visibility = 'visible';
+
+        if (_dexTipTimer) clearTimeout(_dexTipTimer);
+        _dexTipTimer = setTimeout(function() { dexTooltip.classList.remove('show'); }, 1600);
+    }
+
+    function buildDex() {
+        if (!dexSlots) return;
+        dexSlots.innerHTML = '';
+        for (var i = 1; i <= DEX_TOTAL; i++) {
+            (function(lv) {
+                var slot = document.createElement('div');
+                slot.className = 'dex-slot';
+                slot.id = 'dex-slot-' + lv;
+                var img = document.createElement('img');
+                img.src = 'TemplateData/sprites/Animal_' + lv + '.png';
+                img.alt = 'Lv.' + lv;
+                slot.appendChild(img);
+
+                var startX, startY;
+                slot.addEventListener('touchstart', function(e) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                slot.addEventListener('touchend', function(e) {
+                    var endX = e.changedTouches[0].clientX;
+                    var endY = e.changedTouches[0].clientY;
+                    var dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    
+                    // 드래그 중(이동 거리가 10px 이상)이면 툴팁 표시 안 함
+                    if (dist < 10) {
+                        e.stopPropagation();
+                        showDexTooltip(slot, lv);
+                    }
+                }, { passive: false });
+
+                slot.addEventListener('click', function(e) {
+                    // 터치 이벤트가 지원되지 않는 환경(PC 등)을 위한 예외 처리
+                    if (window.ontouchstart === undefined) {
+                        e.stopPropagation();
+                        showDexTooltip(slot, lv);
+                    }
+                });
+                dexSlots.appendChild(slot);
+            })(i);
+        }
+    }
+
+    var DEX_ALWAYS_VISIBLE = 4; // Lv1~4는 항상 공개
+
+    function resetDex() {
+        _dexFound = new Array(DEX_TOTAL + 1).fill(false);
+        for (var i = 1; i <= DEX_TOTAL; i++) {
+            var slot = document.getElementById('dex-slot-' + i);
+            if (slot) slot.classList.remove('found', 'pop-in');
+        }
+        // Lv1~4 항상 공개
+        for (var j = 1; j <= DEX_ALWAYS_VISIBLE; j++) {
+            _dexFound[j] = true;
+            var s = document.getElementById('dex-slot-' + j);
+            if (s) s.classList.add('found');
+        }
+    }
+
+    function markDexFound(level) {
+        var lv = parseInt(level);
+        if (lv < 1 || lv > DEX_TOTAL) return;
+        if (_dexFound[lv]) return; // 이미 발견
+        _dexFound[lv] = true;
+        var slot = document.getElementById('dex-slot-' + lv);
+        if (slot) {
+            slot.classList.add('found');
+            slot.classList.remove('pop-in');
+            void slot.offsetWidth;
+            slot.classList.add('pop-in');
+        }
+    }
+
+    buildDex();
+    resetDex(); // Lv1~4 초기 공개
+
+    var unityInstance = null;
+    var gameReady     = false;
+    var bgmMuted      = false;
+    var sfxMuted      = false;
+
+    // 플레이 타이머
+    var _timerEl      = document.getElementById('play-timer');
+    var _timerStart   = 0;
+    var _timerPaused  = 0;
+    var _timerRafId   = null;
+
+    function _timerFmt(ms) {
+        var s = Math.floor(ms / 1000);
+        var m = Math.floor(s / 60);
+        s = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function _timerTick() {
+        if (_timerEl) _timerEl.textContent = _timerFmt(Date.now() - _timerStart);
+        _timerRafId = requestAnimationFrame(_timerTick);
+    }
+    function startPlayTimer() {
+        if (_timerRafId) cancelAnimationFrame(_timerRafId);
+        _timerStart = Date.now();
+        if (_timerEl) _timerEl.textContent = '00:00';
+        _timerTick();
+    }
+    function resumePlayTimer() {
+        if (_timerRafId) cancelAnimationFrame(_timerRafId);
+        _timerStart = Date.now() - _timerPaused;
+        _timerTick();
+    }
+    function pausePlayTimer() {
+        if (_timerRafId) { cancelAnimationFrame(_timerRafId); _timerRafId = null; }
+        _timerPaused = Date.now() - _timerStart;
+    }
+    // 로컬 점수 추적
+    var _currentDisplayScore = 0;
+
+    // ════════════════════════════════════════════════════
+    //  WebGL AudioContext 자동 Resume
+    // ════════════════════════════════════════════════════
+    var _audioResumed = false;
+    function resumeWebGLAudio() {
+        if (_audioResumed) return;
+        try {
+            if (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext) {
+                var ac = Module.WEBAudio.audioContext;
+                if (ac.state === 'suspended') {
+                    ac.resume().then(function() { _audioResumed = true; });
+                } else if (ac.state === 'running') {
+                    _audioResumed = true;
+                }
+                // if state is 'closed' or audioContext not ready yet, don't set _audioResumed so we retry
+            }
+        } catch(e) {}
+    }
+    document.addEventListener('click',    resumeWebGLAudio, { passive: true });
+    document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
+
+
+    // ════════════════════════════════════════════════════
+    //  Unity 초기화
+    // ════════════════════════════════════════════════════
+    var config = {
+        dataUrl:            "Build/2a2d9060289fbfe99435a957e25379d4.data.unityweb",
+        frameworkUrl:       "Build/0779fc5b91f8a412cdaf6f0625b97989.framework.js.unityweb",
+        codeUrl:            "Build/fc59ec65ca8abd7cce12c55ae769e8e7.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName:        "AnimalPopStudio",
+        productName:        "Animal Pop",
+        productVersion:     "1.0",
+        matchWebGLToCanvasSize: true,
+        webglContextAttributes: { alpha: true },
+    };
+
+    createUnityInstance(canvas, config, function(progress) {
+        var pct = Math.round(progress * 100);
+        loadFill.style.width = pct + '%';
+        loadText.textContent = pct < 100 ? pct + '%' : '거의 다 됐어요!';
+    }).then(function(instance) {
+        unityInstance = instance;
+        window.unityInstance = instance;
+        gameReady = true;
+        resumeWebGLAudio();
+        loadFill.style.width = '100%';
+        loadText.textContent = '준비 완료!';
+
+        // 8초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
+        setTimeout(function() {
+            if (!loadOverlay.classList.contains('hidden')) {
+                console.warn('[Loading] Timeout — forcing landing.');
+                hideLoading();
+                if (!gameHud.classList.contains('visible')) showLanding();
+            }
+        }, 8000);
+
+        updateLocalBestScore();
+
+    }).catch(function(err) {
+        loadText.textContent = '로딩에 실패했어요 😢';
+        console.error(err);
+    });
+
+    // ════════════════════════════════════════════════════
+    //  HUD / 상태 유틸
+    // ════════════════════════════════════════════════════
+    function showHUD(show) {
+        if (show) {
+            gameHud.classList.add('visible');
+            settingsFab.classList.add('visible');
+            if (hudTimer)      hudTimer.classList.add('visible');
+            if (sideLeft)      sideLeft.classList.add('visible');
+            if (sideRight)     sideRight.classList.add('visible');
+            if (mobileStatBar) mobileStatBar.classList.add('visible');
+            if (dexBar)        dexBar.classList.add('visible');
+        } else {
+            gameHud.classList.remove('visible');
+            settingsFab.classList.remove('visible');
+            if (hudTimer)      hudTimer.classList.remove('visible');
+            if (sideLeft)      sideLeft.classList.remove('visible');
+            if (sideRight)     sideRight.classList.remove('visible');
+            if (mobileStatBar) mobileStatBar.classList.remove('visible');
+            if (dexBar)        dexBar.classList.remove('visible');
+            hideDangerBanner();
+        }
+    }
+
+    function showLanding() {
+        landingDiv.classList.add('visible');
+    }
+
+    function hideLanding() {
+        landingDiv.classList.remove('visible');
+    }
+
+    function hideLoading() {
+        loadOverlay.classList.add('hidden');
+    }
+
+    function hideDangerBanner() {
+        dangerBanner.classList.remove('visible');
+    }
+
+    // ════════════════════════════════════════════════════
+    //  랜딩 → 게임 시작
+    // ════════════════════════════════════════════════════
+    function onHtmlStartClicked() {
+        if (!gameReady || !unityInstance) return;
+        resumeWebGLAudio();
+        hideLanding();
+        showHUD(false); // 짧은 딜레이 후 HUD 표시
+        setTimeout(function() { showHUD(true); }, 200);
+        startPlayTimer();
+        unityInstance.SendMessage('GameManager', 'StartGame');
+        unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+    }
+
+    // ════════════════════════════════════════════════════
+    //  게임 오버 버튼
+    // ════════════════════════════════════════════════════
+    function onShareClicked() {
+        var scoreEl = document.getElementById('go-score');
+        var bestEl  = document.getElementById('go-best');
+        var score   = scoreEl ? scoreEl.textContent.replace(/,/g, '') : '0';
+        var best    = bestEl  ? bestEl.textContent.replace(/,/g, '')  : '0';
+        var isNew   = (parseInt(score) >= parseInt(best) && parseInt(best) > 0);
+        var text    = isNew
+            ? '🎉 신기록! 애니멀 팝에서 ' + scoreEl.textContent + '점을 달성했어요! 같이 도전해봐요 🐾'
+            : '애니멀 팝에서 ' + scoreEl.textContent + '점을 기록했어요! 최고기록은 ' + bestEl.textContent + '점이에요 🐾';
+
+        // 1순위: Web Share API (Android Chrome/WebView 지원)
+        if (navigator.share) {
+            navigator.share({ title: '애니멀 팝 🐾', text: text })
+                .catch(function(e) {
+                    if (e.name !== 'AbortError') _shareFallback(text);
+                });
+            return;
+        }
+        // 2순위: Android 네이티브 공유 Intent
+        _shareFallback(text);
+    }
+
+    function _shareFallback(text) {
+        if (window.AndroidBridge && typeof window.AndroidBridge.shareText === 'function') {
+            window.AndroidBridge.shareText(text);
+        } else {
+            // 마지막 수단: 클립보드 복사
+            try {
+                navigator.clipboard.writeText(text);
+                showToast('📋 결과가 클립보드에 복사됐어요!');
+            } catch(e) {
+                showToast('공유 기능을 사용할 수 없어요.');
+            }
+        }
+    }
+    function onRestartClicked() { restartGame(); }
+
+    // ════════════════════════════════════════════════════
+    //  Unity → JS 콜백
+    // ════════════════════════════════════════════════════
+
+    // 점수 업데이트 (애니메이션 포함)
+    window.updateScoreFromUnity = function(score) {
+        var num = Number(score);
+        if (num === _currentDisplayScore) return;
+        _currentDisplayScore = num;
+        if (scoreEl) {
+            scoreEl.textContent = num.toLocaleString('ko-KR');
+            scoreEl.classList.remove('bump');
+            void scoreEl.offsetWidth; // reflow for re-trigger
+            scoreEl.classList.add('bump');
+        }
+    };
+
+    // 다음 동물 업데이트
+    window.updateNextFromUnity = function(level) {
+        if (nextImg) {
+            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.png';
+            nextImg.classList.remove('pop');
+            void nextImg.offsetWidth;
+            nextImg.classList.add('pop');
+        }
+        // 드롭 카운트 증가
+        _dropCount++;
+        if (spDrop)  spDrop.textContent  = _dropCount;
+        if (msbDrop) msbDrop.textContent = _dropCount;
+    };
+
+    // 병합 이벤트 (Unity에서 호출)
+    window.onMergeFromUnity = function(level) {
+        _mergeCount++;
+        if (spMerge)  spMerge.textContent  = _mergeCount;
+        if (msbMerge) msbMerge.textContent = _mergeCount;
+        markDexFound(level);
+    };
+
+    // ════════════════════════════════════════════════════
+    //  Android IAP (인앱 결제) Bridge
+    // ════════════════════════════════════════════════════
+    var _isAdsRemoved = false;
+    var _hintCount    = 0;
+
+    // Unity → JS: IAP 상태 동기화 (앱 시작 시 + 결제 후)
+    window.updateIAPStateFromUnity = function(isAdsRemoved, hintCount) {
+        _isAdsRemoved = !!isAdsRemoved;
+        _hintCount    = Number(hintCount) || 0;
+        refreshIAPUI();
+        refreshHintUI();
+    };
+
+    // Unity → JS: 결제 결과 알림
+    window.onIAPResultFromUnity = function(result, productId) {
+        var iapBtn = document.getElementById('iap-btn');
+        if (iapBtn) { iapBtn.disabled = false; iapBtn.textContent = '✨ 광고 제거 + 힌트 10개 · 990원'; }
+        if (result === 'failed') {
+            showToast('결제에 실패했어요. 다시 시도해 주세요.');
+        } else if (result === 'cancelled') {
+            // 취소는 조용히 처리
+        }
+    };
+
+    // Android → JS: 결제 성공 (BillingManager 콜백 → Unity → JS 경로 외, 직접 경로)
+    window.onPurchaseSuccessFromAndroid = function(productId, token) {
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|' + token);
+    };
+    window.onPurchaseFailedFromAndroid = function(productId, code) {
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseFailed', productId + '|' + code);
+    };
+    window.onPurchaseCancelledFromAndroid = function(productId) {
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseCancelled', productId);
+    };
+    window.onPurchaseRestoredFromAndroid = function(productId, token) {
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseRestored', productId + '|' + token);
+    };
+
+    // 결제 버튼 클릭
+    function onPurchaseClicked() {
+        if (_isAdsRemoved) return;
+        var btn = document.getElementById('iap-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 결제 처리 중...'; }
+        if (unityInstance) unityInstance.SendMessage('IAPManager', 'PurchaseFromJS', '');
+    }
+
+    // 구매 복원 버튼 클릭
+    function onRestorePurchasesClicked() {
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnRestorePurchasesRequested', '');
+        if (window.AndroidBridge && typeof window.AndroidBridge.restorePurchases === 'function') {
+            window.AndroidBridge.restorePurchases();
+        }
+    }
+
+    // 힌트 버튼 클릭
+    function onHintClicked() {
+        if (_hintCount <= 0) return;
+        if (unityInstance) unityInstance.SendMessage('GameManager', 'UseHintFromJS', '');
+    }
+
+    // 힌트 UI 갱신 (HUD) - 현재 미사용(힌트 제거됨), 빈 함수 유지
+    function refreshHintUI() {}
+
+    // IAP UI 갱신 (설정 패널)
+    function refreshIAPUI() {
+        var btn      = document.getElementById('iap-btn');
+        var ownedMsg = document.getElementById('iap-owned-msg');
+        var section  = document.getElementById('iap-section');
+        if (!section) return;
+        if (_isAdsRemoved) {
+            if (btn) btn.style.display = 'none';
+            if (ownedMsg) ownedMsg.style.display = 'block';
+        } else {
+            if (btn) btn.style.display = 'block';
+            if (ownedMsg) ownedMsg.style.display = 'none';
+        }
+        // 광고 제거 시 게임오버 보상형 광고 버튼도 숨김
+        if (_isAdsRemoved) {
+            var adWrap = document.getElementById('go-btn-ad-wrap');
+            if (adWrap) adWrap.style.display = 'none';
+        }
+    }
+
+    // 힌트 UI 갱신 (HUD)
+    function refreshHintUI() {
+        var hintBtn   = document.getElementById('hint-btn');
+        var hintLabel = document.getElementById('hint-count');
+        if (!hintBtn) return;
+        if (_hintCount > 0) {
+            hintBtn.style.display = 'block';
+            if (hintLabel) hintLabel.textContent = _hintCount;
+        } else {
+            hintBtn.style.display = 'none';
+        }
+    }
+
+    // 토스트 메시지 (간단 알림)
+    function showToast(msg) {
+        var t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);' +
+            'background:rgba(25,31,40,0.9);color:#fff;padding:10px 20px;border-radius:99px;' +
+            'font-size:14px;font-weight:600;z-index:9999;pointer-events:none;';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, 2500);
+    }
+
+    // ════════════════════════════════════════════════════
+    //  Android AdMob Bridge
+    // ════════════════════════════════════════════════════
+    var _isAndroid = (typeof window.AndroidBridge !== 'undefined');
+    var _adWatchAllowed = false;   // 보상형 광고 시청 가능 여부
+    var _adUsedThisGame = false;   // 이번 게임에서 광고 계속하기 사용 여부
+
+    // 보상형 광고 준비 완료 (네이티브 → JS)
+    window.onRewardedAdReadyFromAndroid = function() {
+        _adWatchAllowed = true;
+        updateAdButton();
+    };
+
+    // 광고 완전 시청 완료 → 보상 지급 (네이티브 → JS)
+    window.onAdRewardedFromAndroid = function() {
+        _adUsedThisGame = true;
+        _adWatchAllowed = false;
+        updateAdButton();
+        goOverlay.classList.remove('visible');
+        if (unityInstance) {
+            unityInstance.SendMessage('GameManager', 'ContinueGameAfterAd', '');
+        }
+    };
+
+    // 광고 실패/취소
+    window.onAdFailedFromAndroid = function() {
+        console.log('[AdMob] 광고 실패 또는 취소');
+    };
+
+    // 전면 광고 닫힘 후 처리
+    window.onInterstitialClosedFromAndroid = function() {
+        console.log('[AdMob] 전면 광고 닫힘');
+    };
+
+    function updateAdButton() {
+        var wrap = document.getElementById('go-btn-ad-wrap');
+        var btn  = document.getElementById('go-btn-ad');
+        if (!wrap) return;
+        // Android + 광고 미사용 + 광고 미제거 상품 구매 안 한 경우에만 노출
+        // (광고 준비 여부와 무관하게 노출 — 미준비 시 클릭하면 안내 메시지)
+        if (_isAndroid && !_adUsedThisGame && !_isAdsRemoved) {
+            wrap.style.display = 'block';
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📺 광고 보고 계속하기';
+            }
+        } else {
+            wrap.style.display = 'none';
+        }
+    }
+
+    function onWatchAdClicked() {
+        if (!_isAndroid || !window.AndroidBridge) return;
+        if (typeof window.AndroidBridge.isRewardedAdReady === 'function' &&
+            !window.AndroidBridge.isRewardedAdReady()) {
+            showToast('광고를 불러오는 중이에요. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
+        var btn = document.getElementById('go-btn-ad');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 광고 로딩 중...'; }
+        window.AndroidBridge.showRewardedAd();
+    }
+
+    // 게임 오버
+    window.showGameOverFromUnity = function(score, best) {
+        var scoreNum = Number(score);
+        var bestNum  = Number(best);
+
+        if (goScoreEl) goScoreEl.textContent = scoreNum.toLocaleString('ko-KR');
+        if (goBestEl)  goBestEl.textContent  = bestNum.toLocaleString('ko-KR');
+
+        var isNewBest = (scoreNum >= bestNum && bestNum > 0);
+        if (goBestBadge) goBestBadge.style.display = isNewBest ? 'inline-block' : 'none';
+        if (goBestEl)    goBestEl.className = 'go-score-val' + (isNewBest ? ' is-best' : '');
+        if (goSubText)   goSubText.textContent = isNewBest ? '🎉 신기록 달성!' : '수고했어요 😊';
+
+        pausePlayTimer();
+        showHUD(false);
+        goOverlay.classList.add('visible');
+
+        // 광고 버튼 업데이트 (Android 환경에서 보상형 광고 노출)
+        updateAdButton();
+
+        // 게임 오버 시 전면 광고 표시 (Android 전용, 광고 제거 상품 미구매 시)
+        if (_isAndroid && !_adUsedThisGame && !_isAdsRemoved && window.AndroidBridge &&
+            typeof window.AndroidBridge.showInterstitialAd === 'function') {
+            window.AndroidBridge.showInterstitialAd();
+        }
+
+        try {
+            var prev = parseInt(localStorage.getItem('animalpop_best') || '0');
+            if (bestNum > prev) localStorage.setItem('animalpop_best', String(bestNum));
+        } catch(e){}
+    };
+
+    // 랜딩 표시 (Unity 준비 완료 시 호출)
+    window._ShowHtmlLanding = function(bestScore) {
+        if (bestScore !== undefined) {
+            var n = Number(bestScore);
+            document.getElementById('html-best-score').textContent = n.toLocaleString('ko-KR');
+        }
+        hideLoading();
+        showHUD(false);
+        goOverlay.classList.remove('visible');
+        showLanding();
+
+        // ── 로딩완료 시 바로 배경음악 재생 ──
+        if (unityInstance && typeof bgmMuted !== 'undefined' && !bgmMuted) {
+            unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+        }
+    };
+
+
+    // 위험 구역 경고
+    window.notifyDangerZoneFromUnity = function(active) {
+        if (active) {
+            dangerBanner.classList.add('visible');
+        } else {
+            dangerBanner.classList.remove('visible');
+        }
+    };
+
+    // 신기록 갱신 인라인 알림
+    window.notifyNewHighScoreFromUnity = function(score) {
+        if (newBestBadge) {
+            newBestBadge.classList.add('show');
+        }
+    };
+
+    // ════════════════════════════════════════════════════
+    //  설정 패널
+    // ════════════════════════════════════════════════════
+    function openSettings() {
+        document.getElementById('toggle-bgm').checked = !bgmMuted;
+        document.getElementById('toggle-sfx').checked = !sfxMuted;
+        document.getElementById('settings-overlay').classList.add('visible');
+    }
+    function closeSettings() {
+        document.getElementById('settings-overlay').classList.remove('visible');
+    }
+    function closeSettingsIfOutside(e) {
+        if (e.target === document.getElementById('settings-overlay')) closeSettings();
+    }
+    function onBgmToggle(cb) {
+        bgmMuted = !cb.checked;
+        if (unityInstance) {
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+            if (!bgmMuted) unityInstance.SendMessage('GameManager', 'ForcePlayBGM');
+        }
+        try { localStorage.setItem('animalpop_bgm', bgmMuted ? '0' : '1'); } catch(e){}
+    }
+    function onSfxToggle(cb) {
+        sfxMuted = !cb.checked;
+        if (unityInstance) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
+        try { localStorage.setItem('animalpop_sfx', sfxMuted ? '0' : '1'); } catch(e){}
+    }
+    function onRestartFromSettings() {
+        closeSettings();
+        restartGame();
+    }
+
+    // ════════════════════════════════════════════════════
+    //  게임 재시작
+    // ════════════════════════════════════════════════════
+    function restartGame() {
+        if (!unityInstance) { location.reload(); return; }
+        // 광고 상태 초기화 (게임 재시작 시 계속하기 광고 재활성화)
+        _adUsedThisGame = false;
+        updateAdButton();
+        goOverlay.classList.remove('visible');
+        hideDangerBanner();
+        showHUD(false);
+        if (newBestBadge) newBestBadge.classList.remove('show');
+        _currentDisplayScore = 0;
+        if (scoreEl) scoreEl.textContent = '0';
+        resetSidePanel();
+        startPlayTimer();
+        unityInstance.SendMessage('GameManager', 'StartGame');
+        setTimeout(function() { showHUD(true); }, 200);
+    }
+
+    // ════════════════════════════════════════════════════
+    //  로컬 스토리지 유틸
+    // ════════════════════════════════════════════════════
+    function updateLocalBestScore() {
+        try {
+            var s = parseInt(localStorage.getItem('animalpop_best') || '0');
+            var el = document.getElementById('html-best-score');
+            if (el) el.textContent = s.toLocaleString('ko-KR');
+        } catch(e){}
+    }
+
+    // 설정 초기값 로드
+    try {
+        bgmMuted = localStorage.getItem('animalpop_bgm') === '0';
+        sfxMuted = localStorage.getItem('animalpop_sfx') === '0';
+    } catch(e){}
+
+    // ════════════════════════════════════════════════════
+    //  데이터 영속화 최적화 (Task 3)
+    // ════════════════════════════════════════════════════
+    window.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden' && unityInstance) {
+            console.log("[JS] Visibility changed to hidden. Requesting save...");
+            unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+        }
+    });
+    window.addEventListener('pagehide', function() {
+        if (unityInstance) {
+            console.log("[JS] Page hide. Requesting save...");
+            unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+        }
+    });
+    </script>
+</body>
+</html>

@@ -679,12 +679,12 @@ MonoBehaviour:
   LandingHighScoreText: {fileID: 0}
   NextGuideText: {fileID: 0}
   ApplicationStartButton: {fileID: 0}
-  AdReviveButton: {fileID: 0}
   ShareButton: {fileID: 0}
   RestartButton: {fileID: 0}
   SoundToggleButton: {fileID: 0}
   SoundToggleText: {fileID: 0}
   HUDPanel: {fileID: 0}
+  GameOverScoreText: {fileID: 0}
   LoginStatusText: {fileID: 0}
 --- !u!4 &736881645
 Transform:
