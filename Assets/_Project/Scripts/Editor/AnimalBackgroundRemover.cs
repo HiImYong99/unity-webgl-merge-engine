@@ -17,7 +17,7 @@ public static class AnimalBackgroundRemover
 {
     // ── 설정 상수 ───────────────────────────────────────────
     private const int   ANIMAL_LEVELS   = 11;
-    private const float COLOR_TOLERANCE = 0.18f;       // 초록색 개구리/도치 보호를 위해 관대하게 설정
+    private const float COLOR_TOLERANCE = 0.18f;       // 초록/복잡한 색상 동물 보호를 위해 관대하게 설정
     private const int   MAX_FILL_PIXELS = 8_000_000;  // BFS 안전 제한
     private const int   SQUARE_PADDING  = 2;           // 크롭 후 사방 최소 여백(px)
 

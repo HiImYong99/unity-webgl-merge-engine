@@ -262,7 +262,17 @@ public class UIMgr : MonoBehaviour
 
     private void OnRestartClicked()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        if (GameMgr.Instance != null)
+            GameMgr.Instance.RequestRestart();
+        else
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+    }
+
+    // IAP 구매 완료 시 UI 알림 (index.html의 JS에서도 별도 처리 가능)
+    public void NotifyAdRemoved()
+    {
+        Debug.Log("[UIMgr] 광고 제거 완료 알림");
+        if (BridgeMgr.Instance != null) BridgeMgr.Instance.NotifyAdRemoved();
     }
 }

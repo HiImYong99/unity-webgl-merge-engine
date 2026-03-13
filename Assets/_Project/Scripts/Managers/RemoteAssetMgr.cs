@@ -30,6 +30,25 @@ public class RemoteAssetMgr : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        if (!UseCDN) PreloadAllSprites();
+    }
+
+    /// <summary>
+    /// 게임 시작 시 모든 레벨 스프라이트를 캐시에 미리 로드합니다.
+    /// 게임 중 Resources.Load 지연을 없애 첫 등장 스터터링을 방지합니다.
+    /// </summary>
+    private void PreloadAllSprites()
+    {
+        for (int level = 1; level <= 11; level++)
+        {
+            if (_spriteCache.ContainsKey(level)) continue;
+            Texture2D tex = Resources.Load<Texture2D>($"Animals/Animal_{level}");
+            if (tex != null) _spriteCache[level] = CreateTightSprite(level, tex);
+        }
+    }
+
     /// <summary>
     /// 특정 레벨의 동물 스프라이트를 로드합니다.
     /// </summary>

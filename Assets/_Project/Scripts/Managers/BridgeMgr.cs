@@ -16,6 +16,8 @@ public class BridgeMgr : MonoBehaviour
     public event Action<float, float, float, float> OnSafeAreaReceivedEvent;
     public event Action OnAdCompleteEvent;
     public event Action OnShareSuccessEvent;
+    public event Action<string> OnIAPSuccessEvent;
+    public event Action<string> OnIAPFailedEvent;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] private static extern void SyncSaveToLocalStorage(string key, string value);
@@ -23,6 +25,7 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void updateScoreFromUnity(int score);
     [DllImport("__Internal")] private static extern void updateNextFromUnity(int level);
     [DllImport("__Internal")] private static extern void showGameOverFromUnity(int score, int best, bool adWatched, int spareLives);
+    [DllImport("__Internal")] private static extern void ShowTossInterstitialAd();
     [DllImport("__Internal")] private static extern void ShowTossAd(int adType);
     [DllImport("__Internal")] private static extern void TossAppLogin();
     [DllImport("__Internal")] private static extern void TossGetSafeArea();
@@ -34,13 +37,21 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void notifyDangerZoneFromUnity(bool active);
     [DllImport("__Internal")] private static extern void notifyNewHighScoreFromUnity(int score);
     [DllImport("__Internal")] private static extern void onMergeFromUnity(int level);
+    [DllImport("__Internal")] private static extern void TossIAPPurchase(string productId);
+    [DllImport("__Internal")] private static extern void TossIAPRestorePendingOrders();
+    [DllImport("__Internal")] private static extern void TossPayCheckout(string payToken);
+    [DllImport("__Internal")] private static extern void notifyAdRemovedFromUnity();
 #else
     private static void SyncSaveToLocalStorage(string k, string v) { }
     private static void _ShowHtmlLanding(int s) { }
     private static void updateScoreFromUnity(int s) { }
     private static void updateNextFromUnity(int l) { }
     private static void showGameOverFromUnity(int s, int b, bool a, int sp) { }
-    private static void ShowTossAd(int t) { 
+    private static void ShowTossInterstitialAd() {
+        Debug.Log("[BridgeMgr MOCK] ShowInterstitialAd");
+        Instance.OnInterstitialAdClosed();
+    }
+    private static void ShowTossAd(int t) {
         Debug.Log($"[BridgeMgr MOCK] ShowAd type: {t}");
         if (t == 0) Instance.OnReviveSuccess();
         else Instance.OnSpeedBoostAdSuccess();
@@ -59,6 +70,16 @@ public class BridgeMgr : MonoBehaviour
     private static void notifyDangerZoneFromUnity(bool a) { }
     private static void notifyNewHighScoreFromUnity(int s) { }
     private static void onMergeFromUnity(int l) { }
+    private static void TossIAPPurchase(string productId) {
+        Debug.Log($"[BridgeMgr MOCK] IAP Purchase: {productId}");
+        Instance.OnIAPSuccess(productId);
+    }
+    private static void TossIAPRestorePendingOrders() { Debug.Log("[BridgeMgr MOCK] IAP Restore Pending"); }
+    private static void TossPayCheckout(string payToken) {
+        Debug.Log($"[BridgeMgr MOCK] TossPay Checkout: {payToken}");
+        Instance.OnIAPSuccess("toss_pay_success");
+    }
+    private static void notifyAdRemovedFromUnity() { }
 #endif
 
     private void Awake()
@@ -81,8 +102,9 @@ public class BridgeMgr : MonoBehaviour
     public void UpdateScore(int s) => updateScoreFromUnity(s);
     public void UpdateNext(int l) => updateNextFromUnity(l);
     public void ShowGameOver(int s, int b, bool a, int sp) => showGameOverFromUnity(s, b, a, sp);
-    public void RequestAd() => ShowTossAd(0); // 부활
-    public void RequestSpeedBoostAd() => ShowTossAd(1); // 2배속
+    public void RequestInterstitialAd() => ShowTossInterstitialAd(); // 게임오버 전면 광고
+    public void RequestAd() => ShowTossAd(0); // 다시하기 보상형
+    public void RequestSpeedBoostAd() => ShowTossAd(1); // 2배속 보상형
     public void RequestLogin() => TossAppLogin();
     public void RequestSafeArea() => TossGetSafeArea();
     public void RequestShare(string msg) => TossShare(msg);
@@ -94,6 +116,16 @@ public class BridgeMgr : MonoBehaviour
     public void NotifyDanger(bool active) => notifyDangerZoneFromUnity(active);
     public void NotifyNewRecord(int score) => notifyNewHighScoreFromUnity(score);
     public void NotifyMerge(int level) => onMergeFromUnity(level);
+    public void NotifyAdRemoved() => notifyAdRemovedFromUnity();
+
+    // 상품 ID 상수
+    public const string PRODUCT_ID = "ait.0000022018.560c8f2d.99adbacd5a.3325211470";
+
+    public void RequestIAPPurchase() => TossIAPPurchase(PRODUCT_ID);
+    public void RestorePendingOrders() => TossIAPRestorePendingOrders();
+    
+    // [추가] 토스페이 결제 요청 (payToken 기반)
+    public void RequestTossPay(string payToken) => TossPayCheckout(payToken);
 
     // ── JS -> Unity 콜백 (JSLib에서 SendMessage로 호출) ──
     public void OnLoginSuccess(string userKey)
@@ -121,6 +153,12 @@ public class BridgeMgr : MonoBehaviour
         }
     }
 
+    // 게임오버 전면 광고 닫힘 콜백
+    public void OnInterstitialAdClosed()
+    {
+        if (GameMgr.Instance != null) GameMgr.Instance.OnInterstitialAdClosed();
+    }
+
     public void OnReviveSuccess()
     {
         OnAdCompleteEvent?.Invoke();
@@ -142,4 +180,25 @@ public class BridgeMgr : MonoBehaviour
     }
 
     public void OnShareSuccess(string _) => OnShareSuccessEvent?.Invoke();
+
+    // IAP 콜백
+    public void OnIAPSuccess(string productId)
+    {
+        Debug.Log($"[BridgeMgr] IAP Success: {productId}");
+        OnIAPSuccessEvent?.Invoke(productId);
+        if (GameMgr.Instance != null) GameMgr.Instance.OnIAPPurchased(productId);
+    }
+
+    public void OnIAPFailed(string errorCode)
+    {
+        Debug.LogWarning($"[BridgeMgr] IAP Failed: {errorCode}");
+        OnIAPFailedEvent?.Invoke(errorCode);
+    }
+
+    // 미결 주문 복원 (앱 시작 시 자동 지급)
+    public void OnIAPRestored(string productId)
+    {
+        Debug.Log($"[BridgeMgr] IAP Restored: {productId}");
+        if (GameMgr.Instance != null) GameMgr.Instance.OnIAPPurchased(productId);
+    }
 }

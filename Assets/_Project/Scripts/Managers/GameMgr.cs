@@ -17,6 +17,7 @@ public class GameMgr : MonoBehaviour
         public int currentScore;
         public bool hasSavedGame;
         public List<AnimalSaveData> activeAnimals = new List<AnimalSaveData>();
+        public bool isAdRemoved;
     }
 
     [System.Serializable]
@@ -58,6 +59,8 @@ public class GameMgr : MonoBehaviour
     public bool IsBgmEnabled { get; private set; } = true;
     public bool IsSfxEnabled { get; private set; } = true;
     public bool IsVibrationEnabled { get; private set; } = true;
+    public bool IsAdRemoved { get; private set; } = false;
+    public bool HasRemainingRevives => SpareLives < MAX_REVIVES;
 
     // Fields
     private SaveDataModel _loadedSaveData;
@@ -261,10 +264,33 @@ public class GameMgr : MonoBehaviour
         ClearSavedGame();
         SaveData();
 
-        if (UIMgr.Instance != null)
+        if (UIMgr.Instance != null) UIMgr.Instance.ShowGameOver();
+    }
+
+    // 처음부터 다시하기 버튼 클릭 시 호출
+    // 부활 기회가 남아있으면 전면 광고 먼저 노출 후 재시작
+    public void RequestRestart()
+    {
+        if (!IsAdRemoved && HasRemainingRevives && BridgeMgr.Instance != null)
         {
-            UIMgr.Instance.ShowGameOver();
+            BridgeMgr.Instance.RequestInterstitialAd();
+            // 광고 닫히면 OnInterstitialAdClosed()에서 씬 재시작
         }
+        else
+        {
+            DoRestart();
+        }
+    }
+
+    public void OnInterstitialAdClosed()
+    {
+        DoRestart();
+    }
+
+    private void DoRestart()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 
     public void ClearSavedGame()
@@ -375,6 +401,7 @@ public class GameMgr : MonoBehaviour
                     IsSfxEnabled = _loadedSaveData.settings.sfx;
                     IsVibrationEnabled = _loadedSaveData.settings.vibration;
                 }
+                IsAdRemoved = _loadedSaveData.isAdRemoved;
                 return;
             }
         }
@@ -417,6 +444,10 @@ public class GameMgr : MonoBehaviour
                 UIMgr.Instance.ShowLandingPage(true);
             }
         }
+
+        // 미결 주문 복원 (결제 후 앱 종료 등으로 지급 누락된 경우 자동 복구)
+        if (BridgeMgr.Instance != null)
+            BridgeMgr.Instance.RestorePendingOrders();
     }
 
     public void OnUserLogin(string userKey)
@@ -521,10 +552,22 @@ public class GameMgr : MonoBehaviour
 
         data.highScore = HighScore;
         data.settings = new SettingsModel { bgm = IsBgmEnabled, sfx = IsSfxEnabled, vibration = IsVibrationEnabled };
+        data.isAdRemoved = IsAdRemoved;
 
         string json = JsonUtility.ToJson(data);
         PlayerPrefs.SetString("GameData", json);
         PlayerPrefs.Save();
+    }
+
+    public void OnIAPPurchased(string productId)
+    {
+        if (productId == BridgeMgr.PRODUCT_ID)
+        {
+            IsAdRemoved = true;
+            SaveData();
+            Debug.Log("[GameMgr] 광고 제거 상품 지급 완료");
+            if (UIMgr.Instance != null) UIMgr.Instance.NotifyAdRemoved();
+        }
     }
 
     private void OnApplicationPause(bool pauseStatus)

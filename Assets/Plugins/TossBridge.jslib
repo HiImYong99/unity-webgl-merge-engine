@@ -26,7 +26,7 @@ mergeInto(LibraryManager.library, {
     if (typeof window._ShowHtmlLanding === 'function') {
       window._ShowHtmlLanding(score);
     }
-    try { localStorage.setItem('dessertpop_best', score.toString()); } catch(e) {}
+    try { localStorage.setItem('animalpop_best', score.toString()); } catch(e) {}
   },
 
   // ─────────────────────────────────────────────────
@@ -64,15 +64,44 @@ mergeInto(LibraryManager.library, {
   // 3. 광고 및 결제 (Interstitial / Rewarded)
   // ─────────────────────────────────────────────────
   
-  // 부활/2배속 보상형 광고 통합 호출
-  // adType: 0 (부활), 1 (2배속)
-  ShowTossAd: function(adType) {
-    console.log('[TossBridge] ShowTossAd called, type:', adType);
-    
-    var adId = 'ait-ad-test-rewarded-id'; // TODO: SKU별 ID가 다를 경우 분기 처리
-    
+  // 게임오버 시 전면 광고 (비보상형, 자동 노출)
+  ShowTossInterstitialAd: function() {
+    var adId = 'ait.v2.live.f8b6b46c862f48f4';
+    console.log('[TossBridge] ShowTossInterstitialAd:', adId);
+
     if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
-      console.warn('[TossBridge] AppsInToss SDK Not Found - Simulating Success');
+      console.warn('[TossBridge] TossAds SDK Not Found - Skip interstitial');
+      SendMessage('BridgeManager', 'OnInterstitialAdClosed');
+      return;
+    }
+
+    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
+      options: { adGroupId: adId },
+      onEvent: function(event) {
+        if (event.type !== 'loaded') return;
+        loadUnregister && loadUnregister();
+
+        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
+          options: { adGroupId: adId },
+          onEvent: function(ev) {
+            if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
+              showUnregister && showUnregister();
+              SendMessage('BridgeManager', 'OnInterstitialAdClosed');
+            }
+          }
+        });
+      }
+    });
+  },
+
+  // 다시하기 보상형 광고 / 2배속 보상형 광고
+  // adType: 0 (다시하기/부활), 1 (2배속)
+  ShowTossAd: function(adType) {
+    var adId = 'ait.v2.live.79b8c799130343ec'; // 다시하기 광고 ID
+    console.log('[TossBridge] ShowTossAd called, type:', adType, 'adId:', adId);
+
+    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
+      console.warn('[TossBridge] TossAds SDK Not Found - Simulating Success');
       setTimeout(function() {
         if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
         else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
@@ -90,8 +119,8 @@ mergeInto(LibraryManager.library, {
           options: { adGroupId: adId },
           onEvent: function(ev) {
             if (ev.type === 'userEarnedReward') {
-               if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
-               else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+              if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
+              else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
             }
             if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
               showUnregister && showUnregister();
@@ -103,7 +132,107 @@ mergeInto(LibraryManager.library, {
   },
 
   // ─────────────────────────────────────────────────
-  // 4. 플랫폼 네이티브 기능 (Login, Share, Vibrate, etc.)
+  // 4. 인앱 결제 (IAP)
+  // ─────────────────────────────────────────────────
+
+  // 상품 구매 요청
+  // productId: 콘솔에서 발급받은 상품 ID (ait.xxx...)
+  TossIAPPurchase: function(productIdPtr) {
+    var productId = UTF8ToString(productIdPtr);
+    console.log('[TossBridge] TossIAPPurchase:', productId);
+
+    if (!window.AppsInToss || !window.AppsInToss.IAP ||
+        typeof window.AppsInToss.IAP.createOneTimePurchaseOrder !== 'function') {
+      console.warn('[TossBridge] IAP SDK Not Found - Simulating Success');
+      setTimeout(function() {
+        SendMessage('BridgeManager', 'OnIAPSuccess', productId);
+      }, 500);
+      return;
+    }
+
+    window.AppsInToss.IAP.createOneTimePurchaseOrder({
+      sku: productId,
+      onEvent: function(event) {
+        console.log('[TossBridge] IAP event:', event.type, event.data);
+        if (event.type === 'success') {
+          var orderId = (event.data && event.data.orderId) ? event.data.orderId : '';
+          // SDK 1.1.3+: 상품 지급 후 completeProductGrant 필수 호출
+          if (typeof window.AppsInToss.IAP.completeProductGrant === 'function') {
+            window.AppsInToss.IAP.completeProductGrant({ orderId: orderId })
+              .then(function() {
+                SendMessage('BridgeManager', 'OnIAPSuccess', productId);
+              })
+              .catch(function(e) {
+                console.error('[TossBridge] completeProductGrant failed:', e);
+                SendMessage('BridgeManager', 'OnIAPSuccess', productId);
+              });
+          } else {
+            SendMessage('BridgeManager', 'OnIAPSuccess', productId);
+          }
+        } else if (event.type === 'error') {
+          var code = (event.data && event.data.code) ? event.data.code : 'UNKNOWN';
+          SendMessage('BridgeManager', 'OnIAPFailed', code);
+        }
+      }
+    });
+  },
+
+  // 앱 시작 시 미결 주문 복원 (결제됐지만 지급 안 된 주문)
+  TossIAPRestorePendingOrders: function() {
+    if (!window.AppsInToss || !window.AppsInToss.IAP ||
+        typeof window.AppsInToss.IAP.getPendingOrders !== 'function') {
+      return;
+    }
+
+    window.AppsInToss.IAP.getPendingOrders().then(function(orders) {
+      if (!orders || orders.length === 0) return;
+      orders.forEach(function(order) {
+        var sku = order.sku || '';
+        console.log('[TossBridge] Restoring pending order:', order.orderId, sku);
+        SendMessage('BridgeManager', 'OnIAPRestored', sku);
+        if (typeof window.AppsInToss.IAP.completeProductGrant === 'function') {
+          window.AppsInToss.IAP.completeProductGrant({ orderId: order.orderId })
+            .catch(function(e) { console.error('[TossBridge] restore complete failed:', e); });
+        }
+      });
+    }).catch(function(e) {
+      console.error('[TossBridge] getPendingOrders failed:', e);
+    });
+  },
+
+  // 토스페이 결제창 호출 (Checkout 방식)
+  TossPayCheckout: function(payTokenPtr) {
+    var payToken = UTF8ToString(payTokenPtr);
+    console.log('[TossBridge] TossPayCheckout start, token:', payToken);
+
+    if (!window.AppsInToss || !window.AppsInToss.TossPay || 
+        typeof window.AppsInToss.TossPay.checkoutPayment !== 'function') {
+      console.warn('[TossBridge] TossPay SDK Not Found - Simulating Success');
+      setTimeout(function() {
+        SendMessage('BridgeManager', 'OnIAPSuccess', 'toss_pay_success');
+      }, 500);
+      return;
+    }
+
+    window.AppsInToss.TossPay.checkoutPayment({
+      payToken: payToken
+    }).then(function(result) {
+      if (result.success) {
+        SendMessage('BridgeManager', 'OnIAPSuccess', 'toss_pay_success');
+      } else {
+        SendMessage('BridgeManager', 'OnIAPFailed', result.reason || 'USER_CANCEL');
+      }
+    }).catch(function(error) {
+      SendMessage('BridgeManager', 'OnIAPFailed', error.toString());
+    });
+  },
+
+  notifyAdRemovedFromUnity: function() {
+    if (typeof window.notifyAdRemovedFromUnity === 'function') window.notifyAdRemovedFromUnity();
+  },
+
+  // ─────────────────────────────────────────────────
+  // 5. 플랫폼 네이티브 기능 (Login, Share, Vibrate, etc.)
   // ─────────────────────────────────────────────────
   TossAppLogin: function() {
     if (window.AppsInToss && typeof window.AppsInToss.getUserKeyForGame === 'function') {

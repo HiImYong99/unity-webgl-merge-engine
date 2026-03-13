@@ -24,14 +24,14 @@ public class Animal : MonoBehaviour
         0.35f, // Lv1  병아리
         0.44f, // Lv2  생쥐
         0.55f, // Lv3  고슴도치
-        0.68f, // Lv4  개구리
-        0.85f, // Lv5  토끼
-        1.05f, // Lv6  고양이
-        1.28f, // Lv7  시바견
-        1.54f, // Lv8  돼지
-        1.86f, // Lv9  판다
-        2.18f, // Lv10 곰
-        2.50f, // Lv11 호랑이
+        0.68f, // Lv4  토끼
+        0.85f, // Lv5  고양이
+        1.05f, // Lv6  시바견
+        1.28f, // Lv7  양
+        1.54f, // Lv8  원숭이
+        1.86f, // Lv9  돼지
+        2.18f, // Lv10 팬더
+        2.50f, // Lv11 사자
     };
 
     public const int MAX_LEVEL = 11;

@@ -23,10 +23,10 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         PlayerSettings.stripEngineCode = true;
 
         // ─── 압축 설정 ─────────────────────────────────────────────
-        // Brotli or Gzip → 앱인토스 WebView는 Gzip을 지원, Decompression Fallback 필수
-        // AppsInToss의 미니앱 서버가 gzip 헤더 없이 서빙하는 경우가 있어 fallback 필수
-        PlayerSettings.WebGL.decompressionFallback = true;
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        // Brotli: Gzip 대비 ~20% 더 작고 브라우저 네이티브 압축 해제로 빠름
+        // vite.config.ts의 unityWebContentEncodingPlugin이 Content-Encoding 헤더를 처리
+        PlayerSettings.WebGL.decompressionFallback = false; // Brotli는 모던 모바일 브라우저에서 네이티브 지원
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
 
         // ─── 텍스처 압축 ───────────────────────────────────────────
         // 앱인토스 게임 권장: ASTC (iOS/Android 모두 지원, 화질↑ 용량↓)
@@ -49,17 +49,17 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
         // None → 크래시, Full → 빌드 크기 큼. Explicit이 최선의 균형
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
 
-        // 링크 생성 (불필요한 IL2CPP 코드 제거)
+        // 링크 생성 (불필요한 IL2CPP 코드 제거) - Low로 올려 빌드 크기 감소
         PlayerSettings.SetManagedStrippingLevel(
             BuildTargetGroup.WebGL,
-            ManagedStrippingLevel.Minimal
+            ManagedStrippingLevel.Medium
         );
 
         // ─── WebGL 템플릿 자동 설정 ────────────────────────────────
         // Assets/WebGLTemplates/AnimalPop/ 폴더가 있으면 자동 선택
         SetAnimalPopTemplate();
 
-        Debug.Log("[WebGLOptimizer] ✅ 설정 완료: Gzip+Fallback, ASTC, 256MB Heap, StripEngineCode ON");
+        Debug.Log("[WebGLOptimizer] ✅ 설정 완료: Brotli, ASTC, StripEngineCode ON, Stripping=Low");
     }
 
     public static void SetAnimalPopTemplate()
@@ -96,12 +96,11 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
     public static void ApplySettingsManuallyNoDialog()
     {
         PlayerSettings.stripEngineCode = true;
-        PlayerSettings.WebGL.decompressionFallback = true;
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        PlayerSettings.WebGL.decompressionFallback = false;
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
         EditorUserBuildSettings.webGLBuildSubtarget = WebGLTextureSubtarget.ASTC;
-        // PlayerSettings.WebGL.memorySize = 256; // 제거
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
-        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.Minimal);
+        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.Low);
         SetAnimalPopTemplate();
     }
 }

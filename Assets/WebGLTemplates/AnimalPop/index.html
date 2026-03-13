@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>애니멀 팝 🐾</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 비동기 로드: 폰트가 없어도 렌더링 차단 없음 (Nunito만 요청, Pretendard은 구글폰트에 없으므로 제외) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap"></noscript>
     <style>
         /* ════════════════════════════════════════════════
            RESET & CSS VARIABLES
@@ -99,12 +102,34 @@
             50%      { transform: translateY(-14px) scale(1.05); }
         }
         .load-bar-bg {
-            width: 160px; height: 3px;
-            background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
+            width: 200px; height: 4px;
+            background: rgba(0,0,0,0.08); border-radius: 99px; overflow: hidden;
         }
         .load-bar-fill {
             height: 100%; width: 0%; background: var(--toss-blue);
-            border-radius: 99px; transition: width .25s ease;
+            border-radius: 99px; transition: width .4s ease;
+        }
+        .load-animals {
+            display: flex; gap: 10px; margin-top: 4px;
+            font-size: 22px;
+        }
+        .load-animals span {
+            display: inline-block;
+            animation: animalPop 1.6s ease-in-out infinite;
+            opacity: 0.35;
+        }
+        .load-animals span.active {
+            opacity: 1;
+            animation: animalPopActive 0.4s ease forwards;
+        }
+        @keyframes animalPopActive {
+            0%   { transform: translateY(0) scale(1); opacity:1; }
+            40%  { transform: translateY(-10px) scale(1.3); }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+        }
+        @keyframes animalPop {
+            0%,100% { transform: scale(1); }
+            50%      { transform: scale(1.08); }
         }
         .load-text {
             font-size: 13px; font-weight: 700; color: var(--text-tertiary);
@@ -751,9 +776,12 @@
 
     <!-- ── 로딩 ── -->
     <div id="loading-overlay">
-        <div class="load-icon">🐾</div>
+        <div class="load-icon" id="load-icon">🐾</div>
         <div class="load-bar-bg"><div class="load-bar-fill" id="loading-fill"></div></div>
         <div class="load-text" id="loading-text">준비 중이에요...</div>
+        <div class="load-animals" id="load-animals">
+            <span>🐣</span><span>🐭</span><span>🦔</span><span>🐰</span><span>🐱</span><span>🐕</span><span>🐑</span><span>🐒</span><span>🐷</span><span>🐼</span><span>🦁</span>
+        </div>
     </div>
 
     <!-- ── 랜딩 ── -->
@@ -771,10 +799,6 @@
                 <span class="lg-best-val" id="html-best-score">0</span>
             </div>
             <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
-            <div class="lg-rating-bar" style="margin-top:20px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <div style="background:#00a854; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:4px;">전체이용가</div>
-                <div style="font-size:10px; color:var(--text-tertiary); font-weight:600;">게임물관리위원회 심의 준수</div>
-            </div>
             <div class="lg-howto">동물을 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
         </div>
     </div>
@@ -1002,7 +1026,7 @@
                 slot.className = 'dex-slot';
                 slot.id = 'dex-slot-' + lv;
                 var img = document.createElement('img');
-                img.src = 'TemplateData/sprites/Animal_' + lv + '.png';
+                img.src = 'TemplateData/sprites/Animal_' + lv + '.webp';
                 img.alt = 'Lv.' + lv;
                 slot.appendChild(img);
 
@@ -1148,26 +1172,75 @@
         webglContextAttributes: { alpha: true },
     };
 
+    // 로딩 진행감 유지: 90% 이후 천천히 99%까지 크리핑
+    var _displayPct = 0;
+    var _targetPct  = 0;
+    var _animalIdx  = 0;
+    var _animalEls  = document.querySelectorAll('#load-animals span');
+    var _loadingMessages = [
+        '동물들을 깨우는 중이에요...',
+        '병아리가 알에서 나오고 있어요 🐣',
+        '동물들이 모이고 있어요...',
+        '거의 다 됐어요! 🎉'
+    ];
+
+    function _activateNextAnimal() {
+        if (_animalIdx < _animalEls.length) {
+            _animalEls[_animalIdx].classList.add('active');
+            _animalIdx++;
+        }
+    }
+
+    // 부드러운 진행바 업데이트 (requestAnimationFrame 기반)
+    function _tickLoadBar() {
+        if (_displayPct < _targetPct) {
+            _displayPct = Math.min(_displayPct + 0.8, _targetPct);
+            loadFill.style.width = _displayPct.toFixed(1) + '%';
+            // 11마리 → 9% 간격마다 1마리씩 활성화
+            var expectedIdx = Math.floor(_displayPct / 9);
+            while (_animalIdx < expectedIdx && _animalIdx < _animalEls.length) {
+                _activateNextAnimal();
+            }
+        }
+        if (_displayPct < 100) requestAnimationFrame(_tickLoadBar);
+    }
+    requestAnimationFrame(_tickLoadBar);
+
+    // 90% 이후 크리핑 (Unity가 90에서 멈춰 있을 때 사용자 이탈 방지)
+    var _creepInterval = null;
+    function _startCreep() {
+        if (_creepInterval) return;
+        _creepInterval = setInterval(function() {
+            if (_targetPct >= 99) { clearInterval(_creepInterval); return; }
+            _targetPct = Math.min(_targetPct + 0.3, 99);
+            var msgIdx = _targetPct < 60 ? 0 : _targetPct < 80 ? 1 : _targetPct < 95 ? 2 : 3;
+            loadText.textContent = _loadingMessages[msgIdx];
+        }, 150);
+    }
+
     createUnityInstance(canvas, config, function(progress) {
         var pct = Math.round(progress * 100);
-        loadFill.style.width = pct + '%';
-        loadText.textContent = pct < 100 ? pct + '%' : '거의 다 됐어요!';
+        _targetPct = Math.max(_targetPct, pct);
+        if (pct >= 90) _startCreep();
+        var msgIdx = pct < 60 ? 0 : pct < 80 ? 1 : pct < 95 ? 2 : 3;
+        loadText.textContent = _loadingMessages[msgIdx];
     }).then(function(instance) {
         unityInstance = instance;
         window.unityInstance = instance;
         gameReady = true;
         resumeWebGLAudio();
-        loadFill.style.width = '100%';
-        loadText.textContent = '준비 완료!';
+        if (_creepInterval) clearInterval(_creepInterval);
+        _targetPct = 100;
+        loadText.textContent = '시작해요! 🎉';
 
-        // 8초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
+        // 3초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
         setTimeout(function() {
             if (!loadOverlay.classList.contains('hidden')) {
                 console.warn('[Loading] Timeout — forcing landing.');
                 hideLoading();
                 if (!gameHud.classList.contains('visible')) showLanding();
             }
-        }, 8000);
+        }, 3000);
 
         updateLocalBestScore();
 
@@ -1261,6 +1334,7 @@
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
         unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+        try { if (window.AppsInToss && window.AppsInToss.Analytics) window.AppsInToss.Analytics.click({ log_name: 'game_start' }); } catch(e) {}
     }
 
     // ════════════════════════════════════════════════════
@@ -1478,7 +1552,7 @@
     // 다음 동물 업데이트
     window.updateNextFromUnity = function(level) {
         if (nextImg) {
-            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.png';
+            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.webp';
             nextImg.classList.remove('pop');
             void nextImg.offsetWidth;
             nextImg.classList.add('pop');
@@ -1560,6 +1634,12 @@
             var prev = parseInt(localStorage.getItem('animalpop_best') || '0');
             if (bestNum > prev) localStorage.setItem('animalpop_best', String(bestNum));
         } catch(e){}
+
+        try {
+            if (window.AppsInToss && window.AppsInToss.Analytics) {
+                window.AppsInToss.Analytics.click({ log_name: 'game_over', score: scoreNum, best: bestNum, is_new_best: isNewBest ? 1 : 0, merge_count: _mergeCount });
+            }
+        } catch(e) {}
     };
 
     // 랜딩 표시 (Unity 준비 완료 시 호출)
@@ -1572,6 +1652,7 @@
         showHUD(false);
         goOverlay.classList.remove('visible');
         showLanding();
+        try { if (window.AppsInToss && window.AppsInToss.Analytics) window.AppsInToss.Analytics.screen({ log_name: 'landing_view' }); } catch(e) {}
 
         // ── 로딩완료 시 바로 배경음악 재생 ──
         if (unityInstance && typeof bgmMuted !== 'undefined' && !bgmMuted) {
