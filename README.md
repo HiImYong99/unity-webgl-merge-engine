@@ -50,7 +50,6 @@
 이 프로젝트는 **1인 개발** 프로젝트로, 코드의 간결함과 확장성을 동시에 고려하여 설계되었습니다.
 
 *   **Lead Engineer:** yong ([GitHub](https://github.com/HiImYong99))
-*   **Contact:** mail@example.com (실제 메일 주소로 변경해주세요)
 
 ---
 © 2026 Animal Pop Team. All rights reserved.
