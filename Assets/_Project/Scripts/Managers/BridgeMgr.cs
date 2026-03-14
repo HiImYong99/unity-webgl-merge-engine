@@ -41,6 +41,7 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void TossIAPRestorePendingOrders();
     [DllImport("__Internal")] private static extern void TossPayCheckout(string payToken);
     [DllImport("__Internal")] private static extern void notifyAdRemovedFromUnity();
+    [DllImport("__Internal")] private static extern void TossIAPCompleteProductGrant(string orderId);
 #else
     private static void SyncSaveToLocalStorage(string k, string v) { }
     private static void _ShowHtmlLanding(int s) { }
@@ -80,6 +81,7 @@ public class BridgeMgr : MonoBehaviour
         Instance.OnIAPSuccess("toss_pay_success");
     }
     private static void notifyAdRemovedFromUnity() { }
+    private static void TossIAPCompleteProductGrant(string orderId) { Debug.Log($"[BridgeMgr MOCK] Complete Product Grant: {orderId}"); }
 #endif
 
     private void Awake()
@@ -126,6 +128,9 @@ public class BridgeMgr : MonoBehaviour
     
     // [추가] 토스페이 결제 요청 (payToken 기반)
     public void RequestTossPay(string payToken) => TossPayCheckout(payToken);
+
+    // [추가] 상품 지급 완료 명시적 호출 (결제 테스트용)
+    public void CompleteProductGrant(string orderId) => TossIAPCompleteProductGrant(orderId);
 
     // ── JS -> Unity 콜백 (JSLib에서 SendMessage로 호출) ──
     public void OnLoginSuccess(string userKey)
@@ -200,5 +205,13 @@ public class BridgeMgr : MonoBehaviour
     {
         Debug.Log($"[BridgeMgr] IAP Restored: {productId}");
         if (GameMgr.Instance != null) GameMgr.Instance.OnIAPPurchased(productId);
+    }
+
+    // [더 이상 사용하지 않음] processProductGrant는 true/false 반환으로 처리되며,
+    // completeProductGrant는 getPendingOrders 복원 전용입니다.
+    // 이 메서드는 이전 이중 호출 버그를 방지하기 위해 비워둡니다.
+    public void OnProductGrant(string orderId)
+    {
+        Debug.Log($"[BridgeMgr] OnProductGrant: {orderId} (processProductGrant 콜백에서 처리 완료)");
     }
 }

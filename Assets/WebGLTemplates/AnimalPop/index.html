@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>애니멀 팝 🐾</title>
+    <!-- Apps in Toss Bridge (Vite bundling entry) -->
+    <script type="module" src="./unity-bridge.ts"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- 비동기 로드: 폰트가 없어도 렌더링 차단 없음 (Nunito만 요청, Pretendard은 구글폰트에 없으므로 제외) -->
@@ -758,6 +760,14 @@
         }
         .rotate-title { font-size: 18px; font-weight: 800; }
         .rotate-sub   { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+        /* 디버그 콘솔 */
+        #debug-log {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 120px;
+            background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace;
+            font-size: 10px; padding: 10px; overflow-y: auto; z-index: 9999;
+            pointer-events: auto; display: none;
+        }
+        #debug-log.visible { display: block; }
     </style>
 </head>
 
@@ -772,6 +782,11 @@
     <!-- Unity Canvas -->
     <div id="unity-container">
         <canvas id="unity-canvas" data-pixel-art="true"></canvas>
+    </div>
+
+    <!-- 디버그 로그 -->
+    <div id="debug-log">
+        <button onclick="resetIAPData()" style="position: absolute; right: 10px; top: 10px; z-index: 10001; padding: 5px 10px; background: #f44; color: white; border: none; border-radius: 4px; font-weight: bold;">Reset IAP</button>
     </div>
 
     <!-- ── 로딩 ── -->
@@ -1255,13 +1270,12 @@
     // ════════════════════════════════════════════════════
     //  광고 프리로드 (앱인토스 loadFullScreenAd)
     // ════════════════════════════════════════════════════
-    var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
+    var REVIVE_AD_ID = 'ait.v2.live.79b8c799130343ec';
     var _reviveAdLoaded = false;
     var _reviveAdUnregister = null;
 
     window._preloadReviveAd = function() {
         if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') return;
-        if (!window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) return;
 
         // 이전 리스너 정리
         if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
@@ -1366,7 +1380,7 @@
     var _speedBoostBtn = null;
     var _premiumSpeedOwned = false;   // 영구 구매 여부
     var _premiumSpeedOn    = false;   // 영구 구매자의 현재 ON/OFF 상태
-    var SPEED_SKU = 'double_speed_permanent';
+    var SPEED_SKU = 'ait.0000022018.560c8f2d.99adbacd5a.3325211470';
 
     // localStorage에서 영구 구매 상태 복원
     try {
@@ -1467,9 +1481,9 @@
 
     // 앱인토스 IAP 결제
     function _purchasePremiumSpeed() {
+        _log('[IAP] Purchase Request: ' + SPEED_SKU);
         if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
-            console.warn('[IAP] AppsInToss IAP를 사용할 수 없는 환경이에요.');
-            // 개발 환경 테스트용 폴백
+            _log('[IAP] AppsInToss IAP Not Found - Fallback to confirm');
             if (confirm('[개발] IAP 미지원 환경. 구매 성공 시뮬레이션?')) {
                 _onPremiumSpeedGranted();
             }
@@ -1480,19 +1494,84 @@
             options: {
                 sku: SPEED_SKU,
                 processProductGrant: function(params) {
+                    // params가 문자열인 경우와 객체인 경우 모두 대응
+                    var orderId = (params && params.orderId) ? params.orderId : (typeof params === 'string' ? params : null);
+                    _log('[IAP] processProductGrant: ' + orderId + ' (params: ' + JSON.stringify(params) + ')');
+                    
+                    if (!orderId) {
+                        _log('[IAP] Warning: processProductGrant called without a valid orderId. Skipping grant.');
+                        return true; // 일단 true를 반환하여 SDK 핸들러를 종료시킵니다.
+                    }
+                    
+                    // 1. 권한 부여
                     _onPremiumSpeedGranted();
+                    
+                    // 2. 중요: SDK 2.x 형식에 맞춰 호출 { params: { orderId: '...' } }
+                    if (window.AppsInToss && window.AppsInToss.IAP && window.AppsInToss.IAP.completeProductGrant) {
+                        window.AppsInToss.IAP.completeProductGrant({ params: { orderId: orderId } })
+                            .then(function() { _log('[IAP] completeProductGrant success: ' + orderId); })
+                            .catch(function(e) { 
+                                _log('[IAP] completeProductGrant error: ' + JSON.stringify(e)); 
+                                // 이미 완료된 주문(INVALID_REQUEST)인 경우 무시 가능
+                            });
+                    }
+                    
+                    // 3. Unity 통보
+                    if (unityInstance) {
+                        unityInstance.SendMessage('BridgeManager', 'OnProductGrant', orderId);
+                    }
+                    
                     return true;
                 }
             },
             onEvent: function(event) {
+                _log('[IAP] Event: ' + event.type);
                 if (event.type === 'success') { cleanup && cleanup(); }
             },
             onError: function(error) {
-                console.error('[IAP] 결제 실패:', error);
+                _log('[IAP] Error: ' + JSON.stringify(error));
                 cleanup && cleanup();
             }
         });
     }
+
+    function _log(msg) {
+        console.log(msg);
+        var el = document.getElementById('debug-log');
+        if (el) {
+            el.innerHTML += '<div>' + msg + '</div>';
+            el.scrollTop = el.scrollHeight;
+        }
+    }
+    // 디버그 로그 토글 (설정창 등에서 활용 가능)
+    function toggleDebugLog() {
+        var el = document.getElementById('debug-log');
+        if (el) el.classList.toggle('visible');
+    }
+
+    // [TEST] 인앱 데이터 강제 초기화
+    window.resetIAPData = function() {
+        if (!confirm('로컬의 프리미엄 구매 데이터를 초기화하고 재시작하시겠습니까?')) return;
+        
+        try {
+            localStorage.removeItem('animalpop_premium_speed');
+            _premiumSpeedOwned = false;
+            _premiumSpeedOn = false;
+            _refreshSpeedBtn();
+            
+            if (unityInstance) {
+                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '1');
+            }
+            
+            _log('[IAP] 로컬 데이터 초기화 완료. 페이지를 새로고침합니다.');
+            setTimeout(function() {
+                location.reload();
+            }, 500);
+        } catch (e) {
+            _log('[IAP] 초기화 오류: ' + e.message);
+        }
+    }
+
 
     // 영구 구매 지급 처리
     function _onPremiumSpeedGranted() {
@@ -1511,9 +1590,17 @@
         window.AppsInToss.IAP.getPendingOrders().then(function(res) {
             if (!res) return;
             var orders = res.orders || [];
-            var hasSpeed = orders.some(function(o) { return o.sku === SPEED_SKU; });
-            if (hasSpeed) _onPremiumSpeedGranted();
-        }).catch(function(e) { console.warn('[IAP] getPendingOrders 실패:', e); });
+            _log('[IAP] Pending orders found: ' + orders.length);
+            orders.forEach(function(o) {
+                if (o.sku === SPEED_SKU) {
+                    _log('[IAP] Granting pending speed order: ' + o.orderId);
+                    _onPremiumSpeedGranted();
+                    if (window.AppsInToss.IAP.completeProductGrant) {
+                        window.AppsInToss.IAP.completeProductGrant({ params: { orderId: o.orderId } });
+                    }
+                }
+            });
+        }).catch(function(e) { _log('[IAP] getPendingOrders Error: ' + JSON.stringify(e)); });
     }
     _recoverPendingSpeedOrders();
 
@@ -1764,6 +1851,13 @@
         if (document.visibilityState === 'hidden' && unityInstance) {
             console.log("[JS] Visibility changed to hidden. Requesting save...");
             unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+            // 체크리스트: 백그라운드 진입 시 사운드 즉시 중지
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', '1');
+            unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', '1');
+        } else if (document.visibilityState === 'visible' && unityInstance) {
+            // 체크리스트: 백그라운드 복귀 시 사운드 재개 (사용자 설정 기준)
+            if (!bgmMuted) unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', '0');
+            if (!sfxMuted) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', '0');
         }
     });
     window.addEventListener('pagehide', function() {
@@ -1772,6 +1866,70 @@
             unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
         }
     });
+
+    // ════════════════════════════════════════════════════
+    //  광고/결제 중 오디오 제어
+    // ════════════════════════════════════════════════════
+    window.pauseAudioForAd = function() {
+        if (unityInstance) {
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', '1');
+            unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', '1');
+        }
+    };
+    window.resumeAudioAfterAd = function() {
+        if (unityInstance) {
+            if (!bgmMuted) unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', '0');
+            if (!sfxMuted) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', '0');
+        }
+    };
+
+    // 광고 제거 IAP 완료 시 Unity → JS 알림
+    window.notifyAdRemovedFromUnity = function() {
+        _onPremiumSpeedGranted();
+    };
+
+    // ════════════════════════════════════════════════════
+    //  OS 뒤로가기 제스처 비활성화 + 종료 확인 모달
+    // ════════════════════════════════════════════════════
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function() {
+        history.pushState(null, null, location.href);
+        _showExitConfirmModal();
+    });
+
+    window._showExitConfirmModal = function() {
+        if (document.getElementById('exit-confirm-modal')) return;
+        var modal = document.createElement('div');
+        modal.id = 'exit-confirm-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);';
+        modal.innerHTML = [
+            '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;',
+            'padding:28px 24px calc(var(--safe-bottom,0px) + 28px);box-shadow:0 -4px 24px rgba(0,0,0,0.12);">',
+            '<div style="font-size:17px;font-weight:800;color:#191f28;text-align:center;margin-bottom:8px;">게임을 종료할까요?</div>',
+            '<div style="font-size:13px;color:#8b95a1;text-align:center;margin-bottom:24px;">진행 중인 기록이 저장되지 않을 수 있어요</div>',
+            '<button id="exit-confirm-yes" style="width:100%;padding:16px;background:#3182f6;color:#fff;border:none;',
+            'border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">종료하기</button>',
+            '<button id="exit-confirm-no" style="width:100%;padding:14px;background:none;color:#8b95a1;border:none;',
+            'font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">계속 하기</button>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(modal);
+        document.getElementById('exit-confirm-yes').onclick = function() {
+            modal.remove();
+            if (window.AppsInToss && typeof window.AppsInToss.close === 'function') window.AppsInToss.close();
+            else window.close();
+        };
+        document.getElementById('exit-confirm-no').onclick = function() {
+            modal.remove();
+            history.pushState(null, null, location.href);
+        };
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+                history.pushState(null, null, location.href);
+            }
+        });
+    };
     </script>
 </body>
 </html>

@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>애니멀 팝 🐾</title>
+    <!-- Apps in Toss Bridge (Vite bundling entry) -->
+    <script type="module" src="./unity-bridge.ts"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -916,6 +918,13 @@
                     <div class="tog-track"></div><div class="tog-thumb"></div>
                 </label>
             </div>
+            <div class="sht-row">
+                <div class="sht-left">
+                    <span class="sht-icon">🔄</span>
+                    <div class="sht-lbl">데이터 초기화 (테스트용)</div>
+                </div>
+                <button class="sht-btn sht-ghost" style="width:auto;margin:0;padding:8px 16px;font-size:13px;" onclick="resetAppData()">초기화</button>
+            </div>
             <button class="sht-btn sht-primary" onclick="onRestartFromSettings()">처음부터 다시 할게요</button>
             <button class="sht-btn sht-ghost" onclick="closeSettings()">닫기</button>
         </div>
@@ -1623,6 +1632,18 @@
         if (unityInstance) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
         try { localStorage.setItem('animalpop_sfx', sfxMuted ? '0' : '1'); } catch(e){}
     }
+    
+    // [테스트 유틸] 앱 데이터 초기화 (구매 내역 및 기록)
+    function resetAppData() {
+        if (!confirm('기록과 구매 내역을 초기화할까요?')) return;
+        localStorage.removeItem('animalpop_premium_speed');
+        localStorage.removeItem('animalpop_best');
+        localStorage.removeItem('animalpop_bgm');
+        localStorage.removeItem('animalpop_sfx');
+        alert('초기화되었습니다. 페이지를 새로고침합니다.');
+        location.reload();
+    }
+
     function onRestartFromSettings() {
         closeSettings();
         restartGame();
