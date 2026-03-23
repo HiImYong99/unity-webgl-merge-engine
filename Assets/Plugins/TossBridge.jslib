@@ -63,39 +63,58 @@ mergeInto(LibraryManager.library, {
   // ─────────────────────────────────────────────────
   // 3. 광고 및 결제 (Interstitial / Rewarded)
   // ─────────────────────────────────────────────────
-  
+
   // 게임오버 시 전면 광고 (비보상형, 자동 노출)
   ShowTossInterstitialAd: function() {
     var adId = 'ait.v2.live.f8b6b46c862f48f4';
     console.log('[TossBridge] ShowTossInterstitialAd:', adId);
 
-    // 체크리스트: 광고 재생 중 게임 음악 일시 정지
     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
 
-    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
-      console.warn('[TossBridge] TossAds SDK Not Found - Skip interstitial');
+    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    var ait = window.AppsInToss;
+    var api = null;
+    if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
+      api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+    } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
+      api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
+    }
+    if (!api) {
+      console.warn('[TossBridge] Ad SDK Not Found - Skip interstitial');
       if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
       SendMessage('BridgeManager', 'OnInterstitialAdClosed');
       return;
     }
+    console.log('[TossBridge] Using ad API:', api.name);
 
-    var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
+    var loadUnregister = api.load({
       options: { adGroupId: adId },
       onEvent: function(event) {
         if (event.type !== 'loaded') return;
         loadUnregister && loadUnregister();
 
-        var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
+        var showUnregister = api.show({
           options: { adGroupId: adId },
           onEvent: function(ev) {
             if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
               showUnregister && showUnregister();
-              // 체크리스트: 광고 후 게임 오디오 재개
               if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
               SendMessage('BridgeManager', 'OnInterstitialAdClosed');
             }
+          },
+          onError: function(err) {
+            showUnregister && showUnregister();
+            console.error('[TossBridge] Interstitial show error:', err);
+            if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+            SendMessage('BridgeManager', 'OnInterstitialAdClosed');
           }
         });
+      },
+      onError: function(err) {
+        loadUnregister && loadUnregister();
+        console.error('[TossBridge] Interstitial load error:', err);
+        if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+        SendMessage('BridgeManager', 'OnInterstitialAdClosed');
       }
     });
   },
@@ -103,24 +122,30 @@ mergeInto(LibraryManager.library, {
   // 다시하기 보상형 광고 / 2배속 보상형 광고
   // adType: 0 (다시하기/부활), 1 (2배속)
   ShowTossAd: function(adType) {
-    var adId = 'ait.v2.live.79b8c799130343ec'; // 다시하기 광고 ID
+    var adId = 'ait.v2.live.79b8c799130343ec';
     console.log('[TossBridge] ShowTossAd called, type:', adType, 'adId:', adId);
 
-    // 체크리스트: 광고 재생 중 게임 음악 일시 정지
     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
 
-    if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') {
-      console.warn('[TossBridge] TossAds SDK Not Found - Simulating Success');
-      setTimeout(function() {
-        if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
-        if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
-        else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-      }, 500);
+    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    var ait = window.AppsInToss;
+    var api = null;
+    if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
+      api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+    } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
+      api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
+    }
+    if (!api) {
+      console.warn('[TossBridge] Ad SDK Not Found - Ad skipped, no reward');
+      if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+      if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+      SendMessage('BridgeManager', 'OnAdFailed', 'SDK_NOT_AVAILABLE');
       return;
     }
+    console.log('[TossBridge] Using ad API:', api.name);
 
     function _doShow() {
-      var showUnregister = window.AppsInToss.TossAds.showFullScreenAd({
+      var showUnregister = api.show({
         options: { adGroupId: adId },
         onEvent: function(ev) {
           if (ev.type === 'userEarnedReward') {
@@ -129,11 +154,16 @@ mergeInto(LibraryManager.library, {
           }
           if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
             showUnregister && showUnregister();
-            // 체크리스트: 광고 후 게임 오디오 재개
             if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
-            // 다음 광고를 위해 프리로드
             if (typeof window._preloadReviveAd === 'function') window._preloadReviveAd();
           }
+        },
+        onError: function(err) {
+          showUnregister && showUnregister();
+          console.error('[TossBridge] Rewarded show error:', err);
+          if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+          if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+          SendMessage('BridgeManager', 'OnAdFailed', 'SHOW_ERROR');
         }
       });
     }
@@ -143,12 +173,20 @@ mergeInto(LibraryManager.library, {
       window._reviveAdLoaded = false;
       _doShow();
     } else {
-      var loadUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
+      var loadUnregister = api.load({
         options: { adGroupId: adId },
         onEvent: function(event) {
-          if (event.type !== 'loaded') return;
+          if (event.type === 'loaded') {
+            loadUnregister && loadUnregister();
+            _doShow();
+          }
+        },
+        onError: function(err) {
           loadUnregister && loadUnregister();
-          _doShow();
+          console.error('[TossBridge] Rewarded load error:', err);
+          if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+          if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+          SendMessage('BridgeManager', 'OnAdFailed', 'LOAD_ERROR');
         }
       });
     }

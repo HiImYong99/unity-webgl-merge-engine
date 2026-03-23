@@ -206,18 +206,14 @@ public class GameMgr : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Playing;
-        // [수정] 게임 시작 시 SpeedBoostActive 상태에 따라 TimeScale 유지
-        // 단, 세션(광고) 활성화라면 여기서 초기화할지 선택. 
-        // 영구 구매 상태(_premiumSpeedOn)가 JS에서 관리되므로, 여기서는 현재의 SpeedBoostActive 상태를 유지합니다.
-        // 만약 광고 보상형이 '이번 판만'이라면 아래 SpeedBoostActive = false를 유지하되, 
-        // permanent 체크 로직이 필요함. 일단은 사용자가 명시적으로 'OFF'하기 전까지는 유지하도록 변경.
-        
-        SetSpeedMultiplier(SpeedBoostActive ? 2.0f : 1.0f);
-        
+        // 광고 2배속은 세션(이번 판)만 유효 → 새 게임 시작 시 1배속 초기화
+        // 영구 구매자는 JS에서 300ms 후 SetSpeedMultiplier('2')를 다시 보냄
+        SpeedBoostActive = false;
+        SetSpeedMultiplier(1.0f);
+
         HasRevived = false;
         AdWatched = false;
         SpareLives = 0;
-        // SpeedBoostActive = false; // [제거] 게임 재시작 시 속도 초기화 방지
         _gameOverDetectionCooldown = 1.0f;
 
         // 기존 동물 정리
@@ -289,6 +285,9 @@ public class GameMgr : MonoBehaviour
 
     private void DoRestart()
     {
+        // 광고 2배속은 세션(이번 판)만 유효 → 재시작 시 초기화
+        SpeedBoostActive = false;
+        Time.timeScale = 1.0f;
         UnityEngine.SceneManagement.SceneManager.LoadScene(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
@@ -313,10 +312,12 @@ public class GameMgr : MonoBehaviour
     /// </summary>
     public void ActivateSpeedBoost()
     {
+        Debug.Log($"[GameMgr] ActivateSpeedBoost called. State={CurrentState}, Already={SpeedBoostActive}");
         if (CurrentState != GameState.Playing) return;
         if (SpeedBoostActive) return;
 
         SetSpeedMultiplier(2.0f);
+        Debug.Log("[GameMgr] SpeedBoost activated: TimeScale=2");
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         try { NotifySpeedBoostActivatedJS(); } catch { }

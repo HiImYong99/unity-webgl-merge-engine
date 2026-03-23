@@ -121,6 +121,42 @@ public class SoundMgr : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 광고 후 BGM 강제 재시작. _isBgmMuted 체크 안 함 (JS가 source of truth).
+    /// 죽은 WebAudio 노드를 Stop→Play로 새로 생성.
+    /// </summary>
+    public void ForceRestartBGM()
+    {
+        if (BGMSource != null && BgmClip != null)
+        {
+            _isBgmMuted = false;
+            BGMSource.mute = false;
+            BGMSource.Stop();
+            BGMSource.clip = BgmClip;
+            BGMSource.loop = true;
+            BGMSource.Play();
+        }
+        // SFX도 unmute (이전 visibilitychange로 오염됐을 수 있음)
+        _isSfxMuted = false;
+        if (SFXSource != null) SFXSource.mute = false;
+    }
+
+    // 광고 재생 중 오디오 일시 정지/재개 (설정 변경 없이 AudioListener만 제어)
+    public void PauseForAd()
+    {
+        AudioListener.pause = true;
+    }
+
+    public void ResumeAfterAd()
+    {
+        AudioListener.pause = false;
+        // AudioContext 중단으로 BGM이 멈췄을 수 있으므로 강제 재시작
+        if (!_isBgmMuted && BGMSource != null && BgmClip != null && !BGMSource.isPlaying)
+        {
+            BGMSource.Play();
+        }
+    }
+
     private float _lastMergeTime = 0f;
 
     /// <summary>병합 효과음 재생</summary>

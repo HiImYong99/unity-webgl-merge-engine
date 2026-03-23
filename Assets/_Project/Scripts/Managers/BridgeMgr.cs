@@ -175,6 +175,12 @@ public class BridgeMgr : MonoBehaviour
         if (GameMgr.Instance != null) GameMgr.Instance.ActivateSpeedBoost();
     }
 
+    // 광고 SDK 미사용 또는 로드 실패 시 호출 (보상 미지급)
+    public void OnAdFailed(string reason)
+    {
+        Debug.LogWarning($"[BridgeMgr] Ad Failed: {reason} - 보상 미지급");
+    }
+
     // [추가] 영구 구매자용 속도 조절 (JS -> BridgeManager -> GameMgr)
     public void SetSpeedMultiplier(string multiplierStr)
     {
