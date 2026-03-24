@@ -10,8 +10,8 @@ android {
         applicationId "com.animalpop.app"
         minSdk 24
         targetSdk 35
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.0.2"
 
         // 64-bit 지원 (구글 플레이 필수)
         ndk {
@@ -41,6 +41,7 @@ android {
             debuggable true
         }
         release {
+            debuggable false
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -67,7 +68,7 @@ android {
 
 dependencies {
     // AdMob SDK (Google Mobile Ads)
-    implementation 'com.google.android.gms:play-services-ads:23.6.0'
+    implementation 'com.google.android.gms:play-services-ads:23.6.0' // 2024-12 latest stable
     // WebViewAssetLoader – WASM/gzip 파일 로컬 HTTPS 서빙용 (file:// MIME 문제 해결)
     implementation 'androidx.webkit:webkit:1.8.0'
     // Google Play Billing Library

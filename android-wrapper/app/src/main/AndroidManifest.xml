@@ -15,11 +15,6 @@
         android:hardwareAccelerated="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
-        <!--
-            ★ 배포 전 교체 필수 ★
-            테스트 앱 ID: ca-app-pub-3940256099942544~3347511713
-            실제 앱 ID: AdMob 콘솔에서 발급받은 앱 ID로 교체하세요.
-        -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-2371797890397990~9633993882"/>
