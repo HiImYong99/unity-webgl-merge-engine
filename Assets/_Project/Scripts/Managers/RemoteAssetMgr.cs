@@ -56,7 +56,7 @@ public class RemoteAssetMgr : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[RemoteAssetMgr] Failed to load animal texture level {level} from Resources.");
+                DebugUtil.LogWarning($"[RemoteAssetMgr] Failed to load animal texture level {level} from Resources.");
                 callback?.Invoke(null);
             }
         }
@@ -111,7 +111,7 @@ public class RemoteAssetMgr : MonoBehaviour
                 }
             }
             
-            Debug.LogError($"[RemoteAssetMgr] CDN Download failed for level {level}: {uwr.error}");
+            DebugUtil.LogError($"[RemoteAssetMgr] CDN Download failed for level {level}: {uwr.error}");
             // Fallback to local Resources to mitigate CORS issues
             Texture2D localTex = Resources.Load<Texture2D>($"Animals/Animal_{level}");
             if (localTex != null)

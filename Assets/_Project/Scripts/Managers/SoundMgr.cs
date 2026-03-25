@@ -65,7 +65,7 @@ public class SoundMgr : MonoBehaviour
         if (SFXSource == null) SFXSource = transform.childCount > 0 ? GetComponentInChildren<AudioSource>() : GetComponent<AudioSource>();
         
         if (BGMSource == null || SFXSource == null)
-            Debug.LogWarning("[SoundMgr] AudioSource가 인스펙터에서 할당되지 않았으며, 컴포넌트를 찾을 수 없습니다.");
+            DebugUtil.LogWarning("[SoundMgr] AudioSource가 인스펙터에서 할당되지 않았으며, 컴포넌트를 찾을 수 없습니다.");
 
         BuildSFXPool();
     }
@@ -148,7 +148,11 @@ public class SoundMgr : MonoBehaviour
 
     private void Update()
     {
-        if (!_hasStartedBgm && (Input.GetMouseButtonDown(0) || Input.touchCount > 0))
+        bool startBgmInput = Input.touchCount > 0;
+#if UNITY_EDITOR
+        startBgmInput = startBgmInput || Input.GetMouseButtonDown(0);
+#endif
+        if (!_hasStartedBgm && startBgmInput)
         {
             _hasStartedBgm = true;
             if (BGMSource != null && BgmClip != null && !BGMSource.isPlaying)

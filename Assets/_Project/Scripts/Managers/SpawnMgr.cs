@@ -14,6 +14,7 @@ public class SpawnMgr : MonoBehaviour
 
     private GameObject _currentAnimal;
     private AnimalEvolutionData _evolutionData;
+    private Camera _mainCamera;
 
     // Next Queue 시스템
     private int _nextAnimalLevel = -1;
@@ -63,6 +64,7 @@ public class SpawnMgr : MonoBehaviour
     {
         if (GameMgr.Instance != null)
             _evolutionData = GameMgr.Instance.EvolutionData;
+        _mainCamera = Camera.main;
 
         if (SpawnPoint != null)
             _spawnBaseY = SpawnPoint.position.y;
@@ -222,26 +224,30 @@ public class SpawnMgr : MonoBehaviour
             return;
         }
 
-        // [Debug] 현재 동물을 거대 동물(Lv 10)로 즉시 교체 (T 키)
+        // [Debug] 에디터에서만 테스트 단축키 허용
+#if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.T))
         {
             Vector3 lastPos = _currentAnimal.transform.position;
             Destroy(_currentAnimal);
             SpawnAnimalAtCursor(10);
             _currentAnimal.transform.position = lastPos;
-            Debug.Log("[Debug] Animal Swapped to Level 10");
+            DebugUtil.Log("[SpawnMgr] Animal swapped to level 10 (debug shortcut).");
         }
+#endif
 
         ProcessInput();
     }
 
-    /// <summary>터치 및 마우스 입력 처리</summary>
+    /// <summary>터치 입력 처리 (에디터에서만 마우스 폴백 허용)</summary>
     private void ProcessInput()
     {
         Vector3 inputPos = Vector3.zero;
         bool isInput = false;
         bool isOverUI = false;
-        Camera cam = Camera.main;
+        Camera cam = _mainCamera;
+        if (cam == null) cam = Camera.main;
+        if (_mainCamera == null && cam != null) _mainCamera = cam;
 
         if (Input.touchCount > 0)
         {
@@ -260,6 +266,7 @@ public class SpawnMgr : MonoBehaviour
                 isInput = true;
             }
         }
+#if UNITY_EDITOR
         else if (Input.GetMouseButtonUp(0))
         {
             DropAnimal();
@@ -270,6 +277,7 @@ public class SpawnMgr : MonoBehaviour
             inputPos = cam.ScreenToWorldPoint(Input.mousePosition);
             isInput = true;
         }
+#endif
 
         if (isInput && _currentAnimal != null)
         {

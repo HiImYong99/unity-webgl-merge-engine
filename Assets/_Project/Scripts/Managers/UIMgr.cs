@@ -114,7 +114,7 @@ public class UIMgr : MonoBehaviour
         if (GameOverPanel == null) GameOverPanel = FindInactiveChild(canvas.transform, "GameOverPanel");
         if (ScoreText == null) ScoreText = FindTextInChildren(canvas.transform, "Text_Score");
 
-        Debug.Log($"[UIMgr] Reference setup complete.");
+        DebugUtil.Log("[UIMgr] Reference setup complete.");
     }
 
     private static GameObject FindInactiveChild(Transform parent, string name)

@@ -40,9 +40,21 @@ public class BridgeMgr : MonoBehaviour
     private static void updateScoreFromUnity(int s) { }
     private static void updateNextFromUnity(int l) { }
     private static void showGameOverFromUnity(int s, int b) { }
-    private static void TossAppLogin() => Instance.OnLoginSuccess("mock_user_" + UnityEngine.Random.Range(100, 999));
-    private static void TossGetSafeArea() => Instance.OnSafeAreaReceived("0,0,0,0");
-    private static void TossShare(string m) => Instance.OnShareSuccess("");
+    private static void TossAppLogin()
+    {
+        if (Instance == null) return;
+        Instance.OnLoginSuccess("mock_user_" + UnityEngine.Random.Range(100, 999));
+    }
+    private static void TossGetSafeArea()
+    {
+        if (Instance == null) return;
+        Instance.OnSafeAreaReceived("0,0,0,0");
+    }
+    private static void TossShare(string m)
+    {
+        if (Instance == null) return;
+        Instance.OnShareSuccess("");
+    }
     private static void TossExitApp() {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
@@ -50,13 +62,14 @@ public class BridgeMgr : MonoBehaviour
         Application.Quit();
 #endif
     }
-    private static void TossSubmitLeaderboardScore(int s) { Debug.Log($"[BridgeMgr MOCK] Submit Score: {s}"); }
+    private static void TossSubmitLeaderboardScore(int s) { DebugUtil.Log($"[BridgeMgr MOCK] Submit Score: {s}"); }
     private static void notifyDangerZoneFromUnity(bool a) { }
     private static void notifyNewHighScoreFromUnity(int s) { }
     private static void onMergeFromUnity(int l) { }
     // IAP – 에디터 모의: 0.8초 후 성공 콜백
     private static void RequestPurchase(string id)
     {
+        if (Instance == null) return;
         Instance.StartCoroutine(MockPurchaseCoroutine(id));
     }
     private static System.Collections.IEnumerator MockPurchaseCoroutine(string id)
@@ -64,7 +77,7 @@ public class BridgeMgr : MonoBehaviour
         yield return new UnityEngine.WaitForSeconds(0.8f);
         Instance.OnPurchaseSuccess(id + "|mock_token_editor");
     }
-    private static void RestorePurchases() { Debug.Log("[BridgeMgr MOCK] RestorePurchases"); }
+    private static void RestorePurchases() { DebugUtil.Log("[BridgeMgr MOCK] RestorePurchases"); }
 #endif
 
     private void Awake()
@@ -133,25 +146,25 @@ public class BridgeMgr : MonoBehaviour
     // payload 형식: "productId|purchaseToken"
     public void OnPurchaseSuccess(string payload)
     {
-        var parts = payload.Split('|');
+        var parts = (payload ?? string.Empty).Split('|');
         string productId = parts.Length > 0 ? parts[0] : payload;
         string token     = parts.Length > 1 ? parts[1] : "";
-        Debug.Log($"[BridgeMgr] OnPurchaseSuccess: {productId}");
+        DebugUtil.Log($"[BridgeMgr] OnPurchaseSuccess: {productId}");
         if (IAPMgr.Instance != null) IAPMgr.Instance.HandlePurchaseSuccess(productId, token);
     }
 
     // payload 형식: "productId|responseCode"
     public void OnPurchaseFailed(string payload)
     {
-        var parts = payload.Split('|');
+        var parts = (payload ?? string.Empty).Split('|');
         string productId = parts.Length > 0 ? parts[0] : payload;
-        Debug.LogWarning($"[BridgeMgr] OnPurchaseFailed: {productId}");
+        DebugUtil.LogWarning($"[BridgeMgr] OnPurchaseFailed: {productId}");
         if (IAPMgr.Instance != null) IAPMgr.Instance.HandlePurchaseFailed(productId);
     }
 
     public void OnPurchaseCancelled(string productId)
     {
-        Debug.Log($"[BridgeMgr] OnPurchaseCancelled: {productId}");
+        DebugUtil.Log($"[BridgeMgr] OnPurchaseCancelled: {productId}");
         if (IAPMgr.Instance != null) IAPMgr.Instance.HandlePurchaseCancelled(productId);
     }
 
@@ -160,10 +173,10 @@ public class BridgeMgr : MonoBehaviour
 
     public void OnPurchaseRestored(string payload)
     {
-        var parts = payload.Split('|');
+        var parts = (payload ?? string.Empty).Split('|');
         string productId = parts.Length > 0 ? parts[0] : payload;
         string token     = parts.Length > 1 ? parts[1] : "";
-        Debug.Log($"[BridgeMgr] OnPurchaseRestored: {productId}");
+        DebugUtil.Log($"[BridgeMgr] OnPurchaseRestored: {productId}");
         if (IAPMgr.Instance != null) IAPMgr.Instance.HandlePurchaseRestored(productId, token);
     }
 }

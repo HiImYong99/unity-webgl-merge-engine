@@ -102,12 +102,14 @@ public class GameMgr : MonoBehaviour
 
         if (CurrentState != GameState.Playing) return;
 
-        // [Debug] 개발 중 게임오버 테스트를 위한 단축키 (End 키)
+        // [Debug] 에디터에서만 게임오버 테스트 단축키 허용
+#if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.End))
         {
             TriggerGameOver();
             return;
         }
+#endif
 
         // ===== Fallout 게임 오버 판정 =====
         // 용기 X 범위 밖으로 벗어난 동물이 킬존 아래로 떨어지면 게임오버
@@ -401,7 +403,7 @@ public class GameMgr : MonoBehaviour
         // JS 브릿지에서 visibilitychange/pagehide 시 호출됨
         if (CurrentState == GameState.Playing)
         {
-            Debug.Log("[GameMgr] RequestSaveFromJS: Saving current board state...");
+            DebugUtil.Log("[GameMgr] RequestSaveFromJS: Saving current board state...");
             SaveCurrentBoardState();
         }
         else

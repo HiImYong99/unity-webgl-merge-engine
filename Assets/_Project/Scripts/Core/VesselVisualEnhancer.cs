@@ -105,7 +105,7 @@ public class VesselVisualEnhancer : MonoBehaviour
         DrawVesselOutline();
         CreateDecorativePearls();
 
-        Debug.Log("[VesselVisualEnhancer] ✅ Premium Jar Resized and Visualized.");
+        DebugUtil.Log("[VesselVisualEnhancer] Premium jar resized and visualized.");
     }
 
     private void CreateDecorativePearls()

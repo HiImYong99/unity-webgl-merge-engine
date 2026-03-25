@@ -73,6 +73,6 @@ public class CameraScaler : MonoBehaviour
         if (CameraMgr.Instance != null)
             CameraMgr.Instance.SyncOrigin();
 
-        Debug.Log($"[CameraScaler] aspect={screenAspect:F3}, orthoSize={cam.orthographicSize:F2}, camY={CameraYOffset}, screen={Screen.width}x{Screen.height}");
+        DebugUtil.Log($"[CameraScaler] aspect={screenAspect:F3}, orthoSize={cam.orthographicSize:F2}, camY={CameraYOffset}, screen={Screen.width}x{Screen.height}");
     }
 }

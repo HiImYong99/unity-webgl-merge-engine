@@ -40,7 +40,7 @@ public class TossSafeArea : MonoBehaviour
         else
         {
             // BridgeMgr가 없으면 Unity Screen.safeArea 폴백
-            Debug.LogWarning("[TossSafeArea] BridgeMgr not found, using Screen.safeArea fallback.");
+            DebugUtil.LogWarning("[TossSafeArea] BridgeMgr not found, using Screen.safeArea fallback.");
             ApplyUnityScreenSafeArea();
         }
     }
@@ -71,11 +71,16 @@ public class TossSafeArea : MonoBehaviour
         tossInsetRight  = right;
         tossInsetsApplied = true;
 
-        Debug.Log($"[TossSafeArea] Applying Toss insets: top={top}, bottom={bottom}, left={left}, right={right}");
+        DebugUtil.Log($"[TossSafeArea] Applying Toss insets: top={top}, bottom={bottom}, left={left}, right={right}");
 
         // 픽셀 → 0~1 Anchor 비율로 변환
         float screenW = Screen.width;
         float screenH = Screen.height;
+        if (screenW <= 0f || screenH <= 0f)
+        {
+            DebugUtil.LogWarning("[TossSafeArea] 화면 크기가 유효하지 않아 인셋 적용을 건너뜁니다.");
+            return;
+        }
 
         Vector2 anchorMin = new Vector2(left / screenW, bottom / screenH);
         Vector2 anchorMax = new Vector2(1f - (right / screenW), 1f - (top / screenH));

@@ -88,7 +88,7 @@ public class IAPMgr : MonoBehaviour
         OnAdsRemoved?.Invoke();
         SyncStateToJS();
         SyncPurchaseResultToJS("success", PRODUCT_REMOVE_ADS);
-        Debug.Log("[IAPMgr] 광고 제거 완료");
+        DebugUtil.Log("[IAPMgr] 광고 제거 완료");
     }
 
     // ── JS 동기화 ─────────────────────────────────────────────────────
