@@ -3,7 +3,13 @@
 # Unity Android SDK + Gradle로 Android Studio 없이 빌드
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-JAVA_HOME="/Applications/Unity/Hub/Editor/2022.3.62f3/PlaybackEngines/AndroidPlayer/OpenJDK"
+UNITY_JDK="/Applications/Unity/Hub/Editor/2022.3.62f3/PlaybackEngines/AndroidPlayer/OpenJDK"
+HOMEBREW_JDK="/opt/homebrew/Cellar/openjdk@17/17.0.18"
+if [ -d "$UNITY_JDK" ]; then
+    JAVA_HOME="$UNITY_JDK"
+elif [ -d "$HOMEBREW_JDK" ]; then
+    JAVA_HOME="$HOMEBREW_JDK"
+fi
 
 echo "========================================"
 echo "  애니멀 팝 APK 빌드"

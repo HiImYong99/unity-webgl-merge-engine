@@ -38,15 +38,15 @@ fi
 echo "[OK] signing.properties 확인 완료"
 
 # ── 3. Java 환경 설정 ───────────────────────────────────────────
-# Unity 번들 JDK 사용 (Java 11, AGP 7.4.x 호환)
 UNITY_JDK="/Applications/Unity/Hub/Editor/2022.3.62f3/PlaybackEngines/AndroidPlayer/OpenJDK"
+HOMEBREW_JDK="/opt/homebrew/Cellar/openjdk@17/17.0.18"
 if [ -d "$UNITY_JDK" ]; then
     export JAVA_HOME="$UNITY_JDK"
-    export PATH="$JAVA_HOME/bin:$PATH"
-    echo "[OK] JAVA_HOME: $JAVA_HOME"
-else
-    echo "[WARN] Unity JDK 없음. 시스템 Java 사용"
+elif [ -d "$HOMEBREW_JDK" ]; then
+    export JAVA_HOME="$HOMEBREW_JDK"
 fi
+export PATH="$JAVA_HOME/bin:$PATH"
+echo "[OK] JAVA_HOME: $JAVA_HOME"
 
 # ── 4. AAB 빌드 ─────────────────────────────────────────────────
 cd "$SCRIPT_DIR"

@@ -203,13 +203,16 @@ public class MainActivity extends Activity {
             Log.d(TAG, "[Bridge] showRewardedAd requested");
             mainHandler.post(() -> {
                 if (rewardedAd != null) {
+                    final boolean[] rewardEarned = {false};
                     rewardedAd.setFullScreenContentCallback(new FullScreenContentCallback() {
                         @Override
                         public void onAdDismissedFullScreenContent() {
-                            Log.d(TAG, "Rewarded dismissed");
+                            Log.d(TAG, "Rewarded dismissed (rewardEarned=" + rewardEarned[0] + ")");
                             rewardedAd = null;
                             loadRewardedAd();
-                            // 보상은 onUserEarnedReward에서 지급 → 여기선 닫힘만 통지
+                            if (!rewardEarned[0]) {
+                                callJs("onAdFailedFromAndroid()");
+                            }
                         }
                         @Override
                         public void onAdFailedToShowFullScreenContent(AdError e) {
@@ -220,8 +223,8 @@ public class MainActivity extends Activity {
                         }
                     });
                     rewardedAd.show(MainActivity.this, rewardItem -> {
-                        // 광고 완전 시청 → 보상 지급
                         Log.d(TAG, "User earned reward: " + rewardItem.getAmount() + " " + rewardItem.getType());
+                        rewardEarned[0] = true;
                         callJs("onAdRewardedFromAndroid()");
                     });
                 } else {
@@ -306,6 +309,9 @@ public class MainActivity extends Activity {
         });
     }
 
+    private static final long REWARDED_RETRY_DELAY_MS = 5000L;
+    private int rewardedRetryCount = 0;
+
     private void loadRewardedAd() {
         AdRequest req = new AdRequest.Builder().build();
         RewardedAd.load(this, REWARDED_AD_UNIT_ID, req, new RewardedAdLoadCallback() {
@@ -313,13 +319,19 @@ public class MainActivity extends Activity {
             public void onAdLoaded(RewardedAd ad) {
                 Log.d(TAG, "Rewarded ad loaded");
                 rewardedAd = ad;
-                // 보상형 광고 준비 완료를 JS에 알림 → '계속하기' 버튼 활성화
+                rewardedRetryCount = 0;
                 callJs("onRewardedAdReadyFromAndroid()");
             }
             @Override
             public void onAdFailedToLoad(LoadAdError e) {
-                Log.w(TAG, "Rewarded ad load failed: " + e.getMessage());
+                Log.w(TAG, "Rewarded ad load failed (attempt " + rewardedRetryCount + "): " + e.getMessage());
                 rewardedAd = null;
+                if (rewardedRetryCount < 3) {
+                    rewardedRetryCount++;
+                    long delay = REWARDED_RETRY_DELAY_MS * rewardedRetryCount;
+                    Log.d(TAG, "Retrying rewarded ad in " + delay + "ms");
+                    mainHandler.postDelayed(() -> loadRewardedAd(), delay);
+                }
             }
         });
     }
@@ -364,7 +376,10 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         if (webView != null) {
-            // JS 실행 전체 중단 (타이머, 오디오, 애니메이션, 게임루프 모두 정지)
+            // Web Audio API suspend → Unity BGM 즉시 정지
+            webView.evaluateJavascript(
+                "try { if(typeof Module!=='undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)" +
+                "  Module.WEBAudio.audioContext.suspend(); } catch(e){}", null);
             webView.pauseTimers();
             webView.onPause();
         }
@@ -375,9 +390,12 @@ public class MainActivity extends Activity {
         super.onResume();
         applyImmersiveMode();
         if (webView != null) {
-            // JS 실행 재개
             webView.onResume();
             webView.resumeTimers();
+            // Web Audio API resume → BGM 재개
+            webView.evaluateJavascript(
+                "try { if(typeof Module!=='undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)" +
+                "  Module.WEBAudio.audioContext.resume(); } catch(e){}", null);
         }
         if (billingManager != null) billingManager.restorePurchases();
     }

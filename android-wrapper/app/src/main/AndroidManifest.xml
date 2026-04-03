@@ -31,12 +31,6 @@
             </intent-filter>
         </activity>
 
-        <!-- AdMob 광고 Activity (전면 광고 표시용) -->
-        <activity
-            android:name="com.google.android.gms.ads.AdActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
-            android:exported="false"
-            android:theme="@android:style/Theme.Translucent"/>
 
     </application>
 
