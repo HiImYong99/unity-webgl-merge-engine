@@ -1167,6 +1167,31 @@
     document.addEventListener('click',    resumeWebGLAudio, { passive: true });
     document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
 
+    // ════════════════════════════════════════════════════
+    //  백그라운드/화면 꺼짐 통합 핸들러
+    //  (사운드 정지 + 데이터 저장을 한 곳에서 처리)
+    // ════════════════════════════════════════════════════
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            // 사운드 정지 (Android onPause의 evaluateJavascript는 비동기라 누락 가능)
+            try {
+                var ac = (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)
+                         ? Module.WEBAudio.audioContext : null;
+                if (ac) ac.suspend();
+            } catch(e) {}
+            // 데이터 저장 요청
+            if (unityInstance) {
+                unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+            }
+        } else {
+            // 복귀 시: 유저가 BGM을 꺼두지 않았을 때만 resume
+            try {
+                var ac = (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)
+                         ? Module.WEBAudio.audioContext : null;
+                if (ac && !bgmMuted) ac.resume();
+            } catch(e) {}
+        }
+    });
 
     // ════════════════════════════════════════════════════
     //  Unity 초기화
@@ -1269,14 +1294,14 @@
     //  게임 오버 버튼
     // ════════════════════════════════════════════════════
     function onShareClicked() {
-        var scoreEl = document.getElementById('go-score');
-        var bestEl  = document.getElementById('go-best');
-        var score   = scoreEl ? scoreEl.textContent.replace(/,/g, '') : '0';
-        var best    = bestEl  ? bestEl.textContent.replace(/,/g, '')  : '0';
+        var goScoreText = document.getElementById('go-score');
+        var goBestText  = document.getElementById('go-best');
+        var score   = goScoreText ? goScoreText.textContent.replace(/,/g, '') : '0';
+        var best    = goBestText  ? goBestText.textContent.replace(/,/g, '')  : '0';
         var isNew   = (parseInt(score) >= parseInt(best) && parseInt(best) > 0);
         var text    = isNew
-            ? '🎉 신기록! 애니멀 팝에서 ' + scoreEl.textContent + '점을 달성했어요! 같이 도전해봐요 🐾'
-            : '애니멀 팝에서 ' + scoreEl.textContent + '점을 기록했어요! 최고기록은 ' + bestEl.textContent + '점이에요 🐾';
+            ? '🎉 신기록! 애니멀 팝에서 ' + goScoreText.textContent + '점을 달성했어요! 같이 도전해봐요 🐾'
+            : '애니멀 팝에서 ' + goScoreText.textContent + '점을 기록했어요! 최고기록은 ' + goBestText.textContent + '점이에요 🐾';
 
         // 1순위: Web Share API (Android Chrome/WebView 지원)
         if (navigator.share) {
@@ -1295,15 +1320,24 @@
             window.AndroidBridge.shareText(text);
         } else {
             // 마지막 수단: 클립보드 복사
-            try {
-                navigator.clipboard.writeText(text);
-                showToast('📋 결과가 클립보드에 복사됐어요!');
-            } catch(e) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast('📋 결과가 클립보드에 복사됐어요!');
+                }).catch(function() {
+                    showToast('공유 기능을 사용할 수 없어요.');
+                });
+            } else {
                 showToast('공유 기능을 사용할 수 없어요.');
             }
         }
     }
-    function onRestartClicked() { restartGame(); }
+    var _restartInProgress = false;
+    function onRestartClicked() {
+        if (_restartInProgress) return;
+        _restartInProgress = true;
+        restartGame();
+        setTimeout(function() { _restartInProgress = false; }, 1000);
+    }
 
     // ════════════════════════════════════════════════════
     //  Unity → JS 콜백
@@ -1369,26 +1403,46 @@
         }
     };
 
-    // Android → JS: 결제 성공 (BillingManager 콜백 → Unity → JS 경로 외, 직접 경로)
+    // Android → JS: 결제 성공
     window.onPurchaseSuccessFromAndroid = function(productId, token) {
+        _isAdsRemoved = true;
+        refreshIAPUI();
+        var btn = document.getElementById('iap-btn');
+        if (btn) { btn.disabled = false; btn.textContent = '✨ 광고 제거 · 990원'; }
         if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|' + token);
     };
+    // Android → JS: 결제 실패 → 버튼 복원
     window.onPurchaseFailedFromAndroid = function(productId, code) {
+        var btn = document.getElementById('iap-btn');
+        if (btn) { btn.disabled = false; btn.textContent = '✨ 광고 제거 · 990원'; }
+        showToast('결제에 실패했어요. 다시 시도해 주세요.');
         if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseFailed', productId + '|' + code);
     };
+    // Android → JS: 결제 취소 → 버튼 복원
     window.onPurchaseCancelledFromAndroid = function(productId) {
+        var btn = document.getElementById('iap-btn');
+        if (btn) { btn.disabled = false; btn.textContent = '✨ 광고 제거 · 990원'; }
         if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseCancelled', productId);
     };
     window.onPurchaseRestoredFromAndroid = function(productId, token) {
+        _isAdsRemoved = true;
+        refreshIAPUI();
         if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnPurchaseRestored', productId + '|' + token);
     };
 
-    // 결제 버튼 클릭
+    // 결제 버튼 클릭 → AndroidBridge 직접 호출 (Unity 경유 제거)
     function onPurchaseClicked() {
         if (_isAdsRemoved) return;
         var btn = document.getElementById('iap-btn');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 결제 처리 중...'; }
-        if (unityInstance) unityInstance.SendMessage('IAPManager', 'PurchaseFromJS', '');
+        if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
+            window.AndroidBridge.launchPurchase('remove_ads_hint_pack');
+        } else if (unityInstance) {
+            unityInstance.SendMessage('IAPManager', 'PurchaseFromJS', '');
+        } else {
+            // 브릿지 없음 → 즉시 복원
+            if (btn) { btn.disabled = false; btn.textContent = '✨ 광고 제거 · 990원'; }
+        }
     }
 
     // 구매 복원 버튼 클릭
@@ -1404,9 +1458,6 @@
         if (_hintCount <= 0) return;
         if (unityInstance) unityInstance.SendMessage('GameManager', 'UseHintFromJS', '');
     }
-
-    // 힌트 UI 갱신 (HUD) - 현재 미사용(힌트 제거됨), 빈 함수 유지
-    function refreshHintUI() {}
 
     // IAP UI 갱신 (설정 패널)
     function refreshIAPUI() {
@@ -1455,9 +1506,11 @@
     // ════════════════════════════════════════════════════
     //  Android AdMob Bridge
     // ════════════════════════════════════════════════════
-    var _isAndroid = (typeof window.AndroidBridge !== 'undefined');
+    // _isAndroid: 로드 타임 캐싱 대신 매번 동적 체크 (AndroidBridge 주입 타이밍 경합 방지)
+    function _isAndroid() { return typeof window.AndroidBridge !== 'undefined'; }
     var _adWatchAllowed = false;   // 보상형 광고 시청 가능 여부
     var _adUsedThisGame = false;   // 이번 게임에서 광고 계속하기 사용 여부
+    var _adInProgress   = false;   // 광고(전면/보상) 진행 중 플래그 (경합 방지)
 
     // 보상형 광고 준비 완료 (네이티브 → JS)
     window.onRewardedAdReadyFromAndroid = function() {
@@ -1467,23 +1520,34 @@
 
     // 광고 완전 시청 완료 → 보상 지급 (네이티브 → JS)
     window.onAdRewardedFromAndroid = function() {
+        _adInProgress = false;
         _adUsedThisGame = true;
         _adWatchAllowed = false;
         updateAdButton();
         goOverlay.classList.remove('visible');
+        showHUD(true);
+        resumePlayTimer();
         if (unityInstance) {
             unityInstance.SendMessage('GameManager', 'ContinueGameAfterAd', '');
         }
     };
 
-    // 광고 실패/취소
+    // 광고 실패/취소 (스킵 포함) → 버튼 복원
     window.onAdFailedFromAndroid = function() {
-        console.log('[AdMob] 광고 실패 또는 취소');
+        _adInProgress = false;
+        var btn = document.getElementById('go-btn-ad');
+        if (btn) { btn.disabled = false; btn.textContent = '📺 광고 보고 계속하기'; }
     };
 
     // 전면 광고 닫힘 후 처리
     window.onInterstitialClosedFromAndroid = function() {
-        console.log('[AdMob] 전면 광고 닫힘');
+        _adInProgress = false;
+        // Android WebView에서 네이티브 Activity 복귀 후 터치 이벤트가 먹통이 되는 현상 방지
+        // pointer-events 토글로 터치 핸들러를 강제 재등록
+        if (goOverlay && goOverlay.classList.contains('visible')) {
+            goOverlay.style.pointerEvents = 'none';
+            setTimeout(function() { goOverlay.style.pointerEvents = ''; }, 80);
+        }
     };
 
     function updateAdButton() {
@@ -1492,7 +1556,7 @@
         if (!wrap) return;
         // Android + 광고 미사용 + 광고 미제거 상품 구매 안 한 경우에만 노출
         // (광고 준비 여부와 무관하게 노출 — 미준비 시 클릭하면 안내 메시지)
-        if (_isAndroid && !_adUsedThisGame && !_isAdsRemoved) {
+        if (_isAndroid() && !_adUsedThisGame && !_isAdsRemoved) {
             wrap.style.display = 'block';
             if (btn) {
                 btn.disabled = false;
@@ -1504,12 +1568,14 @@
     }
 
     function onWatchAdClicked() {
-        if (!_isAndroid || !window.AndroidBridge) return;
+        if (_adInProgress) return; // 더블클릭 / 광고 경합 방지
+        if (!_isAndroid() || !window.AndroidBridge) return;
         if (typeof window.AndroidBridge.isRewardedAdReady === 'function' &&
             !window.AndroidBridge.isRewardedAdReady()) {
             showToast('광고를 불러오는 중이에요. 잠시 후 다시 시도해 주세요.');
             return;
         }
+        _adInProgress = true;
         var btn = document.getElementById('go-btn-ad');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 광고 로딩 중...'; }
         window.AndroidBridge.showRewardedAd();
@@ -1536,9 +1602,11 @@
         updateAdButton();
 
         // 게임 오버 시 전면 광고 표시 (Android 전용, 광고 제거 상품 미구매 시)
-        if (_isAndroid && !_adUsedThisGame && !_isAdsRemoved && window.AndroidBridge &&
-            typeof window.AndroidBridge.showInterstitialAd === 'function') {
-            window.AndroidBridge.showInterstitialAd();
+        // 300ms 딜레이: 오버레이 렌더링 완료 후 전면광고 노출 (경합 방지)
+        if (_isAndroid() && !_adUsedThisGame && !_isAdsRemoved && !_adInProgress &&
+            window.AndroidBridge && typeof window.AndroidBridge.showInterstitialAd === 'function') {
+            _adInProgress = true;
+            setTimeout(function() { window.AndroidBridge.showInterstitialAd(); }, 300);
         }
 
         try {
@@ -1650,18 +1718,9 @@
         sfxMuted = localStorage.getItem('animalpop_sfx') === '0';
     } catch(e){}
 
-    // ════════════════════════════════════════════════════
-    //  데이터 영속화 최적화 (Task 3)
-    // ════════════════════════════════════════════════════
-    window.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'hidden' && unityInstance) {
-            console.log("[JS] Visibility changed to hidden. Requesting save...");
-            unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
-        }
-    });
+    // pagehide: visibilitychange와 별도로 발생할 수 있음 (예: 앱 종료)
     window.addEventListener('pagehide', function() {
         if (unityInstance) {
-            console.log("[JS] Page hide. Requesting save...");
             unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
         }
     });
