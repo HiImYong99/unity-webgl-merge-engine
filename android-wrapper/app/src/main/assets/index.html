@@ -1551,20 +1551,11 @@
     };
 
     function updateAdButton() {
+        // ⚠️ 임시 비활성화: Unity C# 측 ContinueGameAfterAd 버그 수정 후 WebGL 재빌드 필요
+        //    (CanSpawn 플래그 미복구로 광고 시청 후 동물 드롭 불가 현상)
+        //    재빌드 완료 시 아래 로직 복구할 것
         var wrap = document.getElementById('go-btn-ad-wrap');
-        var btn  = document.getElementById('go-btn-ad');
-        if (!wrap) return;
-        // Android + 광고 미사용 + 광고 미제거 상품 구매 안 한 경우에만 노출
-        // (광고 준비 여부와 무관하게 노출 — 미준비 시 클릭하면 안내 메시지)
-        if (_isAndroid() && !_adUsedThisGame && !_isAdsRemoved) {
-            wrap.style.display = 'block';
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = '📺 광고 보고 계속하기';
-            }
-        } else {
-            wrap.style.display = 'none';
-        }
+        if (wrap) wrap.style.display = 'none';
     }
 
     function onWatchAdClicked() {

@@ -282,7 +282,11 @@ public class GameMgr : MonoBehaviour
         }
 
         if (SpawnMgr.Instance != null)
+        {
+            // 게임오버 시 CancelPendingSpawn()으로 CanSpawn=false가 됐으므로 복구 필요
+            SpawnMgr.Instance.CanSpawn = true;
             SpawnMgr.Instance.PrepareNextAnimal();
+        }
     }
 
     public void ClearSavedGame()

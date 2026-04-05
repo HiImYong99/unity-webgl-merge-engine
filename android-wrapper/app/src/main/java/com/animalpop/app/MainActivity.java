@@ -170,26 +170,40 @@ public class MainActivity extends Activity {
         /** 게임 오버 시 전면 광고 요청 */
         @JavascriptInterface
         public void showInterstitialAd() {
-            Log.d(TAG, "[Bridge] showInterstitialAd requested");
+            Log.d(TAG, "[Bridge] showInterstitialAd requested, ready=" + (interstitialAd != null));
             mainHandler.post(() -> {
                 if (interstitialAd != null) {
                     interstitialAd.setFullScreenContentCallback(new FullScreenContentCallback() {
                         @Override
+                        public void onAdShowedFullScreenContent() {
+                            Log.d(TAG, "[AD] Interstitial SHOWED");
+                        }
+                        @Override
+                        public void onAdImpression() {
+                            Log.d(TAG, "[AD] Interstitial IMPRESSION");
+                        }
+                        @Override
+                        public void onAdClicked() {
+                            Log.d(TAG, "[AD] Interstitial CLICKED");
+                        }
+                        @Override
                         public void onAdDismissedFullScreenContent() {
-                            Log.d(TAG, "Interstitial dismissed");
+                            Log.d(TAG, "[AD] Interstitial DISMISSED");
                             interstitialAd = null;
-                            loadInterstitialAd(); // 다음 광고 미리 로드
+                            loadInterstitialAd();
                             callJs("onInterstitialClosedFromAndroid()");
                         }
                         @Override
                         public void onAdFailedToShowFullScreenContent(AdError e) {
-                            Log.w(TAG, "Interstitial failed to show: " + e.getMessage());
+                            Log.w(TAG, "[AD] Interstitial FAILED TO SHOW: " + e.getMessage());
                             interstitialAd = null;
                             loadInterstitialAd();
                             callJs("onInterstitialClosedFromAndroid()");
                         }
                     });
+                    interstitialAd.setImmersiveMode(true);
                     interstitialAd.show(MainActivity.this);
+                    Log.d(TAG, "[AD] .show() called");
                 } else {
                     Log.w(TAG, "Interstitial not ready, skipping");
                     callJs("onInterstitialClosedFromAndroid()");
@@ -206,8 +220,12 @@ public class MainActivity extends Activity {
                     final boolean[] rewardEarned = {false};
                     rewardedAd.setFullScreenContentCallback(new FullScreenContentCallback() {
                         @Override
+                        public void onAdShowedFullScreenContent() {
+                            Log.d(TAG, "[AD] Rewarded SHOWED");
+                        }
+                        @Override
                         public void onAdDismissedFullScreenContent() {
-                            Log.d(TAG, "Rewarded dismissed (rewardEarned=" + rewardEarned[0] + ")");
+                            Log.d(TAG, "[AD] Rewarded DISMISSED (rewardEarned=" + rewardEarned[0] + ")");
                             rewardedAd = null;
                             loadRewardedAd();
                             if (!rewardEarned[0]) {
@@ -216,12 +234,13 @@ public class MainActivity extends Activity {
                         }
                         @Override
                         public void onAdFailedToShowFullScreenContent(AdError e) {
-                            Log.w(TAG, "Rewarded failed to show: " + e.getMessage());
+                            Log.w(TAG, "[AD] Rewarded FAILED TO SHOW: " + e.getMessage());
                             rewardedAd = null;
                             loadRewardedAd();
                             callJs("onAdFailedFromAndroid()");
                         }
                     });
+                    rewardedAd.setImmersiveMode(true);
                     rewardedAd.show(MainActivity.this, rewardItem -> {
                         Log.d(TAG, "User earned reward: " + rewardItem.getAmount() + " " + rewardItem.getType());
                         rewardEarned[0] = true;
@@ -380,7 +399,9 @@ public class MainActivity extends Activity {
             webView.evaluateJavascript(
                 "try { if(typeof Module!=='undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)" +
                 "  Module.WEBAudio.audioContext.suspend(); } catch(e){}", null);
-            webView.pauseTimers();
+            // ⚠️ pauseTimers()는 프로세스 전체 WebView 타이머를 멈춥니다.
+            //    AdMob 광고도 내부 WebView로 렌더링되기 때문에 호출하면 광고 영상이 프리즈됩니다.
+            //    인스턴스별 pause만 사용합니다.
             webView.onPause();
         }
     }
@@ -391,7 +412,6 @@ public class MainActivity extends Activity {
         applyImmersiveMode();
         if (webView != null) {
             webView.onResume();
-            webView.resumeTimers();
             // Web Audio API resume → BGM 재개
             webView.evaluateJavascript(
                 "try { if(typeof Module!=='undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)" +
