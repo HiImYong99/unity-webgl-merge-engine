@@ -1652,27 +1652,86 @@
     // ════════════════════════════════════════════════════
     //  게임 재시작
     // ════════════════════════════════════════════════════
+    // 전면광고(비보상형) 표시 후 콜백. 광고 미지원/스킵 조건이면 즉시 콜백 실행
+    function _showInterstitialThen(cb) {
+        var INTERSTITIAL_AD_ID = 'ait.v2.live.f8b6b46c862f48f4';
+        // 광고 제거 구매자는 스킵
+        if (_premiumSpeedOwned) { cb(); return; }
+        // 이번 판에서 부활 2회 다 썼으면 스킵 (C# HasRemainingRevives 로직 미러)
+        if (typeof _lastSpareLives === 'number' && _lastSpareLives >= 2) { cb(); return; }
+
+        var ait = window.AppsInToss;
+        var api = null;
+        if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
+            api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+        } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
+            api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
+        }
+        if (!api) { console.warn('[Ad] Interstitial SDK not found'); cb(); return; }
+        console.log('[Ad] Interstitial via', api.name, 'id:', INTERSTITIAL_AD_ID);
+
+        if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
+        var done = false;
+        function finish() {
+            if (done) return;
+            done = true;
+            if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+            cb();
+        }
+
+        var loadUnregister = api.load({
+            options: { adGroupId: INTERSTITIAL_AD_ID },
+            onEvent: function(ev) {
+                if (ev.type !== 'loaded') return;
+                loadUnregister && loadUnregister();
+                var showUnregister = api.show({
+                    options: { adGroupId: INTERSTITIAL_AD_ID },
+                    onEvent: function(e) {
+                        if (e.type === 'dismissed' || e.type === 'failedToShow') {
+                            showUnregister && showUnregister();
+                            finish();
+                        }
+                    },
+                    onError: function(err) {
+                        showUnregister && showUnregister();
+                        console.warn('[Ad] Interstitial show error:', err);
+                        finish();
+                    }
+                });
+            },
+            onError: function(err) {
+                loadUnregister && loadUnregister();
+                console.warn('[Ad] Interstitial load error:', err);
+                finish();
+            }
+        });
+    }
+
     function restartGame() {
         if (!unityInstance) { location.reload(); return; }
         goOverlay.classList.remove('visible');
         hideDangerBanner();
         showHUD(false);
         if (newBestBadge) newBestBadge.classList.remove('show');
-        _currentDisplayScore = 0;
-        if (scoreEl) scoreEl.textContent = '0';
-        // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
-        _speedBoostActive = false;
-        _refreshSpeedBtn();
-        // 영구 구매자 & ON 상태면 게임 재시작 시에도 2배속 적용
-        if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
-            setTimeout(function() {
-                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
-            }, 300);
-        }
-        resetSidePanel();
-        startPlayTimer();
-        unityInstance.SendMessage('GameManager', 'StartGame');
-        setTimeout(function() { showHUD(true); }, 200);
+
+        // 전면광고를 먼저 띄우고 종료 후 실제 재시작
+        _showInterstitialThen(function() {
+            _currentDisplayScore = 0;
+            if (scoreEl) scoreEl.textContent = '0';
+            // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
+            _speedBoostActive = false;
+            _refreshSpeedBtn();
+            // 영구 구매자 & ON 상태면 게임 재시작 시에도 2배속 적용
+            if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
+                setTimeout(function() {
+                    unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
+                }, 300);
+            }
+            resetSidePanel();
+            startPlayTimer();
+            unityInstance.SendMessage('GameManager', 'StartGame');
+            setTimeout(function() { showHUD(true); }, 200);
+        });
     }
 
     // ════════════════════════════════════════════════════

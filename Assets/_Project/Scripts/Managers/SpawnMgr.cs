@@ -15,6 +15,10 @@ public class SpawnMgr : MonoBehaviour
     private GameObject _currentAnimal;
     private AnimalEvolutionData _evolutionData;
 
+    // Invoke 대신 Update 기반 스폰 쿨다운 타이머 (WebGL에서 Invoke가 간헐적으로 누락되는 문제 방지)
+    private bool _waitingForSpawnReset = false;
+    private float _spawnResetTimer = 0f;
+
     // Next Queue 시스템
     private int _nextAnimalLevel = -1;
     private int _queuedAnimalLevel = -1;
@@ -210,10 +214,42 @@ public class SpawnMgr : MonoBehaviour
 
     private void Update()
     {
+        // 스폰 쿨다운 타이머: 모든 상태 체크보다 먼저 처리 (놓치지 않도록)
+        if (_waitingForSpawnReset)
+        {
+            // unscaledDeltaTime 사용 — timeScale 관계없이 확실하게 카운트
+            _spawnResetTimer -= Time.unscaledDeltaTime;
+            if (_spawnResetTimer <= 0f)
+            {
+                _waitingForSpawnReset = false;
+                if (GameMgr.Instance == null || GameMgr.Instance.CurrentState == GameMgr.GameState.Playing)
+                {
+                    ResetSpawn();
+                }
+            }
+        }
+
         if (GameMgr.Instance != null && GameMgr.Instance.CurrentState != GameMgr.GameState.Playing)
         {
             SetGuideDotsActive(false);
             return;
+        }
+
+        // 안전장치: 모든 교착 상태 강제 복구
+        if (_currentAnimal == null && !_waitingForSpawnReset)
+        {
+            if (CanSpawn)
+            {
+                // 타이머 완료 후 동물이 안 만들어진 경우
+                Debug.LogWarning("[SpawnMgr] CanSpawn=true but no animal — forcing PrepareNextAnimal");
+                PrepareNextAnimal();
+            }
+            else
+            {
+                // CanSpawn=false인데 타이머도 없는 교착 → 강제 리셋
+                Debug.LogWarning("[SpawnMgr] Deadlock: CanSpawn=false, no timer, no animal — forcing ResetSpawn");
+                ResetSpawn();
+            }
         }
 
         if (!CanSpawn || _currentAnimal == null)
@@ -320,7 +356,7 @@ public class SpawnMgr : MonoBehaviour
     /// <summary>게임오버 시 대기 중인 스폰 예약을 취소하고 상태를 잠금</summary>
     public void CancelPendingSpawn()
     {
-        CancelInvoke(nameof(ResetSpawn));
+        _waitingForSpawnReset = false;
         CanSpawn = false;
 
         if (_currentAnimal != null)
@@ -332,7 +368,7 @@ public class SpawnMgr : MonoBehaviour
 
     public void FullReset()
     {
-        CancelInvoke(nameof(ResetSpawn));
+        _waitingForSpawnReset = false;
 
         if (_currentAnimal != null)
         {
@@ -372,6 +408,12 @@ public class SpawnMgr : MonoBehaviour
             : CreatePlaceholderAnimal(level, spawnPos);
 
         _currentAnimal = animalGo;
+
+        if (_currentAnimal == null)
+        {
+            Debug.LogError($"[SpawnMgr] SpawnAnimalAtCursor FAILED: level={level}, prefab={prefab}");
+            return;
+        }
 
         Rigidbody2D rb = _currentAnimal.GetComponent<Rigidbody2D>();
         if (rb != null) { rb.isKinematic = true; rb.velocity = Vector2.zero; }
@@ -481,13 +523,26 @@ public class SpawnMgr : MonoBehaviour
         CanSpawn = false;
         _totalDropCount++;
 
-        // [수정] Invoke는 Time.timeScale의 영향을 받지 않으므로 직접 계산하여 호출 (2배속 시 쿨다운 절반)
-        float actualDelay = SpawnCooldown / Time.timeScale;
-        Invoke(nameof(ResetSpawn), actualDelay);
+        // Update 기반 타이머로 스폰 쿨다운 처리 (WebGL Invoke 누락 방지)
+        _waitingForSpawnReset = true;
+        _spawnResetTimer = SpawnCooldown;
     }
 
     private void ResetSpawn()
     {
+        CanSpawn = true;
+        _waitingForSpawnReset = false;
+        PrepareNextAnimal();
+    }
+
+    /// <summary>JS 워치독에서 호출 — 스폰 교착 시 강제 복구</summary>
+    public void ForceSpawnRecovery()
+    {
+        if (GameMgr.Instance != null && GameMgr.Instance.CurrentState != GameMgr.GameState.Playing) return;
+        if (_currentAnimal != null) return; // 이미 대기 동물 있으면 정상
+
+        Debug.LogWarning("[SpawnMgr] ForceSpawnRecovery called from JS");
+        _waitingForSpawnReset = false;
         CanSpawn = true;
         PrepareNextAnimal();
     }

@@ -407,10 +407,36 @@ mergeInto(LibraryManager.library, {
 
   TossShare: function(msgPtr) {
     var msg = UTF8ToString(msgPtr);
-    if (window.AppsInToss && typeof window.AppsInToss.share === 'function') {
-      window.AppsInToss.share({ message: msg });
-    } else if (navigator.share) {
-      navigator.share({ title: '애니멀 팝!', text: msg, url: window.location.href });
+    var appScheme = 'intoss://animal-pop';
+    var ogImageUrl = 'https://static.toss.im/icons/png/4x/icon-share-dots-mono.png';
+
+    function doShare(linkText) {
+      var finalMsg = linkText ? (msg + '\n' + linkText) : msg;
+      if (window.AppsInToss && typeof window.AppsInToss.share === 'function') {
+        window.AppsInToss.share({ message: finalMsg });
+      } else if (navigator.share) {
+        navigator.share({ title: '애니멀 팝!', text: finalMsg, url: window.location.href });
+      }
+    }
+
+    if (window.AppsInToss && typeof window.AppsInToss.getTossShareLink === 'function') {
+      try {
+        var p = window.AppsInToss.getTossShareLink(appScheme, ogImageUrl);
+        if (p && typeof p.then === 'function') {
+          p.then(function(link) { doShare(link); })
+           .catch(function(e) {
+              console.warn('[TossBridge] getTossShareLink failed:', e);
+              doShare(appScheme);
+           });
+        } else {
+          doShare(p || appScheme);
+        }
+      } catch (e) {
+        console.warn('[TossBridge] getTossShareLink exception:', e);
+        doShare(appScheme);
+      }
+    } else {
+      doShare(appScheme);
     }
   },
 
