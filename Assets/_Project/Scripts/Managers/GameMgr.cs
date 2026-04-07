@@ -288,6 +288,11 @@ public class GameMgr : MonoBehaviour
         // 광고 2배속은 세션(이번 판)만 유효 → 재시작 시 초기화
         SpeedBoostActive = false;
         Time.timeScale = 1.0f;
+
+        // DontDestroyOnLoad 풀에 남은 동물 잔상 제거
+        if (PoolMgr.Instance != null)
+            PoolMgr.Instance.ClearAllPools();
+
         UnityEngine.SceneManagement.SceneManager.LoadScene(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
@@ -562,7 +567,7 @@ public class GameMgr : MonoBehaviour
 
     public void OnIAPPurchased(string productId)
     {
-        if (productId == BridgeMgr.PRODUCT_ID)
+        if (productId == IAPMgr.TOSS_PRODUCT_ID || productId == IAPMgr.GOOGLE_PRODUCT_ID)
         {
             IsAdRemoved = true;
             SaveData();

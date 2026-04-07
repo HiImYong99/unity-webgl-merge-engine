@@ -117,9 +117,11 @@ unity-build.log
 signing.properties
 local.properties
 
-# [Android Gradle Cache]
+# [Android Gradle Cache / Build Output]
 # -------------------------------------------------------------------------
 android-wrapper/.gradle/
+android-wrapper/app/build/
+android-wrapper/build/
 
 # [Claude / AI Tools]
 # -------------------------------------------------------------------------

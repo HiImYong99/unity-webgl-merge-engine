@@ -449,6 +449,28 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // ─────────────────────────────────────────────────
+  // 4-B. Android Google Play 인앱 결제 (Android WebView 전용)
+  // ─────────────────────────────────────────────────
+
+  RequestPurchase: function(productIdPtr) {
+    var productId = UTF8ToString(productIdPtr);
+    if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
+      window.AndroidBridge.launchPurchase(productId);
+    } else {
+      console.log('[TossBridge] IAP mock purchase: ' + productId);
+      setTimeout(function() {
+        SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|mock_token_' + Date.now());
+      }, 800);
+    }
+  },
+
+  RestorePurchases: function() {
+    if (window.AndroidBridge && typeof window.AndroidBridge.restorePurchases === 'function') {
+      window.AndroidBridge.restorePurchases();
+    }
+  },
+
   TossExitApp: function() {
     // 체크리스트: 종료 확인 모달 표시
     if (typeof window._showExitConfirmModal === 'function') {

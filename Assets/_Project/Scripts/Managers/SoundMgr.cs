@@ -24,6 +24,10 @@ public class SoundMgr : MonoBehaviour
     private bool _isBgmMuted = false;
     private bool _isSfxMuted = false;
 
+    private const int SFX_POOL_SIZE = 4;
+    private AudioSource[] _sfxPool;
+    private int _sfxPoolIndex = 0;
+
     private void Awake()
     {
         if (Instance == null)
@@ -31,6 +35,7 @@ public class SoundMgr : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
             LoadDefaultClips();
+            BuildSFXPool();
         }
         else
         {
@@ -58,6 +63,33 @@ public class SoundMgr : MonoBehaviour
         
         if (BGMSource == null || SFXSource == null) 
             Debug.LogWarning("[SoundMgr] AudioSource가 인스펙터에서 할당되지 않았으며, 컴포넌트를 찾을 수 없습니다.");
+    }
+
+    private void BuildSFXPool()
+    {
+        _sfxPool = new AudioSource[SFX_POOL_SIZE];
+        for (int i = 0; i < SFX_POOL_SIZE; i++)
+        {
+            var go = new GameObject($"SFX_Pool_{i}");
+            go.transform.SetParent(transform);
+            _sfxPool[i] = go.AddComponent<AudioSource>();
+            _sfxPool[i].playOnAwake = false;
+        }
+    }
+
+    private void PlaySFX(AudioClip clip, float volume)
+    {
+        if (clip == null || _isSfxMuted) return;
+        if (_sfxPool == null || _sfxPool.Length == 0)
+        {
+            // Fallback to old method
+            if (SFXSource != null) SFXSource.PlayOneShot(clip, volume);
+            return;
+        }
+        // PlayOneShot으로 겹치는 소리 보존 (풀은 독립 볼륨 제어용)
+        var src = _sfxPool[_sfxPoolIndex];
+        _sfxPoolIndex = (_sfxPoolIndex + 1) % SFX_POOL_SIZE;
+        src.PlayOneShot(clip, volume);
     }
 
     private bool _hasStartedBgm = false;
@@ -94,6 +126,8 @@ public class SoundMgr : MonoBehaviour
     {
         _isSfxMuted = mute;
         if (SFXSource != null) SFXSource.mute = mute;
+        if (_sfxPool != null)
+            foreach (var src in _sfxPool) if (src != null) src.mute = mute;
     }
 
     // JS SendMessage 전용 (문자열 인자)
@@ -164,8 +198,8 @@ public class SoundMgr : MonoBehaviour
     {
         if (_isSfxMuted) return;
 
-        // WebGL 오디오 버퍼 오버플로우 방지: 0.03초 이내 중복 재생은 무시
-        if (Time.unscaledTime - _lastMergeTime < 0.03f) return;
+        // WebGL 오디오 버퍼 오버플로우 방지: 0.08초 이내 중복 재생은 무시
+        if (Time.unscaledTime - _lastMergeTime < 0.08f) return;
         _lastMergeTime = Time.unscaledTime;
 
         AudioClip clip = null;
@@ -177,7 +211,7 @@ public class SoundMgr : MonoBehaviour
 
         if (clip != null)
         {
-            SFXSource.PlayOneShot(clip, 0.7f);
+            PlaySFX(clip, 0.7f);
         }
     }
 
@@ -196,12 +230,12 @@ public class SoundMgr : MonoBehaviour
         if (DropClip == null) return;
         
         // 동시다발적 착지음으로 인한 오디오 버퍼 지지직 현상 방지
-        if (Time.unscaledTime - _lastLandTime < 0.05f) return;
+        if (Time.unscaledTime - _lastLandTime < 0.08f) return;
         _lastLandTime = Time.unscaledTime;
 
         // intensity: 0~1, 충돌 세기에 따라 볼륨 조절 (착지는 드롭보다 조용하게)
         float volume = Mathf.Lerp(0.05f, 0.35f, intensity);
-        SFXSource.PlayOneShot(DropClip, volume);
+        PlaySFX(DropClip, volume);
     }
 
     private float _lastScoreTickTime = 0f;
@@ -210,17 +244,17 @@ public class SoundMgr : MonoBehaviour
     {
         if (_isSfxMuted) return;
         
-        if (Time.unscaledTime - _lastScoreTickTime < 0.04f) return;
+        if (Time.unscaledTime - _lastScoreTickTime < 0.06f) return;
         _lastScoreTickTime = Time.unscaledTime;
 
         if (ScoreTickClip != null)
-            SFXSource.PlayOneShot(ScoreTickClip, 0.35f);
+            PlaySFX(ScoreTickClip, 0.35f);
     }
 
     public void PlayGameOver()
     {
         if (_isSfxMuted) return;
         if (GameOverClip != null)
-            SFXSource.PlayOneShot(GameOverClip, 1.0f);
+            PlaySFX(GameOverClip, 1.0f);
     }
 }

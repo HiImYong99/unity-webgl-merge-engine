@@ -47,6 +47,10 @@ public class SpawnMgr : MonoBehaviour
     private const float SPAWN_DROP_SPEED = 2.0f;
     private float _dynamicSpawnY;
 
+    // Camera.main 캐시 (ProcessInput 핫 패스 최적화)
+    private Camera _mainCam;
+    private Camera MainCam => _mainCam != null ? _mainCam : (_mainCam = Camera.main);
+
     // Guide Line (점선 방식: 여러 개의 작은 원 스프라이트)
     private const int GUIDE_DOT_COUNT = 12;
     private GameObject[] _guideDots;
@@ -277,7 +281,7 @@ public class SpawnMgr : MonoBehaviour
         Vector3 inputPos = Vector3.zero;
         bool isInput = false;
         bool isOverUI = false;
-        Camera cam = Camera.main;
+        Camera cam = MainCam;
 
         if (Input.touchCount > 0)
         {
@@ -524,8 +528,10 @@ public class SpawnMgr : MonoBehaviour
         _totalDropCount++;
 
         // Update 기반 타이머로 스폰 쿨다운 처리 (WebGL Invoke 누락 방지)
+        // unscaledDeltaTime으로 카운트하므로, timeScale > 1 (속도 부스트) 시 실제 대기를 줄여 체감 동일하게
+        float actualDelay = SpawnCooldown / Mathf.Max(Time.timeScale, 0.1f);
         _waitingForSpawnReset = true;
-        _spawnResetTimer = SpawnCooldown;
+        _spawnResetTimer = actualDelay;
     }
 
     private void ResetSpawn()

@@ -12,9 +12,17 @@ public class WebGLOptimizer : IPreprocessBuildWithReport
 {
     public int callbackOrder => 0;
 
+    // Android용 빌드 시 이 플래그를 true로 설정하면 자동 최적화를 건너뜀
+    public static bool SkipAutoOptimize = false;
+
     public void OnPreprocessBuild(BuildReport report)
     {
         if (report.summary.platform != BuildTarget.WebGL) return;
+        if (SkipAutoOptimize)
+        {
+            Debug.Log("[WebGLOptimizer] Android 빌드 모드 — 자동 최적화 건너뜀");
+            return;
+        }
 
         Debug.Log("[WebGLOptimizer] 앱인토스 WebGL 최적화 설정 적용 중...");
 

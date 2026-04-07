@@ -76,6 +76,7 @@ public class TossSafeArea : MonoBehaviour
         // 픽셀 → 0~1 Anchor 비율로 변환
         float screenW = Screen.width;
         float screenH = Screen.height;
+        if (screenW <= 0f || screenH <= 0f) return;
 
         Vector2 anchorMin = new Vector2(left / screenW, bottom / screenH);
         Vector2 anchorMax = new Vector2(1f - (right / screenW), 1f - (top / screenH));
@@ -93,6 +94,8 @@ public class TossSafeArea : MonoBehaviour
     {
         Rect safeArea = Screen.safeArea;
         lastSafeArea = safeArea;
+
+        if (Screen.width <= 0 || Screen.height <= 0) return;
 
         Vector2 anchorMin = safeArea.position;
         Vector2 anchorMax = safeArea.position + safeArea.size;

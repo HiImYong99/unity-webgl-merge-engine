@@ -132,5 +132,11 @@ public class PoolMgr : MonoBehaviour
             }
         }
         _animalPool.Clear();
+
+        while (_scorePool.Count > 0)
+        {
+            GameObject go = _scorePool.Dequeue();
+            if (go != null) Destroy(go);
+        }
     }
 }
