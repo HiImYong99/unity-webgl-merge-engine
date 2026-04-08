@@ -21,8 +21,13 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.widget.FrameLayout;
+import android.view.Gravity;
+
 import com.google.android.gms.ads.AdError;
 import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.FullScreenContentCallback;
 import com.google.android.gms.ads.LoadAdError;
 import com.google.android.gms.ads.MobileAds;
@@ -40,18 +45,17 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
  * ★ 배포 전 교체 필수:
  *   INTERSTITIAL_AD_UNIT_ID → AdMob 콘솔 전면 광고 단위 ID
  *   REWARDED_AD_UNIT_ID     → AdMob 콘솔 보상형 광고 단위 ID
- *   (현재는 Google 공식 테스트 ID 사용)
+ *   (실제 AdMob ID 사용 중)
  */
 public class MainActivity extends Activity {
 
     private static final String TAG = "AnimalPop";
 
     // ── AdMob 광고 단위 ID ──────────────────────────────────────
-    // TODO: 릴리즈 빌드 시 실제 ID로 교체
-    // 실제 ID: ca-app-pub-2371797890397990/8608686822 (전면)
-    // 실제 ID: ca-app-pub-2371797890397990/7714912138 (보상형)
-    private static final String INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"; // Google 테스트
-    private static final String REWARDED_AD_UNIT_ID     = "ca-app-pub-3940256099942544/5224354917"; // Google 테스트
+    // AdMob 실제 광고 단위 ID
+    private static final String INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-2371797890397990/8608686822";
+    private static final String REWARDED_AD_UNIT_ID     = "ca-app-pub-2371797890397990/7714912138";
+    private static final String BANNER_AD_UNIT_ID       = "ca-app-pub-2371797890397990/8721980233"; // 실제 배너
     // ────────────────────────────────────────────────────────────
 
     private WebView webView;
@@ -60,6 +64,7 @@ public class MainActivity extends Activity {
 
     private InterstitialAd interstitialAd;
     private RewardedAd     rewardedAd;
+    private AdView         bannerAdView;
     private BillingManager billingManager;
     private boolean pageLoaded = false;
 
@@ -71,8 +76,25 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
+        // FrameLayout: WebView(전체) + Banner(하단)
+        FrameLayout rootLayout = new FrameLayout(this);
+
         webView = new WebView(this);
-        setContentView(webView);
+        rootLayout.addView(webView, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // 배너 광고 (하단 고정)
+        bannerAdView = new AdView(this);
+        bannerAdView.setAdUnitId(BANNER_AD_UNIT_ID);
+        bannerAdView.setAdSize(AdSize.BANNER);
+        FrameLayout.LayoutParams bannerParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT);
+        bannerParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        rootLayout.addView(bannerAdView, bannerParams);
+
+        setContentView(rootLayout);
 
         applyImmersiveMode();
 
@@ -116,6 +138,8 @@ public class MainActivity extends Activity {
             Log.d(TAG, "AdMob initialized");
             loadInterstitialAd();
             loadRewardedAd();
+            // 배너 광고 로드
+            bannerAdView.loadAd(new AdRequest.Builder().build());
         });
 
         // file:// 대신 로컬 HTTPS로 로드 (WASM streaming 정상 동작)
@@ -439,17 +463,16 @@ public class MainActivity extends Activity {
             webView.evaluateJavascript(
                 "try { if(typeof Module!=='undefined' && Module.WEBAudio && Module.WEBAudio.audioContext)" +
                 "  Module.WEBAudio.audioContext.suspend(); } catch(e){}", null);
-            // ⚠️ pauseTimers()는 프로세스 전체 WebView 타이머를 멈춥니다.
-            //    AdMob 광고도 내부 WebView로 렌더링되기 때문에 호출하면 광고 영상이 프리즈됩니다.
-            //    인스턴스별 pause만 사용합니다.
             webView.onPause();
         }
+        if (bannerAdView != null) bannerAdView.pause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         applyImmersiveMode();
+        if (bannerAdView != null) bannerAdView.resume();
         if (webView != null) {
             webView.onResume();
             // Web Audio API resume → BGM 재개
@@ -462,6 +485,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (bannerAdView != null) bannerAdView.destroy();
         if (webView != null) webView.destroy();
         if (billingManager != null) billingManager.destroy();
         super.onDestroy();

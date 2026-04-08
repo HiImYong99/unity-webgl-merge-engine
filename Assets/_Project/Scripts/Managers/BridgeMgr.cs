@@ -44,6 +44,7 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void TossIAPCompleteProductGrant(string orderId);
     [DllImport("__Internal")] private static extern void RequestPurchase(string productId);
     [DllImport("__Internal")] private static extern void RestorePurchases();
+    [DllImport("__Internal")] private static extern void TossOpenLeaderboard();
 #else
     private static void SyncSaveToLocalStorage(string k, string v) { }
     private static void _ShowHtmlLanding(int s) { }
@@ -89,6 +90,7 @@ public class BridgeMgr : MonoBehaviour
         Instance.OnPurchaseSuccess(productId + "|mock_token_" + UnityEngine.Random.Range(1000, 9999));
     }
     private static void RestorePurchases() { Debug.Log("[BridgeMgr MOCK] RestorePurchases"); }
+    private static void TossOpenLeaderboard() { Debug.Log("[BridgeMgr MOCK] OpenLeaderboard"); }
 #endif
 
     private void Awake()
@@ -121,6 +123,12 @@ public class BridgeMgr : MonoBehaviour
     public void RequestVibrate(string style = "medium") => TossVibrate(style);
     public void RequestExit() => TossExitApp();
     public void SubmitLeaderboardScore(int s) => TossSubmitLeaderboardScore(s);
+    public void OpenLeaderboard()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        TossOpenLeaderboard();
+#endif
+    }
     public void NotifySpeedBoost() => notifySpeedBoostActivatedFromUnity();
     public void NotifyDanger(bool active) => notifyDangerZoneFromUnity(active);
     public void NotifyNewRecord(int score) => notifyNewHighScoreFromUnity(score);

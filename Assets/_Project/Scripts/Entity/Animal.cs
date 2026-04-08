@@ -41,6 +41,7 @@ public class Animal : MonoBehaviour
     private Rigidbody2D _cachedRb;
     private Collider2D _cachedCol;
     private SpriteRenderer _cachedSr;
+    private static Material _sharedSpriteMat; // 머티리얼 재사용 (메모리 누수 방지)
 
     private bool _hasLanded = false;
     private bool _isSpawning = false; // 애니메이션 중 충돌 억제용
@@ -64,6 +65,22 @@ public class Animal : MonoBehaviour
     {
         if (GameMgr.Instance != null)
             GameMgr.Instance.UnregisterAnimal(this);
+
+        // 풀 반환 시 잔상 방지
+        if (_cachedSr != null)
+        {
+            _cachedSr.sprite = null;
+            _cachedSr.enabled = false;
+        }
+        if (_cachedRb != null)
+            _cachedRb.interpolation = RigidbodyInterpolation2D.None;
+
+        // 진행 중인 애니메이션 코루틴 정리
+        if (_spawnAnimCoroutine != null)
+        {
+            StopCoroutine(_spawnAnimCoroutine);
+            _spawnAnimCoroutine = null;
+        }
     }
 
     private void Start()
@@ -128,15 +145,24 @@ public class Animal : MonoBehaviour
             _cachedRb.sleepMode = RigidbodySleepMode2D.StartAwake;
         }
 
-        // 스프라이트 로드 (RemoteAssetMgr 통해 비동기 처리)
+        // 스프라이트 로드
         if (_cachedSr != null)
         {
-            _cachedSr.material = new Material(Shader.Find("Sprites/Default"));
+            // 머티리얼 재사용 (매번 new Material → GC/메모리 누수 방지)
+            if (_sharedSpriteMat == null)
+                _sharedSpriteMat = new Material(Shader.Find("Sprites/Default"));
+            _cachedSr.material = _sharedSpriteMat;
+
+            // 풀에서 재활용 시 SpriteRenderer 다시 활성화
+            _cachedSr.enabled = true;
+            _cachedSr.sprite = null;
+            _cachedSr.color = Color.white;
 
             if (RemoteAssetMgr.Instance != null)
             {
                 RemoteAssetMgr.Instance.LoadAnimalSprite(level, (sprite) => {
-                    if (sprite != null && _cachedSr != null) _cachedSr.sprite = sprite;
+                    if (sprite != null && _cachedSr != null)
+                        _cachedSr.sprite = sprite;
                 });
             }
         }
@@ -331,10 +357,17 @@ public class Animal : MonoBehaviour
         IsMerged = true;
         other.IsMerged = true;
 
+        // 잔상 방지: 스프라이트 즉시 숨김 (보간 렌더링이 1프레임 더 그리는 문제 차단)
+        if (_cachedSr != null) _cachedSr.enabled = false;
+        if (other._cachedSr != null) other._cachedSr.enabled = false;
+
         // simulated=false 이전에 velocity 캡처
         Vector2 myVel = _cachedRb != null ? _cachedRb.velocity : Vector2.zero;
         Vector2 otherVel = other._cachedRb != null ? other._cachedRb.velocity : Vector2.zero;
 
+        // 보간 해제 후 물리 비활성화 (보간 잔상 방지)
+        if (_cachedRb != null) { _cachedRb.interpolation = RigidbodyInterpolation2D.None; _cachedRb.velocity = Vector2.zero; }
+        if (other._cachedRb != null) { other._cachedRb.interpolation = RigidbodyInterpolation2D.None; other._cachedRb.velocity = Vector2.zero; }
         if (_cachedCol != null) _cachedCol.enabled = false;
         if (other._cachedCol != null) other._cachedCol.enabled = false;
         if (_cachedRb != null) _cachedRb.simulated = false;

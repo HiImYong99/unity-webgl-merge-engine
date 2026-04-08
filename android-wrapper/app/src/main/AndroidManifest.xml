@@ -18,8 +18,7 @@
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
-        <!-- 릴리즈 시 실제 앱 ID로 교체: ca-app-pub-2371797890397990~9633993882 -->
+            android:value="ca-app-pub-2371797890397990~9633993882"/>
 
         <activity
             android:name=".MainActivity"

@@ -106,13 +106,61 @@ sync_android_assets() {
         fail "android index.html이 없습니다: $INDEX"
     fi
 
-    # loader script src 치환
-    sed -i '' -E "s|src=\"Build/[^\"]*\.loader\.js\"|src=\"Build/$LOADER\"|g" "$INDEX"
+    # Unity 템플릿 변수 치환 ({{{ LOADER_FILENAME }}} 등)
+    sed -i '' "s|{{{ LOADER_FILENAME }}}|$LOADER|g" "$INDEX"
+    sed -i '' "s|{{{ DATA_FILENAME }}}|$DATA|g" "$INDEX"
+    sed -i '' "s|{{{ FRAMEWORK_FILENAME }}}|$FRAMEWORK|g" "$INDEX"
+    sed -i '' "s|{{{ CODE_FILENAME }}}|$WASM|g" "$INDEX"
+    sed -i '' "s|{{{ COMPANY_NAME }}}|DefaultCompany|g" "$INDEX"
+    sed -i '' "s|{{{ PRODUCT_NAME }}}|AnimalPop|g" "$INDEX"
+    sed -i '' "s|{{{ PRODUCT_VERSION }}}|1.0|g" "$INDEX"
 
-    # config URL 치환 (data, framework, wasm)
-    sed -i '' -E "s|\"Build/[^\"]*\.data\.[^\"]*\"|\"Build/$DATA\"|g" "$INDEX"
+    # 이미 치환된 해시 파일명 업데이트 (재빌드 시)
+    sed -i '' -E "s|src=\"Build/[^\"]*\.loader\.js\"|src=\"Build/$LOADER\"|g" "$INDEX"
+    sed -i '' -E "s|\"Build/[^\"]*\.data[^\"]*\"|\"Build/$DATA\"|g" "$INDEX"
     sed -i '' -E "s|\"Build/[^\"]*\.framework\.js[^\"]*\"|\"Build/$FRAMEWORK\"|g" "$INDEX"
-    sed -i '' -E "s|\"Build/[^\"]*\.wasm\.[^\"]*\"|\"Build/$WASM\"|g" "$INDEX"
+    sed -i '' -E "s|\"Build/[^\"]*\.wasm[^\"]*\"|\"Build/$WASM\"|g" "$INDEX"
+
+    ok "index.html 파일명 매핑 완료"
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  Android: index.html 템플릿 변수만 치환 (Build 파일은 건드리지 않음)
+# ═══════════════════════════════════════════════════════════════
+
+sync_android_index() {
+    info "Android index.html 템플릿 변수 치환 중..."
+
+    local INDEX="$ANDROID_ASSETS/index.html"
+    if [ ! -f "$INDEX" ]; then
+        fail "android index.html이 없습니다: $INDEX"
+    fi
+
+    local LOADER=$(ls "$ANDROID_ASSETS/Build/"*.loader.js 2>/dev/null | head -1 | xargs basename)
+    local DATA=$(ls "$ANDROID_ASSETS/Build/"*.data 2>/dev/null | head -1 | xargs basename)
+    local FRAMEWORK=$(ls "$ANDROID_ASSETS/Build/"*.framework.js 2>/dev/null | head -1 | xargs basename)
+    local WASM=$(ls "$ANDROID_ASSETS/Build/"*.wasm 2>/dev/null | head -1 | xargs basename)
+
+    if [ -z "$LOADER" ] || [ -z "$DATA" ] || [ -z "$FRAMEWORK" ] || [ -z "$WASM" ]; then
+        fail "Build 파일을 찾을 수 없습니다: loader=$LOADER data=$DATA framework=$FRAMEWORK wasm=$WASM"
+    fi
+
+    info "파일명 매핑: loader=$LOADER data=$DATA framework=$FRAMEWORK wasm=$WASM"
+
+    # Unity 템플릿 변수 치환
+    sed -i '' "s|{{{ LOADER_FILENAME }}}|$LOADER|g" "$INDEX"
+    sed -i '' "s|{{{ DATA_FILENAME }}}|$DATA|g" "$INDEX"
+    sed -i '' "s|{{{ FRAMEWORK_FILENAME }}}|$FRAMEWORK|g" "$INDEX"
+    sed -i '' "s|{{{ CODE_FILENAME }}}|$WASM|g" "$INDEX"
+    sed -i '' "s|{{{ COMPANY_NAME }}}|DefaultCompany|g" "$INDEX"
+    sed -i '' "s|{{{ PRODUCT_NAME }}}|AnimalPop|g" "$INDEX"
+    sed -i '' "s|{{{ PRODUCT_VERSION }}}|1.0|g" "$INDEX"
+
+    # 이미 치환된 해시 파일명 업데이트 (재빌드 시)
+    sed -i '' -E "s|src=\"Build/[^\"]*\.loader\.js\"|src=\"Build/$LOADER\"|g" "$INDEX"
+    sed -i '' -E "s|\"Build/[^\"]*\.data[^\"]*\"|\"Build/$DATA\"|g" "$INDEX"
+    sed -i '' -E "s|\"Build/[^\"]*\.framework\.js[^\"]*\"|\"Build/$FRAMEWORK\"|g" "$INDEX"
+    sed -i '' -E "s|\"Build/[^\"]*\.wasm[^\"]*\"|\"Build/$WASM\"|g" "$INDEX"
 
     ok "index.html 파일명 매핑 완료"
 }
@@ -202,6 +250,9 @@ build_android_apk() {
         unity_build_android
     fi
 
+    # index.html 템플릿 변수 치환 (Build 파일은 Unity 빌드가 직접 생성)
+    sync_android_index
+
     # Android 패치가 적용됐는지 확인, 안 됐으면 적용
     if ! grep -q 'AndroidBridge' "$ANDROID_ASSETS/index.html" 2>/dev/null; then
         info "Android 패치 미적용 — 패치 적용 중..."
@@ -232,6 +283,9 @@ build_android_aab() {
     if [ "${SKIP_UNITY:-}" != "1" ]; then
         unity_build_android
     fi
+
+    # index.html 템플릿 변수 치환 (Build 파일은 Unity 빌드가 직접 생성)
+    sync_android_index
 
     if ! grep -q 'AndroidBridge' "$ANDROID_ASSETS/index.html" 2>/dev/null; then
         info "Android 패치 미적용 — 패치 적용 중..."

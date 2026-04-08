@@ -50,6 +50,13 @@
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left:   env(safe-area-inset-left,   0px);
             --safe-right:  env(safe-area-inset-right,  0px);
+
+            /* 하단 UI 스택 기준값 — 배너 유무에 따라 JS에서 body.no-banner 토글 */
+            --ad-offset: 96px;  /* 배너 높이 */
+        }
+
+        body.no-banner {
+            --ad-offset: 0px;
         }
 
         body {
@@ -206,6 +213,23 @@
             transition: all .15s;
         }
         .lg-start-btn:active { background: var(--toss-blue-dark); transform: scale(0.98); }
+        .lg-leaderboard-btn {
+            width: 100%;
+            padding: 14px 0;
+            border: 1.5px solid var(--toss-blue);
+            border-radius: var(--radius-md);
+            background: rgba(49,130,246,0.06);
+            color: var(--toss-blue);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s, transform .1s;
+            margin-top: 8px;
+        }
+        .lg-leaderboard-btn:active {
+            background: rgba(49,130,246,0.15);
+            transform: scale(0.97);
+        }
 
         .lg-howto {
             font-size: 12px; color: var(--text-tertiary);
@@ -312,32 +336,7 @@
             to   { transform: scale(1)   rotate(0deg); }
         }
 
-        /* 플레이 타임 박스 (하단 중앙으로 이동) */
-        .hud-timer-box {
-            position: fixed;
-            bottom: calc(var(--safe-bottom) + 20px);
-            left: 50%;
-            transform: translate(-50%, 12px);
-            z-index: 155;
-            background: rgba(255,255,255,0.96);
-            border-radius: var(--radius-md); padding: 8px 14px;
-            box-shadow: var(--shadow-sm);
-            text-align: center; min-width: 80px;
-            opacity: 0; pointer-events: none;
-            transition: opacity .35s, transform .35s;
-        }
-        .hud-timer-box.visible {
-            opacity: 1; transform: translate(-50%, 0); pointer-events: auto;
-        }
-        .hud-timer-box .hud-label { 
-            font-size: 9px; font-weight: 700; color: var(--text-tertiary); 
-            line-height: 1; margin-bottom: 2px;
-        }
-        .hud-timer-val {
-            font-size: 18px; font-weight: 800; color: var(--text-primary);
-            line-height: 1.1; font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
-        }
+        /* 플레이 타임 제거됨 */
 
         /* ════════════════════════════════════════════════
            위험 구역 경고 배너 (데드라인)
@@ -345,8 +344,8 @@
         #danger-banner {
             position: fixed;
             left: 20px; right: 20px;
-            top: calc(var(--safe-top) + 136px);
-            z-index: 55;
+            top: calc(var(--safe-top) + 250px);
+            z-index: 160;
             background: linear-gradient(135deg,
                 rgba(255,80,80,0.92) 0%,
                 rgba(255,140,0,0.92) 100%);
@@ -477,7 +476,7 @@
            설정 버튼 (우하단)
         ════════════════════════════════════════════════ */
         #settings-fab {
-            position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
+            position: fixed; bottom: calc(var(--safe-bottom) + var(--ad-offset) + 60px); right: 20px;
             z-index: 155;
             width: 48px; height: 48px; border-radius: 50%;
             background: rgba(255,255,255,0.96);
@@ -496,7 +495,7 @@
         ════════════════════════════════════════════════ */
         #dex-bar {
             position: fixed;
-            bottom: calc(var(--safe-bottom) + 80px);
+            bottom: calc(var(--safe-bottom) + var(--ad-offset) + 10px);
             left: 50%; transform: translateX(-50%) translateY(8px);
             z-index: 50;
             background: rgba(255,255,255,0.96);
@@ -513,16 +512,20 @@
             opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
         }
         .dex-slots {
-            display: flex; align-items: center; gap: 4px; flex: 1; justify-content: space-between;
+            display: flex; align-items: center; gap: 4px; flex: 1;
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
         }
+        .dex-slots::-webkit-scrollbar { display: none; }
         .dex-slot {
             width: 28px; height: 28px; border-radius: 10px;
             background: rgba(0,0,0,0.04);
             display: flex; align-items: center; justify-content: center;
             position: relative; flex-shrink: 0;
             cursor: pointer;
-            touch-action: manipulation;
+            touch-action: pan-x;
             -webkit-tap-highlight-color: transparent;
+            flex-shrink: 0;
             transition: transform .2s cubic-bezier(.22,1,.36,1);
         }
         .dex-slot:active { transform: scale(0.88); }
@@ -560,9 +563,46 @@
         #dex-tooltip.show { opacity: 1; transform: translateY(0); }
 
         @media (max-width: 480px) {
-            #dex-bar { bottom: calc(var(--safe-bottom) + 80px); padding: 6px 8px; gap: 4px; }
+            #dex-bar { padding: 6px 8px; gap: 4px; }
             .dex-slot { width: 24px; height: 24px; border-radius: 8px; }
             .dex-slot img { width: 20px; height: 20px; }
+        }
+
+        /* ════════════════════════════════════════════════
+           하단 배너 광고
+        ════════════════════════════════════════════════ */
+        #banner-ad-container {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 0px);
+            left: 0; right: 0;
+            width: 100%; height: var(--banner-h, 96px);
+            z-index: 140;
+            background: transparent;
+            opacity: 0; pointer-events: none;
+            transition: opacity .35s;
+        }
+        #banner-ad-container.visible {
+            opacity: 1; pointer-events: auto;
+        }
+
+        /* ── 작은 화면 반응형: 하단 UI 스택 컴팩트화 ── */
+        @media (max-height: 700px) {
+            :root { --ad-offset: 64px; }
+            body.no-banner { --ad-offset: 0px; }
+            #banner-ad-container { height: 64px; }
+            #dex-bar { padding: 4px 8px; }
+            .dex-slot { width: 22px; height: 22px; }
+            .dex-slot img { width: 18px; height: 18px; }
+            #settings-fab { width: 40px; height: 40px; font-size: 20px; }
+        }
+        @media (max-height: 600px) {
+            :root { --ad-offset: 50px; }
+            body.no-banner { --ad-offset: 0px; }
+            #banner-ad-container { height: 50px; }
+            #dex-bar { padding: 3px 6px; }
+            .dex-slot { width: 20px; height: 20px; }
+            .dex-slot img { width: 16px; height: 16px; }
+            #settings-fab { width: 36px; height: 36px; font-size: 18px; }
         }
 
         /* ════════════════════════════════════════════════
@@ -665,6 +705,16 @@
         }
         .go-btn-secondary:active { background: var(--line-01); transform: scale(0.96); }
 
+        /* 리더보드 버튼 (TDS outline 스타일) */
+        .go-btn-leaderboard {
+            background: rgba(49,130,246,0.06);
+            color: var(--toss-blue);
+            border: 1.5px solid var(--toss-blue);
+            box-shadow: none;
+            font-weight: 700;
+        }
+        .go-btn-leaderboard:active { background: rgba(49,130,246,0.15); transform: scale(0.96); }
+
         /* 공유 버튼 — 텍스트만 (TDS TextButton 느낌) */
         .go-btn-ghost {
             background: transparent;
@@ -692,7 +742,7 @@
             background: var(--bg-surface);
             border-radius: 20px 20px 0 0;
             width: 100%; max-width: 480px;
-            padding: 12px 24px calc(var(--safe-bottom) + 24px);
+            padding: 12px 24px calc(var(--safe-bottom) + var(--ad-offset) + 24px);
             box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
             transform: translateY(100%);
             transition: transform .35s cubic-bezier(.22,1,.36,1);
@@ -814,6 +864,7 @@
                 <span class="lg-best-val" id="html-best-score">0</span>
             </div>
             <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
+            <button class="lg-leaderboard-btn" id="lg-leaderboard-btn" onclick="onOpenLeaderboard()">🏆 리더보드</button>
             <div class="lg-howto">동물을 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
         </div>
     </div>
@@ -836,11 +887,7 @@
         </button>
     </div>
 
-    <!-- ── 플레이 타임 (하단 중앙) ── -->
-    <div id="hud-timer" class="hud-timer-box">
-        <div class="hud-label">시간</div>
-        <div class="hud-timer-val" id="play-timer">00:00</div>
-    </div>
+    <!-- 플레이 타임 제거됨 -->
 
     <!-- ── 위험 구역 경고 배너 ── -->
     <div id="danger-banner">
@@ -896,6 +943,9 @@
         ⚙️
     </div>
 
+    <!-- ── 하단 배너 광고 ── -->
+    <div id="banner-ad-container"></div>
+
     <!-- ── 게임 오버 ── -->
     <div id="gameover-overlay">
         <div class="go-card">
@@ -914,6 +964,7 @@
                 </div>
             </div>
             <div class="go-btn-stack">
+                <button class="go-btn go-btn-leaderboard" id="go-leaderboard-btn" onclick="onOpenLeaderboard()">🏆 리더보드</button>
                 <button id="go-btn-revive" class="go-btn go-btn-ad" onclick="onReviveClicked()" style="display:none">
                     <div id="go-btn-revive-badge" class="go-btn-ad-badge">총 2번 기회!</div>
                     <span id="go-btn-revive-text">📺 광고 보고 이어서 하기</span>
@@ -982,7 +1033,7 @@
     var dangerBanner = document.getElementById('danger-banner');
     var settingsFab  = document.getElementById('settings-fab');
     var newBestBadge = document.getElementById('new-best-badge');
-    var hudTimer     = document.getElementById('hud-timer');
+    // hudTimer 제거됨
     var sideLeft     = document.getElementById('side-left');
     var sideRight    = document.getElementById('side-right');
     var spDrop       = document.getElementById('sp-drop');
@@ -1115,36 +1166,10 @@
     var _lastAdWatched  = false;
 
     // 플레이 타이머
-    var _timerEl      = document.getElementById('play-timer');
-    var _timerStart   = 0;
-    var _timerPaused  = 0;
-    var _timerRafId   = null;
-
-    function _timerFmt(ms) {
-        var s = Math.floor(ms / 1000);
-        var m = Math.floor(s / 60);
-        s = s % 60;
-        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-    }
-    function _timerTick() {
-        if (_timerEl) _timerEl.textContent = _timerFmt(Date.now() - _timerStart);
-        _timerRafId = requestAnimationFrame(_timerTick);
-    }
-    function startPlayTimer() {
-        if (_timerRafId) cancelAnimationFrame(_timerRafId);
-        _timerStart = Date.now();
-        if (_timerEl) _timerEl.textContent = '00:00';
-        _timerTick();
-    }
-    function resumePlayTimer() {
-        if (_timerRafId) cancelAnimationFrame(_timerRafId);
-        _timerStart = Date.now() - _timerPaused;
-        _timerTick();
-    }
-    function pausePlayTimer() {
-        if (_timerRafId) { cancelAnimationFrame(_timerRafId); _timerRafId = null; }
-        _timerPaused = Date.now() - _timerStart;
-    }
+    // 플레이 타임 제거됨
+    function startPlayTimer() {}
+    function resumePlayTimer() {}
+    function pausePlayTimer() {}
     var _lastSpareLives = 0;
 
     // 로컬 점수 추적
@@ -1362,13 +1387,97 @@
     };
 
     // ════════════════════════════════════════════════════
+    //  배너 광고 (TossAds.attachBanner)
+    // ════════════════════════════════════════════════════
+    var _bannerAdContainer = document.getElementById('banner-ad-container');
+    var _bannerAdDestroy = null;
+    var _bannerAdReady = false;
+    var BANNER_AD_ID = 'ait.v2.live.629331886f8c49bd';
+
+    function _initBannerAd() {
+        var ait = window.AppsInToss;
+        if (!ait || !ait.TossAds || typeof ait.TossAds.initialize !== 'function') {
+            console.warn('[BannerAd] TossAds SDK not found — skipping banner');
+            // 배너 없으면 하단 요소 원래 위치로
+            document.body.classList.add('no-banner');
+            return;
+        }
+        // isSupported 체크
+        if (typeof ait.TossAds.initialize.isSupported === 'function' && !ait.TossAds.initialize.isSupported()) {
+            console.warn('[BannerAd] Banner ads not supported in this env');
+            document.body.classList.add('no-banner');
+            return;
+        }
+
+        ait.TossAds.initialize({
+            callbacks: {
+                onInitialized: function() {
+                    console.log('[BannerAd] SDK initialized');
+                    _bannerAdReady = true;
+                    _attachBannerAd();
+                },
+                onInitializationFailed: function(err) {
+                    console.error('[BannerAd] SDK init failed:', err);
+                    document.body.classList.add('no-banner');
+                }
+            }
+        });
+    }
+
+    function _attachBannerAd() {
+        if (!_bannerAdReady || !_bannerAdContainer) return;
+        if (_bannerAdDestroy) return; // 이미 부착됨
+
+        var ait = window.AppsInToss;
+        try {
+            var result = ait.TossAds.attachBanner(BANNER_AD_ID, _bannerAdContainer, {
+                theme: 'light',
+                tone: 'blackAndWhite',
+                variant: 'expanded',
+                callbacks: {
+                    onAdRendered: function(p) {
+                        console.log('[BannerAd] rendered:', p.slotId);
+                        _bannerAdContainer.classList.add('visible');
+                    },
+                    onAdFailedToRender: function(p) {
+                        console.warn('[BannerAd] render failed:', p.error.message);
+                        _bannerAdContainer.classList.remove('visible');
+                        document.body.classList.add('no-banner');
+                    },
+                    onNoFill: function() {
+                        console.warn('[BannerAd] no fill');
+                        _bannerAdContainer.classList.remove('visible');
+                        document.body.classList.add('no-banner');
+                    }
+                }
+            });
+            if (result && typeof result.destroy === 'function') {
+                _bannerAdDestroy = result.destroy;
+            }
+        } catch(e) {
+            console.error('[BannerAd] attachBanner error:', e);
+            document.body.classList.add('no-banner');
+        }
+    }
+
+    // 광고 제거 구매 시 배너도 제거
+    window._destroyBannerAd = function() {
+        if (_bannerAdDestroy) { _bannerAdDestroy(); _bannerAdDestroy = null; }
+        if (_bannerAdContainer) _bannerAdContainer.classList.remove('visible');
+        document.body.classList.add('no-banner');
+    };
+
+    // Unity 로드 완료 후 배너 광고 초기화
+    setTimeout(_initBannerAd, 1000);
+
+    // ════════════════════════════════════════════════════
     //  HUD / 상태 유틸
     // ════════════════════════════════════════════════════
     function showHUD(show) {
         if (show) {
             gameHud.classList.add('visible');
             settingsFab.classList.add('visible');
-            if (hudTimer)      hudTimer.classList.add('visible');
+            // hudTimer 제거됨
             if (sideLeft)      sideLeft.classList.add('visible');
             if (sideRight)     sideRight.classList.add('visible');
             if (mobileStatBar) mobileStatBar.classList.add('visible');
@@ -1376,7 +1485,7 @@
         } else {
             gameHud.classList.remove('visible');
             settingsFab.classList.remove('visible');
-            if (hudTimer)      hudTimer.classList.remove('visible');
+            // hudTimer 제거됨
             if (sideLeft)      sideLeft.classList.remove('visible');
             if (sideRight)     sideRight.classList.remove('visible');
             if (mobileStatBar) mobileStatBar.classList.remove('visible');
@@ -1822,6 +1931,8 @@
                 window.AppsInToss.Analytics.click({ log_name: 'game_over', score: scoreNum, best: bestNum, is_new_best: isNewBest ? 1 : 0, merge_count: _mergeCount });
             }
         } catch(e) {}
+
+        // 리더보드 점수 제출은 C# GameMgr.TriggerGameOver → BridgeMgr.SubmitLeaderboardScore에서 처리
     };
 
     // 랜딩 표시 (Unity 준비 완료 시 호출)
@@ -1939,6 +2050,19 @@
     }
 
     // ════════════════════════════════════════════════════
+    //  리더보드
+    // ════════════════════════════════════════════════════
+    function onOpenLeaderboard() {
+        if (window.AppsInToss && typeof window.AppsInToss.openGameCenterLeaderboard === 'function') {
+            window.AppsInToss.openGameCenterLeaderboard().catch(function(e) {
+                console.error('[Leaderboard] open failed:', e);
+            });
+        } else {
+            console.warn('[Leaderboard] Not supported on this platform');
+        }
+    }
+
+    // ════════════════════════════════════════════════════
     //  게임 재시작
     // ════════════════════════════════════════════════════
     // 전면광고(비보상형) 표시 후 콜백. 광고 미지원/스킵 조건이면 즉시 콜백 실행
@@ -2003,35 +2127,29 @@
 
     function restartGame() {
         if (!unityInstance) { location.reload(); return; }
-        // 광고 로딩 중에는 게임오버 오버레이를 유지 (조작 방지)
-        // 광고 종료 후 콜백에서 오버레이 제거
-        _showInterstitialThen(function() {
-            goOverlay.classList.remove('visible');
-            hideDangerBanner();
-            showHUD(false);
-            if (newBestBadge) newBestBadge.classList.remove('show');
-            _currentDisplayScore = 0;
-            if (scoreEl) scoreEl.textContent = '0';
-            // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
-            _speedBoostActive = false;
-            _refreshSpeedBtn();
-            // 영구 구매자 & ON 상태면 게임 재시작 시에도 2배속 적용
-            if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
-                setTimeout(function() {
-                    unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
-                }, 300);
-            }
-            resetSidePanel();
-            startPlayTimer();
-            unityInstance.SendMessage('GameManager', 'StartGame');
-            _startSpawnWatchdog();
-            // 광고 후 오디오 복원: AudioContext resume + BGM 재시작
-            resumeWebGLAudio();
+        // 재시작 시 광고 생략 — 바로 게임 초기화
+        goOverlay.classList.remove('visible');
+        hideDangerBanner();
+        showHUD(false);
+        if (newBestBadge) newBestBadge.classList.remove('show');
+        _currentDisplayScore = 0;
+        if (scoreEl) scoreEl.textContent = '0';
+        _speedBoostActive = false;
+        _refreshSpeedBtn();
+        if (_premiumSpeedOwned && _premiumSpeedOn && unityInstance) {
             setTimeout(function() {
-                try { unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM'); } catch(e) {}
-            }, 200);
-            setTimeout(function() { showHUD(true); }, 200);
-        });
+                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
+            }, 300);
+        }
+        resetSidePanel();
+        startPlayTimer();
+        unityInstance.SendMessage('GameManager', 'StartGame');
+        _startSpawnWatchdog();
+        resumeWebGLAudio();
+        setTimeout(function() {
+            try { unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM'); } catch(e) {}
+        }, 200);
+        setTimeout(function() { showHUD(true); }, 200);
     }
 
     // ════════════════════════════════════════════════════
@@ -2095,6 +2213,8 @@
     // 광고 제거 IAP 완료 시 Unity → JS 알림
     window.notifyAdRemovedFromUnity = function() {
         _onPremiumSpeedGranted();
+        // 배너 광고도 제거
+        if (typeof window._destroyBannerAd === 'function') window._destroyBannerAd();
     };
 
     // ════════════════════════════════════════════════════
@@ -2113,7 +2233,7 @@
         modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);';
         modal.innerHTML = [
             '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;',
-            'padding:28px 24px calc(var(--safe-bottom,0px) + 28px);box-shadow:0 -4px 24px rgba(0,0,0,0.12);">',
+            'padding:28px 24px calc(var(--safe-bottom,0px) + var(--ad-offset,0px) + 28px);box-shadow:0 -4px 24px rgba(0,0,0,0.12);">',
             '<div style="font-size:17px;font-weight:800;color:#191f28;text-align:center;margin-bottom:8px;">게임을 종료할까요?</div>',
             '<div style="font-size:13px;color:#8b95a1;text-align:center;margin-bottom:24px;">진행 중인 기록이 저장되지 않을 수 있어요</div>',
             '<button id="exit-confirm-yes" style="width:100%;padding:16px;background:#3182f6;color:#fff;border:none;',

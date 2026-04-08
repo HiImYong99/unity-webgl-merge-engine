@@ -59,8 +59,15 @@ cat >> "$INDEX" << 'ANDROID_PATCH'
         if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
         var ui = window.unityInstance;
         if (!ui) return;
-        if (t === 0) ui.SendMessage('BridgeManager', 'OnReviveSuccess');
-        else ui.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+        if (t === 0) {
+            ui.SendMessage('BridgeManager', 'OnReviveSuccess');
+            var go = document.getElementById('gameover-overlay');
+            if (go) go.classList.remove('visible');
+            var hud = document.getElementById('game-hud');
+            if (hud) hud.classList.add('visible');
+        } else {
+            ui.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+        }
     };
 
     window.onAdFailedFromAndroid = function() {
@@ -134,13 +141,12 @@ ANDROID_PATCH
 
 echo "[PATCH] 2/6 Android Bridge 콜백 삽입"
 
-# ── 3. 리바이브 버튼 onclick을 Android 오버라이드로 변경 ──
-# onReviveClicked() 내부의 SendMessage('BridgeManager', 'RequestAd') → _androidReviveOverride()
-sed -i '' "s|SendMessage('BridgeManager', 'RequestAd')|window._androidReviveOverride ? window._androidReviveOverride() : SendMessage('BridgeManager', 'RequestAd'); return|g" "$INDEX"
+# ── 3. 리바이브: RequestAd → Android 보상형 광고 직접 호출 ──
+sed -i '' "s|unityInstance.SendMessage('BridgeManager', 'RequestAd');|window._showAndroidRewardedAd(0); return;|g" "$INDEX"
 echo "[PATCH] 3/6 리바이브 광고 호출 패치"
 
 # ── 4. 스피드부스트 광고 버튼 패치 ──
-sed -i '' "s|SendMessage('BridgeManager', 'RequestSpeedBoostAd')|window._showAndroidRewardedAd(1)|g" "$INDEX"
+sed -i '' "s|if (unityInstance) unityInstance.SendMessage('BridgeManager', 'RequestSpeedBoostAd');|window._showAndroidRewardedAd(1);|g" "$INDEX"
 echo "[PATCH] 4/6 스피드부스트 광고 패치"
 
 # ── 5. 공유 AndroidBridge 폴백 추가 ──
@@ -153,5 +159,23 @@ echo "[PATCH] 5/6 공유 기능 (기존 유지)"
 # animalpop_best 사용 확인 (dessertpop_best가 있으면 교체)
 sed -i '' "s|dessertpop_best|animalpop_best|g" "$INDEX"
 echo "[PATCH] 6/6 localStorage 키 통일"
+
+# ── 6.5. Android 네이티브 배너 광고 높이 반영 ──
+# AdMob BANNER = 50dp, no-banner 로직 무효화
+sed -i '' 's|--ad-offset: 96px;|--ad-offset: 50px; /* Android native banner */|g' "$INDEX"
+# no-banner JS 호출을 모두 무효화 (Android는 항상 네이티브 배너 있음)
+sed -i '' "s|document.body.classList.add('no-banner');|/* Android: native banner always present */|g" "$INDEX"
+echo "[PATCH] 6.5/7 Android 네이티브 배너 높이 반영"
+
+# ── 7.5. _initBannerAd 비활성화 (Android는 네이티브 배너 사용) ──
+sed -i '' 's|setTimeout(_initBannerAd, 1000);|// _initBannerAd disabled for Android (native banner)|g' "$INDEX"
+echo "[PATCH] 7.5/8 TossAds 배너 초기화 비활성화"
+
+# ── 8. 리더보드 버튼 숨기기 (앱인토스 전용 기능) ──
+if ! grep -q 'lg-leaderboard-btn.*display:none' "$INDEX" 2>/dev/null; then
+    sed -i '' 's|id="lg-leaderboard-btn"|id="lg-leaderboard-btn" style="display:none"|g' "$INDEX"
+    sed -i '' 's|id="go-leaderboard-btn"|id="go-leaderboard-btn" style="display:none"|g' "$INDEX"
+fi
+echo "[PATCH] 7/7 리더보드 버튼 숨기기"
 
 echo "[PATCH] ✅ Android 패치 완료!"

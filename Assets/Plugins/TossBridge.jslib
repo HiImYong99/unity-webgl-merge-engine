@@ -369,9 +369,19 @@ mergeInto(LibraryManager.library, {
   // [Guide] 게임 종료 시 네이티브 리더보드에 점수를 제출하여 소셜 기능을 연동합니다.
   TossSubmitLeaderboardScore: function(score) {
     if (window.AppsInToss && typeof window.AppsInToss.submitGameCenterLeaderBoardScore === 'function') {
-      window.AppsInToss.submitGameCenterLeaderBoardScore({ score: score }).catch(function(e) {
+      window.AppsInToss.submitGameCenterLeaderBoardScore({ score: String(score) }).catch(function(e) {
         console.error('[TossBridge] SubmitScore Failed:', e);
       });
+    }
+  },
+
+  TossOpenLeaderboard: function() {
+    if (window.AppsInToss && typeof window.AppsInToss.openGameCenterLeaderboard === 'function') {
+      window.AppsInToss.openGameCenterLeaderboard().catch(function(e) {
+        console.error('[TossBridge] OpenLeaderboard Failed:', e);
+      });
+    } else {
+      console.warn('[TossBridge] openGameCenterLeaderboard not supported');
     }
   },
 
