@@ -196,8 +196,7 @@ unity_build_android() {
     fi
     ok "Unity WebGL 빌드 완료 (비압축)"
 
-    # Unity가 토스용 index.html을 생성하므로 Android 패치 적용
-    info "Android index.html 패치 적용..."
+    # GameBridge 통합 브릿지로 런타임 분기 — 최소 패치만 적용
     bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
 }
 
@@ -253,11 +252,8 @@ build_android_apk() {
     # index.html 템플릿 변수 치환 (Build 파일은 Unity 빌드가 직접 생성)
     sync_android_index
 
-    # Android 패치가 적용됐는지 확인, 안 됐으면 적용
-    if ! grep -q 'AndroidBridge' "$ANDROID_ASSETS/index.html" 2>/dev/null; then
-        info "Android 패치 미적용 — 패치 적용 중..."
-        bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
-    fi
+    # localStorage 키 안전장치 패치 (GameBridge가 런타임 분기 처리)
+    bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
 
     setup_java
 
@@ -287,10 +283,8 @@ build_android_aab() {
     # index.html 템플릿 변수 치환 (Build 파일은 Unity 빌드가 직접 생성)
     sync_android_index
 
-    if ! grep -q 'AndroidBridge' "$ANDROID_ASSETS/index.html" 2>/dev/null; then
-        info "Android 패치 미적용 — 패치 적용 중..."
-        bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
-    fi
+    # localStorage 키 안전장치 패치 (GameBridge가 런타임 분기 처리)
+    bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
 
     setup_java
 

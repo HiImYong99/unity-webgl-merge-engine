@@ -71,11 +71,11 @@ mergeInto(LibraryManager.library, {
 
     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
 
-    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    // 광고 API 탐지: 인앱 광고 2.0 ver2 (최상위) → GoogleAdMob (레거시) 폴백
     var ait = window.AppsInToss;
     var api = null;
-    if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
-      api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+    if (ait && typeof ait.loadFullScreenAd === 'function') {
+      api = { load: ait.loadFullScreenAd, show: ait.showFullScreenAd, name: 'IntegratedAd' };
     } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
       api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
     }
@@ -127,11 +127,11 @@ mergeInto(LibraryManager.library, {
 
     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
 
-    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    // 광고 API 탐지: 인앱 광고 2.0 ver2 (최상위) → GoogleAdMob (레거시) 폴백
     var ait = window.AppsInToss;
     var api = null;
-    if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
-      api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+    if (ait && typeof ait.loadFullScreenAd === 'function') {
+      api = { load: ait.loadFullScreenAd, show: ait.showFullScreenAd, name: 'IntegratedAd' };
     } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
       api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
     }

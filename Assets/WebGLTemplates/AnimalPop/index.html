@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>애니멀 팝</title>
-    <!-- Apps in Toss Bridge (Vite bundling entry) -->
+    <!-- 플랫폼 감지 (AndroidBridge는 MainActivity.addJavascriptInterface로 DOM 전에 주입됨) -->
+    <script>window.AP_PLATFORM = window.AndroidBridge ? 'android' : 'toss';</script>
+    <!-- Apps in Toss Bridge (Vite bundling entry) — Android에서는 404되지만 module script는 무시됨 -->
     <script type="module" src="./unity-bridge.ts"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,11 +53,7 @@
             --safe-left:   env(safe-area-inset-left,   0px);
             --safe-right:  env(safe-area-inset-right,  0px);
 
-            /* 하단 UI 스택 기준값 — 배너 유무에 따라 JS에서 body.no-banner 토글 */
-            --ad-offset: 96px;  /* 배너 높이 */
-        }
-
-        body.no-banner {
+            /* 하단 UI 스택 기준값 — 배너 로드 시 JS에서 동적 설정 */
             --ad-offset: 0px;
         }
 
@@ -512,7 +510,8 @@
             opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
         }
         .dex-slots {
-            display: flex; align-items: center; gap: 4px; flex: 1;
+            display: flex; align-items: center; justify-content: center;
+            gap: 4px; flex: 1;
             overflow-x: auto; -webkit-overflow-scrolling: touch;
             scrollbar-width: none; /* Firefox */
         }
@@ -525,7 +524,6 @@
             cursor: pointer;
             touch-action: pan-x;
             -webkit-tap-highlight-color: transparent;
-            flex-shrink: 0;
             transition: transform .2s cubic-bezier(.22,1,.36,1);
         }
         .dex-slot:active { transform: scale(0.88); }
@@ -587,8 +585,6 @@
 
         /* ── 작은 화면 반응형: 하단 UI 스택 컴팩트화 ── */
         @media (max-height: 700px) {
-            :root { --ad-offset: 64px; }
-            body.no-banner { --ad-offset: 0px; }
             #banner-ad-container { height: 64px; }
             #dex-bar { padding: 4px 8px; }
             .dex-slot { width: 22px; height: 22px; }
@@ -596,8 +592,6 @@
             #settings-fab { width: 40px; height: 40px; font-size: 20px; }
         }
         @media (max-height: 600px) {
-            :root { --ad-offset: 50px; }
-            body.no-banner { --ad-offset: 0px; }
             #banner-ad-container { height: 50px; }
             #dex-bar { padding: 3px 6px; }
             .dex-slot { width: 20px; height: 20px; }
@@ -1046,6 +1040,159 @@
     var msbDrop       = document.getElementById('msb-drop');
     var msbMerge      = document.getElementById('msb-merge');
 
+    // ════════════════════════════════════════════════════
+    //  플랫폼 통합 브릿지 (GameBridge)
+    // ════════════════════════════════════════════════════
+    (function() {
+        var P = window.AP_PLATFORM; // 'android' | 'toss'
+
+        // ── Android 네이티브 콜백 등록 (Toss에서는 no-op) ──
+        if (P === 'android') {
+            // 리더보드 버튼 숨기기 (Android에는 없음)
+            var lgLb = document.getElementById('lg-leaderboard-btn');
+            var goLb = document.getElementById('go-leaderboard-btn');
+            if (lgLb) lgLb.style.display = 'none';
+            if (goLb) goLb.style.display = 'none';
+
+            // Android 네이티브 → JS 콜백
+            window.onInterstitialClosedFromAndroid = function() {
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                if (window._onInterstitialDone) { window._onInterstitialDone(); window._onInterstitialDone = null; }
+            };
+            window.onAdRewardedFromAndroid = function() {
+                var t = window._pendingAdType || 0;
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                var ui = window.unityInstance;
+                if (!ui) return;
+                if (t === 0) {
+                    ui.SendMessage('BridgeManager', 'OnReviveSuccess');
+                    var go = document.getElementById('gameover-overlay');
+                    if (go) go.classList.remove('visible');
+                    var hud = document.getElementById('game-hud');
+                    if (hud) hud.classList.add('visible');
+                } else {
+                    ui.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+                }
+            };
+            window.onAdFailedFromAndroid = function() {
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+            };
+            window.onRewardedAdReadyFromAndroid = function() {
+                console.log('[Android] Rewarded ad ready');
+            };
+
+            // Android IAP 콜백
+            window.onPurchaseSuccessFromAndroid = function(productId, token) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|' + token);
+            };
+            window.onPurchaseFailedFromAndroid = function(productId, responseCode) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseFailed', productId + '|' + responseCode);
+            };
+            window.onPurchaseCancelledFromAndroid = function(productId) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseCancelled', productId);
+            };
+            window.onPurchaseRestoredFromAndroid = function(productId, token) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseRestored', productId + '|' + token);
+            };
+        }
+
+        // ── 통합 브릿지 ──
+        window.GameBridge = {
+            platform: P,
+            hasLeaderboard: P === 'toss',
+
+            // 보상형 광고 (adType: 0=리바이브, 1=스피드부스트)
+            showRewardedAd: function(adType) {
+                if (P === 'android') {
+                    window._pendingAdType = adType;
+                    if (window.AndroidBridge && typeof window.AndroidBridge.showRewardedAd === 'function') {
+                        if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
+                        window.AndroidBridge.showRewardedAd();
+                    } else {
+                        console.warn('[GameBridge] AndroidBridge not available');
+                        if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+                    }
+                } else {
+                    // Toss: C# jslib 경유
+                    if (window.unityInstance) {
+                        var msg = adType === 0 ? 'RequestAd' : 'RequestSpeedBoostAd';
+                        window.unityInstance.SendMessage('BridgeManager', msg);
+                    }
+                }
+            },
+
+            // 전면 광고 (비보상형)
+            showInterstitialAd: function(callback) {
+                if (P === 'android') {
+                    window._onInterstitialDone = callback;
+                    if (window.AndroidBridge && typeof window.AndroidBridge.showInterstitialAd === 'function') {
+                        if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
+                        window.AndroidBridge.showInterstitialAd();
+                    } else {
+                        if (callback) callback();
+                    }
+                } else {
+                    // Toss: 기존 _showInterstitialThenToss() 호출
+                    window._showInterstitialThenToss(callback);
+                }
+            },
+
+            // 배너 초기화
+            initBanner: function() {
+                // 광고 제거 구매자는 배너 스킵
+                if (window._premiumSpeedOwned) return;
+                if (P === 'android') {
+                    // Android: 네이티브 AdMob 배너가 항상 표시됨 (50dp)
+                    document.documentElement.style.setProperty('--ad-offset', '50px');
+                } else {
+                    // Toss: TossAds SDK 배너
+                    window._initBannerAdToss();
+                }
+            },
+
+            // IAP 구매
+            purchaseProduct: function(productId) {
+                if (P === 'android') {
+                    if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
+                        window.AndroidBridge.launchPurchase(productId);
+                    }
+                } else {
+                    window._purchasePremiumSpeedToss();
+                }
+            },
+
+            // 리더보드
+            openLeaderboard: function() {
+                if (P === 'toss' && window.AppsInToss && typeof window.AppsInToss.openGameCenterLeaderboard === 'function') {
+                    window.AppsInToss.openGameCenterLeaderboard().catch(function(e) {
+                        console.error('[Leaderboard] open failed:', e);
+                    });
+                }
+            },
+
+            // 공유
+            share: function(text) {
+                if (P === 'android' && window.AndroidBridge && typeof window.AndroidBridge.shareText === 'function') {
+                    window.AndroidBridge.shareText(text);
+                } else if (navigator.share) {
+                    navigator.share({ text: text }).catch(function(){});
+                }
+            },
+
+            // 종료
+            closeApp: function() {
+                if (P === 'toss' && window.AppsInToss && typeof window.AppsInToss.close === 'function') {
+                    window.AppsInToss.close();
+                } else {
+                    window.close();
+                }
+            }
+        };
+
+        console.log('[GameBridge] Platform:', P);
+    })();
+
     // 사이드 패널 상태
     var _dropCount   = 0;
     var _mergeCount  = 0;
@@ -1354,11 +1501,13 @@
     var _reviveAdLoaded = false;
     var _reviveAdUnregister = null;
 
-    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    // 광고 API 탐지: 인앱 광고 2.0 ver2 (최상위) → GoogleAdMob (레거시) 폴백
     function _getAdLoadFn() {
         var ait = window.AppsInToss;
         if (!ait) return null;
-        if (ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') return ait.TossAds.loadFullScreenAd;
+        // 공식 API: loadFullScreenAd는 AppsInToss 직접 하위 (TossAds 아래가 아님)
+        if (typeof ait.loadFullScreenAd === 'function') return ait.loadFullScreenAd;
+        // 레거시 폴백
         if (ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') return ait.GoogleAdMob.loadAppsInTossAdMob;
         return null;
     }
@@ -1394,18 +1543,14 @@
     var _bannerAdReady = false;
     var BANNER_AD_ID = 'ait.v2.live.629331886f8c49bd';
 
-    function _initBannerAd() {
+    window._initBannerAdToss = function() {
         var ait = window.AppsInToss;
         if (!ait || !ait.TossAds || typeof ait.TossAds.initialize !== 'function') {
             console.warn('[BannerAd] TossAds SDK not found — skipping banner');
-            // 배너 없으면 하단 요소 원래 위치로
-            document.body.classList.add('no-banner');
             return;
         }
-        // isSupported 체크
         if (typeof ait.TossAds.initialize.isSupported === 'function' && !ait.TossAds.initialize.isSupported()) {
             console.warn('[BannerAd] Banner ads not supported in this env');
-            document.body.classList.add('no-banner');
             return;
         }
 
@@ -1418,11 +1563,10 @@
                 },
                 onInitializationFailed: function(err) {
                     console.error('[BannerAd] SDK init failed:', err);
-                    document.body.classList.add('no-banner');
                 }
             }
         });
-    }
+    };
 
     function _attachBannerAd() {
         if (!_bannerAdReady || !_bannerAdContainer) return;
@@ -1438,16 +1582,19 @@
                     onAdRendered: function(p) {
                         console.log('[BannerAd] rendered:', p.slotId);
                         _bannerAdContainer.classList.add('visible');
+                        // 배너 높이에 맞춰 하단 UI offset 설정
+                        var h = _bannerAdContainer.offsetHeight || 96;
+                        document.documentElement.style.setProperty('--ad-offset', h + 'px');
                     },
                     onAdFailedToRender: function(p) {
                         console.warn('[BannerAd] render failed:', p.error.message);
                         _bannerAdContainer.classList.remove('visible');
-                        document.body.classList.add('no-banner');
+                        document.documentElement.style.setProperty('--ad-offset', '0px');
                     },
                     onNoFill: function() {
                         console.warn('[BannerAd] no fill');
                         _bannerAdContainer.classList.remove('visible');
-                        document.body.classList.add('no-banner');
+                        document.documentElement.style.setProperty('--ad-offset', '0px');
                     }
                 }
             });
@@ -1456,7 +1603,7 @@
             }
         } catch(e) {
             console.error('[BannerAd] attachBanner error:', e);
-            document.body.classList.add('no-banner');
+            document.documentElement.style.setProperty('--ad-offset', '0px');
         }
     }
 
@@ -1464,11 +1611,11 @@
     window._destroyBannerAd = function() {
         if (_bannerAdDestroy) { _bannerAdDestroy(); _bannerAdDestroy = null; }
         if (_bannerAdContainer) _bannerAdContainer.classList.remove('visible');
-        document.body.classList.add('no-banner');
+        document.documentElement.style.setProperty('--ad-offset', '0px');
     };
 
-    // Unity 로드 완료 후 배너 광고 초기화
-    setTimeout(_initBannerAd, 1000);
+    // Unity 로드 완료 후 배너 광고 초기화 (GameBridge가 플랫폼별 분기)
+    setTimeout(function() { window.GameBridge.initBanner(); }, 1000);
 
     // ════════════════════════════════════════════════════
     //  HUD / 상태 유틸
@@ -1536,11 +1683,13 @@
     function onReviveClicked() {
         if (!unityInstance) return;
         resumeWebGLAudio();
-        // 2배 결제(프리미엄) 유저라면 광고 없이 바로 부활
+        // 프리미엄 유저 → 광고 없이 부활
         if (_premiumSpeedOwned) {
             unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
         } else if (!_lastAdWatched) {
-            unityInstance.SendMessage('BridgeManager', 'RequestAd');
+            // 통합 브릿지: Toss=jslib 경유, Android=네이티브 직접 호출
+            window.GameBridge.showRewardedAd(0);
+            return; // Android: 콜백에서 UI 처리, Toss: jslib에서 처리
         } else if (_lastSpareLives > 0) {
             unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
         } else { return; }
@@ -1648,18 +1797,18 @@
 
         document.getElementById('sc-btn-ad').onclick = function() {
             sheet.remove();
-            if (unityInstance) unityInstance.SendMessage('BridgeManager', 'RequestSpeedBoostAd');
+            window.GameBridge.showRewardedAd(1);
         };
         document.getElementById('sc-btn-iap').onclick = function() {
             sheet.remove();
-            _purchasePremiumSpeed();
+            window.GameBridge.purchaseProduct('remove_ads_hint_pack');
         };
         document.getElementById('sc-btn-cancel').onclick = function() { sheet.remove(); };
         sheet.addEventListener('click', function(e) { if (e.target === sheet) sheet.remove(); });
     }
 
-    // 앱인토스 IAP 결제
-    function _purchasePremiumSpeed() {
+    // 앱인토스 IAP 결제 (Toss 전용 — Android는 GameBridge.purchaseProduct 경유)
+    window._purchasePremiumSpeedToss = function() {
         _log('[IAP] Purchase Request: ' + SPEED_SKU);
         if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
             _log('[IAP] AppsInToss IAP Not Found - Fallback to confirm');
@@ -1712,7 +1861,7 @@
                 cleanup && cleanup();
             }
         });
-    }
+    };
 
     function _log(msg) {
         console.log(msg);
@@ -1758,6 +1907,8 @@
         _premiumSpeedOn    = true;   // 구매 즉시 ON
         try { localStorage.setItem('animalpop_premium_speed', '1'); } catch(e){}
         _refreshSpeedBtn();
+        // 광고 제거: 배너도 즉시 제거
+        if (typeof window._destroyBannerAd === 'function') window._destroyBannerAd();
         if (unityInstance) {
             unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '2');
         }
@@ -1786,10 +1937,7 @@
     // Unity → JS: 스피드부스트 광고 요청 (jslib에서 window 함수로 호출)
     window.showSpeedBoostAdFromUnity = function() {
         console.log("[JS] showSpeedBoostAdFromUnity: 광고 표시");
-        // 테스트용: 1초 후 성공 콜백
-        setTimeout(function() {
-            if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
-        }, 1000);
+        window.GameBridge.showRewardedAd(1);
     };
 
     // 광고 로드 실패 시 토스트 안내
@@ -2053,20 +2201,14 @@
     //  리더보드
     // ════════════════════════════════════════════════════
     function onOpenLeaderboard() {
-        if (window.AppsInToss && typeof window.AppsInToss.openGameCenterLeaderboard === 'function') {
-            window.AppsInToss.openGameCenterLeaderboard().catch(function(e) {
-                console.error('[Leaderboard] open failed:', e);
-            });
-        } else {
-            console.warn('[Leaderboard] Not supported on this platform');
-        }
+        window.GameBridge.openLeaderboard();
     }
 
     // ════════════════════════════════════════════════════
     //  게임 재시작
     // ════════════════════════════════════════════════════
-    // 전면광고(비보상형) 표시 후 콜백. 광고 미지원/스킵 조건이면 즉시 콜백 실행
-    function _showInterstitialThen(cb) {
+    // 전면광고(비보상형) — Toss 전용 구현. Android는 GameBridge.showInterstitialAd 경유
+    window._showInterstitialThenToss = function(cb) {
         var INTERSTITIAL_AD_ID = 'ait.v2.live.f8b6b46c862f48f4';
         // 광고 제거 구매자는 스킵
         if (_premiumSpeedOwned) { cb(); return; }
@@ -2075,8 +2217,9 @@
 
         var ait = window.AppsInToss;
         var api = null;
-        if (ait && ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') {
-            api = { load: ait.TossAds.loadFullScreenAd, show: ait.TossAds.showFullScreenAd, name: 'TossAds' };
+        // 공식 API: loadFullScreenAd/showFullScreenAd는 AppsInToss 직접 하위
+        if (ait && typeof ait.loadFullScreenAd === 'function') {
+            api = { load: ait.loadFullScreenAd, show: ait.showFullScreenAd, name: 'IntegratedAd' };
         } else if (ait && ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') {
             api = { load: ait.GoogleAdMob.loadAppsInTossAdMob, show: ait.GoogleAdMob.showAppsInTossAdMob, name: 'GoogleAdMob' };
         }
@@ -2123,7 +2266,7 @@
                 finish();
             }
         });
-    }
+    };
 
     function restartGame() {
         if (!unityInstance) { location.reload(); return; }
@@ -2245,8 +2388,7 @@
         document.body.appendChild(modal);
         document.getElementById('exit-confirm-yes').onclick = function() {
             modal.remove();
-            if (window.AppsInToss && typeof window.AppsInToss.close === 'function') window.AppsInToss.close();
-            else window.close();
+            window.GameBridge.closeApp();
         };
         document.getElementById('exit-confirm-no').onclick = function() {
             modal.remove();
