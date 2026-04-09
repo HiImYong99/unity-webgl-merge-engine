@@ -149,8 +149,12 @@ mergeInto(LibraryManager.library, {
         options: { adGroupId: adId },
         onEvent: function(ev) {
           if (ev.type === 'userEarnedReward') {
-            if (adType === 0) SendMessage('BridgeManager', 'OnReviveSuccess');
-            else SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+            if (adType === 0) {
+              if (typeof window._dismissGameOverForRevive === 'function') window._dismissGameOverForRevive();
+              SendMessage('BridgeManager', 'OnReviveSuccess');
+            } else {
+              SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+            }
           }
           if (ev.type === 'dismissed' || ev.type === 'failedToShow') {
             showUnregister && showUnregister();
