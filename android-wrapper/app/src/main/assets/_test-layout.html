@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>UI Layout Test</title>
+<script>
+// Unity 스텁: 로딩/랜딩 스킵하고 HUD 바로 표시
+window.createUnityInstance = function() { return Promise.resolve({ SendMessage: function(){} }); };
+window.unityInstance = { SendMessage: function(){} };
+</script>
+</head>
+<body>
+<style>
+/* index.html의 전체 스타일을 그대로 가져옴 — 아래 script에서 동적 로드 */
+</style>
+<script>
+// index.html을 fetch해서 CSS만 추출 + body HTML 구성
+fetch('index.html').then(r => r.text()).then(html => {
+    // CSS 추출
+    var styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    if (styleMatch) {
+        var s = document.createElement('style');
+        s.textContent = styleMatch[1];
+        document.head.appendChild(s);
+    }
+
+    // body 내 HTML 요소 추출 (script 태그 전까지)
+    var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<script/);
+    if (!bodyMatch) bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
+    if (bodyMatch) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = bodyMatch[1];
+        // script 제외하고 body에 추가
+        Array.from(tmp.children).forEach(function(el) {
+            if (el.tagName !== 'SCRIPT') document.body.appendChild(el);
+        });
+    }
+
+    // 로딩 숨기기
+    var lo = document.getElementById('loading-overlay');
+    if (lo) { lo.classList.add('hidden'); lo.style.display = 'none'; }
+
+    // 랜딩 숨기기
+    var la = document.getElementById('landing-overlay');
+    if (la) la.style.display = 'none';
+
+    // 게임오버 숨기기
+    var go = document.getElementById('gameover-overlay');
+    if (go) go.style.display = 'none';
+
+    // HUD 표시
+    var hud = document.getElementById('game-hud');
+    if (hud) hud.classList.add('visible');
+
+    // 타이머 표시
+    var timer = document.getElementById('hud-timer');
+    if (timer) timer.classList.add('visible');
+
+    // 설정 FAB 표시
+    var fab = document.getElementById('settings-fab');
+    if (fab) fab.classList.add('visible');
+
+    // 도감바 표시 + 슬롯 채우기
+    var dex = document.getElementById('dex-bar');
+    var slots = document.getElementById('dex-slots');
+    if (dex && slots) {
+        dex.classList.add('visible');
+        var emojis = ['🐣','🐭','🦔','🐰','🐱','🐕','🐑','🐒','🐷','🐼','🦁'];
+        for (var i = 0; i < 11; i++) {
+            var d = document.createElement('div');
+            d.className = 'dex-slot' + (i < 5 ? ' found' : '');
+            d.innerHTML = '<div style="font-size:16px">' + emojis[i] + '</div>';
+            slots.appendChild(d);
+        }
+    }
+
+    // 배너 광고 모의 표시
+    var banner = document.getElementById('banner-ad-container');
+    if (banner) {
+        banner.classList.add('visible');
+        banner.style.background = 'rgba(200,200,200,0.5)';
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.justifyContent = 'center';
+        banner.style.color = '#999';
+        banner.style.fontSize = '14px';
+        banner.style.fontWeight = '700';
+        banner.innerHTML = 'BANNER AD AREA';
+    }
+
+    // 사이드 패널
+    var sl = document.getElementById('side-left');
+    var sr = document.getElementById('side-right');
+    if (sl) sl.classList.add('visible');
+    if (sr) sr.classList.add('visible');
+
+    // 점수 모의
+    var score = document.getElementById('score');
+    if (score) score.textContent = '1,234';
+
+    // 게임 영역 시각화 (컨테이너 경계)
+    var gameArea = document.createElement('div');
+    gameArea.style.cssText = 'position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(440px,96vw); height:60vh; border:2px dashed rgba(255,0,0,0.3); border-radius:16px; z-index:5; pointer-events:none; display:flex; align-items:center; justify-content:center; color:rgba(255,0,0,0.3); font-size:14px; font-weight:700;';
+    gameArea.textContent = 'GAME AREA';
+    document.body.appendChild(gameArea);
+
+    // 뷰포트 높이 표시
+    var info = document.createElement('div');
+    info.style.cssText = 'position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:999; background:rgba(0,0,0,0.7); color:#fff; padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700;';
+    info.textContent = window.innerWidth + ' x ' + window.innerHeight;
+    document.body.appendChild(info);
+    window.addEventListener('resize', function() {
+        info.textContent = window.innerWidth + ' x ' + window.innerHeight;
+    });
+});
+</script>
+</body>
+</html>

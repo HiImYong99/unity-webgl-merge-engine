@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1932">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1932px; height: 828px; overflow: hidden; }
+
+  .canvas {
+    width: 1932px;
+    height: 828px;
+    position: relative;
+    background: linear-gradient(135deg, #0f1a3a 0%, #1a2a5e 40%, #2a1a5a 70%, #1a0f3a 100%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  /* 배경 글로우 */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+  }
+  .glow-blue  { width: 700px; height: 700px; background: #3182f6; opacity: 0.18; top: -200px; left: -100px; }
+  .glow-purple{ width: 600px; height: 600px; background: #7c3aed; opacity: 0.20; bottom: -200px; right: 200px; }
+  .glow-pink  { width: 400px; height: 400px; background: #ff5988; opacity: 0.12; top: 100px; left: 700px; }
+  .glow-gold  { width: 500px; height: 500px; background: #ffd700; opacity: 0.10; bottom: -100px; right: 500px; }
+
+  /* ── 왼쪽 타이틀 ── */
+  .left {
+    position: relative;
+    z-index: 2;
+    width: 580px;
+    flex-shrink: 0;
+    padding: 0 0 0 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(49,130,246,0.2);
+    border: 1.5px solid rgba(49,130,246,0.5);
+    border-radius: 50px;
+    padding: 8px 20px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+  .badge-dot { width: 8px; height: 8px; background: #4facfe; border-radius: 50%; box-shadow: 0 0 8px #4facfe; }
+  .badge-text { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: #a8d4ff; letter-spacing: 0.5px; }
+
+  .title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    line-height: 0.92;
+    letter-spacing: -3px;
+    margin-bottom: 28px;
+  }
+  .t1 { font-size: 136px; color: #ffffff; display: block; text-shadow: 0 0 40px rgba(255,255,255,0.15); }
+  .t2 {
+    font-size: 136px;
+    display: block;
+    background: linear-gradient(135deg, #4facfe 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 20px rgba(79,172,254,0.4));
+  }
+
+  .subtitle {
+    font-family: 'Nunito', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: rgba(200,220,255,0.8);
+    line-height: 1.5;
+    margin-bottom: 36px;
+    letter-spacing: -0.2px;
+  }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4facfe, #3182f6);
+    color: #fff;
+    border: none;
+    border-radius: 18px;
+    padding: 18px 52px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    box-shadow: 0 8px 32px rgba(79,172,254,0.45), 0 0 0 1px rgba(255,255,255,0.1);
+    cursor: default;
+    width: fit-content;
+  }
+
+  /* ── 중앙 진화 시각화 ── */
+  .center {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  /* 진화 스테이지 */
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+  }
+
+  /* 동물 버블 */
+  .bubble {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .bubble img {
+    width: 82%;
+    height: 82%;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 20px rgba(0,0,0,0.4));
+  }
+
+  /* 크기별 버블 스타일 */
+  .bubble-sm {
+    width: 130px; height: 130px;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .bubble-md {
+    width: 200px; height: 200px;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .bubble-lg {
+    width: 290px; height: 290px;
+    background: radial-gradient(circle at 35% 35%, rgba(255,215,0,0.2), rgba(255,140,0,0.06));
+    border: 2.5px solid rgba(255,200,80,0.3);
+    box-shadow: 0 16px 60px rgba(255,160,0,0.25), 0 0 0 8px rgba(255,200,80,0.08), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .bubble-xl {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle at 35% 35%, rgba(255,215,0,0.25), rgba(255,100,0,0.08));
+    border: 3px solid rgba(255,210,60,0.4);
+    box-shadow:
+      0 20px 80px rgba(255,160,0,0.35),
+      0 0 0 12px rgba(255,200,80,0.1),
+      0 0 80px rgba(255,150,0,0.2),
+      inset 0 2px 0 rgba(255,255,255,0.25);
+  }
+
+  /* 레벨 뱃지 */
+  .lv-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #ffd700, #ff9800);
+    color: #1a1a1a;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 900;
+    border-radius: 20px;
+    padding: 3px 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    letter-spacing: 0.3px;
+  }
+  .lv-badge-lg {
+    font-size: 15px;
+    padding: 5px 14px;
+    bottom: -6px;
+    right: -6px;
+  }
+
+  /* 연결 화살표 */
+  .arrow-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    gap: 6px;
+    margin-bottom: 44px; /* 레벨뱃지 높이 보정 */
+  }
+  .plus-sign {
+    font-family: 'Nunito', sans-serif;
+    font-size: 52px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.6);
+    line-height: 1;
+  }
+  .arrow-right {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .arrow-line {
+    height: 4px;
+    width: 60px;
+    background: linear-gradient(90deg, rgba(79,172,254,0.4), rgba(167,139,250,0.8));
+    border-radius: 2px;
+  }
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-left: 16px solid rgba(167,139,250,0.8);
+  }
+
+  /* 큰 화살표 (메인 → 최종 진화) */
+  .big-arrow-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 28px;
+    margin-bottom: 60px;
+  }
+  .big-arrow-line {
+    height: 5px;
+    width: 80px;
+    background: linear-gradient(90deg, rgba(255,200,80,0.5), rgba(255,150,0,0.9));
+    border-radius: 3px;
+  }
+  .big-arrow-head {
+    width: 0;
+    height: 0;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    border-left: 22px solid rgba(255,160,0,0.9);
+  }
+  .evolve-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    color: rgba(255,200,80,0.9);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* 이름 텍스트 */
+  .animal-name {
+    font-family: 'Nunito', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    color: rgba(200,220,255,0.75);
+    letter-spacing: -0.2px;
+  }
+  .animal-name-gold {
+    font-size: 22px;
+    color: rgba(255,210,80,0.95);
+    text-shadow: 0 0 16px rgba(255,160,0,0.4);
+  }
+
+  /* 별똥별/파티클 */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+    pointer-events: none;
+  }
+
+  /* ── 하단 바 ── */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 58px;
+    background: rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    z-index: 3;
+  }
+  .bi {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: rgba(200,220,255,0.8);
+  }
+  .bd { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- 배경 글로우 -->
+  <div class="glow glow-blue"></div>
+  <div class="glow glow-purple"></div>
+  <div class="glow glow-pink"></div>
+  <div class="glow glow-gold"></div>
+
+  <!-- 파티클 -->
+  <div class="particle" style="width:5px;height:5px;top:120px;left:620px;opacity:0.7;box-shadow:0 0 6px #fff;"></div>
+  <div class="particle" style="width:4px;height:4px;top:340px;left:660px;opacity:0.5;box-shadow:0 0 5px #fff;"></div>
+  <div class="particle" style="width:6px;height:6px;top:200px;right:380px;opacity:0.6;box-shadow:0 0 8px #ffd700;background:#ffd700;"></div>
+  <div class="particle" style="width:4px;height:4px;bottom:180px;right:420px;opacity:0.5;box-shadow:0 0 6px #a78bfa;background:#a78bfa;"></div>
+  <div class="particle" style="width:8px;height:8px;top:90px;right:340px;opacity:0.4;box-shadow:0 0 10px #4facfe;background:#4facfe;"></div>
+  <div class="particle" style="width:5px;height:5px;bottom:140px;left:700px;opacity:0.55;box-shadow:0 0 7px #fff;"></div>
+
+  <!-- ── 왼쪽 타이틀 ── -->
+  <div class="left">
+    <div class="badge">
+      <div class="badge-dot"></div>
+      <span class="badge-text">AppsInToss 미니앱</span>
+    </div>
+
+    <div class="title">
+      <span class="t1">애니멀</span>
+      <span class="t2">팝!</span>
+    </div>
+
+    <div class="subtitle">
+      동물을 떨어뜨려 합치면<br>더 큰 동물로 진화해요
+    </div>
+
+    <button class="cta-btn">지금 플레이 →</button>
+  </div>
+
+  <!-- ── 중앙 진화 시각화 ── -->
+  <div class="center">
+
+    <!-- 병아리 -->
+    <div class="stage">
+      <div class="bubble bubble-sm" style="background:radial-gradient(circle at 35% 35%,rgba(255,240,150,0.25),rgba(255,200,0,0.05));border-color:rgba(255,220,80,0.25);">
+        <img src="Assets/WebGLTemplates/AnimalPop/sprites/Animal_1.png">
+        <div class="lv-badge">Lv.1</div>
+      </div>
+      <div class="animal-name">병아리</div>
+    </div>
+
+    <!-- + -->
+    <div class="arrow-block">
+      <div class="plus-sign">+</div>
+    </div>
+
+    <!-- 병아리 -->
+    <div class="stage">
+      <div class="bubble bubble-sm" style="background:radial-gradient(circle at 35% 35%,rgba(255,240,150,0.25),rgba(255,200,0,0.05));border-color:rgba(255,220,80,0.25);">
+        <img src="Assets/WebGLTemplates/AnimalPop/sprites/Animal_1.png">
+        <div class="lv-badge">Lv.1</div>
+      </div>
+      <div class="animal-name">병아리</div>
+    </div>
+
+    <!-- → -->
+    <div class="arrow-block">
+      <div class="arrow-right">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+    </div>
+
+    <!-- 시바견 -->
+    <div class="stage">
+      <div class="bubble bubble-md" style="background:radial-gradient(circle at 35% 35%,rgba(255,200,120,0.2),rgba(200,150,80,0.05));border-color:rgba(255,180,80,0.25);">
+        <img src="Assets/WebGLTemplates/AnimalPop/sprites/Animal_6.png">
+        <div class="lv-badge">Lv.6</div>
+      </div>
+      <div class="animal-name">시바견</div>
+    </div>
+
+    <!-- → (큰) -->
+    <div class="big-arrow-block">
+      <div class="evolve-text">진화!</div>
+      <div class="arrow-right">
+        <div class="big-arrow-line"></div>
+        <div class="big-arrow-head"></div>
+      </div>
+    </div>
+
+    <!-- 사자 (최종) -->
+    <div class="stage">
+      <div class="bubble bubble-xl">
+        <img src="Assets/WebGLTemplates/AnimalPop/sprites/Animal_11.png">
+        <div class="lv-badge lv-badge-lg">Lv.11</div>
+      </div>
+      <div class="animal-name animal-name-gold">👑 사자</div>
+    </div>
+
+  </div>
+
+  <!-- ── 하단 바 ── -->
+  <div class="bottom-bar">
+    <div class="bi"><div class="bd" style="background:#4facfe;box-shadow:0 0 6px #4facfe;"></div>11종 동물 수집</div>
+    <div class="bi"><div class="bd" style="background:#a78bfa;box-shadow:0 0 6px #a78bfa;"></div>합치면 진화</div>
+    <div class="bi"><div class="bd" style="background:#ff5988;box-shadow:0 0 6px #ff5988;"></div>토스에서 무료 플레이</div>
+    <div class="bi"><div class="bd" style="background:#ffd700;box-shadow:0 0 6px #ffd700;"></div>최고 점수 도전</div>
+  </div>
+
+</div>
+</body>
+</html>

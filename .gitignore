@@ -127,3 +127,17 @@ android-wrapper/build/
 # -------------------------------------------------------------------------
 .claudesignore
 prompt.md
+.omc/
+.playwright-mcp/
+
+# [Local Test Screenshots]
+# -------------------------------------------------------------------------
+test-*.png
+local-test-*.png
+game-test-*.png
+
+# [Android Wrapper Build Artifacts (copied from Unity WebGL build)]
+# -------------------------------------------------------------------------
+android-wrapper/app/src/main/assets/Build/
+android-wrapper/app/src/main/assets/TemplateData/
+android-wrapper/app/src/main/assets/sprites/
