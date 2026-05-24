@@ -1,0 +1,8 @@
+# 앱 버전 단일 소스 (Android + iOS 공통)
+# build.sh가 빌드 시 각 플랫폼 설정에 자동 주입:
+#   Android → android-wrapper/app/build.gradle (versionName / versionCode)
+#   iOS     → ios-wrapper/project.yml (MARKETING_VERSION / CURRENT_PROJECT_VERSION)
+# 버전 올리기: ./build.sh bump <버전> <빌드번호>   예) ./build.sh bump 1.2.2 16
+# (Toss는 ait 툴링이 별도 관리)
+APP_VERSION=1.2.1
+BUILD_NUMBER=15

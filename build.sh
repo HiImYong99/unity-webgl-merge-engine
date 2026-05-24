@@ -5,7 +5,9 @@
 #    ./build.sh toss        # 앱인토스 빌드 + 배포
 #    ./build.sh android     # Android APK 빌드
 #    ./build.sh android-aab # Android AAB 빌드 (릴리즈)
-#    ./build.sh all         # 전체 빌드
+#    ./build.sh ios         # iOS WKWebView 래퍼 빌드
+#    ./build.sh all         # 전체 빌드 (toss + ios + android)
+#    ./build.sh bump 1.2.2 16  # 버전 올리기 (Android+iOS 동시)
 #
 #  Unity WebGL 빌드는 별도로 먼저 해야 합니다.
 #  이 스크립트는 빌드 결과물을 각 플랫폼으로 복사/매핑합니다.
@@ -19,6 +21,7 @@ ANDROID_DIR="$PROJECT_DIR/android-wrapper"
 ANDROID_ASSETS="$ANDROID_DIR/app/src/main/assets"
 IOS_DIR="$PROJECT_DIR/ios-wrapper"
 IOS_WEB="$IOS_DIR/AnimalPop/web"
+VERSION_FILE="$PROJECT_DIR/VERSION"
 
 # ── 색상 ──
 RED='\033[0;31m'
@@ -31,6 +34,52 @@ info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 fail()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+
+# ═══════════════════════════════════════════════════════════════
+#  버전 단일 소스 (VERSION 파일 → Android/iOS 설정 주입)
+# ═══════════════════════════════════════════════════════════════
+
+# VERSION 파일을 읽어 APP_VERSION / BUILD_NUMBER 설정
+load_version() {
+    [ -f "$VERSION_FILE" ] || fail "VERSION 파일 없음: $VERSION_FILE"
+    APP_VERSION=$(grep -E "^APP_VERSION=" "$VERSION_FILE" | cut -d= -f2 | tr -d ' ')
+    BUILD_NUMBER=$(grep -E "^BUILD_NUMBER=" "$VERSION_FILE" | cut -d= -f2 | tr -d ' ')
+    [ -n "$APP_VERSION" ] && [ -n "$BUILD_NUMBER" ] || fail "VERSION 파싱 실패 (APP_VERSION/BUILD_NUMBER)"
+}
+
+# VERSION → Android build.gradle + iOS project.yml 에 주입 (멱등 — 동일하면 변화 없음)
+sync_version() {
+    load_version
+    local GRADLE="$ANDROID_DIR/app/build.gradle"
+    local IOS_YML="$IOS_DIR/project.yml"
+    if [ -f "$GRADLE" ]; then
+        sed -i '' -E "s/versionName \"[^\"]*\"/versionName \"$APP_VERSION\"/" "$GRADLE"
+        sed -i '' -E "s/versionCode [0-9]+/versionCode $BUILD_NUMBER/" "$GRADLE"
+    fi
+    if [ -f "$IOS_YML" ]; then
+        sed -i '' -E "s/MARKETING_VERSION: \"[^\"]*\"/MARKETING_VERSION: \"$APP_VERSION\"/" "$IOS_YML"
+        sed -i '' -E "s/CURRENT_PROJECT_VERSION: \"[^\"]*\"/CURRENT_PROJECT_VERSION: \"$BUILD_NUMBER\"/" "$IOS_YML"
+    fi
+    ok "버전 동기화: v$APP_VERSION (build $BUILD_NUMBER) → Android + iOS"
+}
+
+# ./build.sh bump <버전> <빌드번호> — VERSION 갱신 후 전 플랫폼 주입
+bump_version() {
+    local NEW_VER="$1" NEW_BUILD="$2"
+    [ -n "$NEW_VER" ] && [ -n "$NEW_BUILD" ] || fail "사용법: ./build.sh bump <버전> <빌드번호>  예) ./build.sh bump 1.2.2 16"
+    cat > "$VERSION_FILE" <<EOF
+# 앱 버전 단일 소스 (Android + iOS 공통)
+# build.sh가 빌드 시 각 플랫폼 설정에 자동 주입:
+#   Android → android-wrapper/app/build.gradle (versionName / versionCode)
+#   iOS     → ios-wrapper/project.yml (MARKETING_VERSION / CURRENT_PROJECT_VERSION)
+# 버전 올리기: ./build.sh bump <버전> <빌드번호>   예) ./build.sh bump 1.2.2 16
+# (Toss는 ait 툴링이 별도 관리)
+APP_VERSION=$NEW_VER
+BUILD_NUMBER=$NEW_BUILD
+EOF
+    sync_version
+    ok "버전 올림 완료: v$NEW_VER (build $NEW_BUILD)"
+}
 
 # ═══════════════════════════════════════════════════════════════
 #  WebGL 빌드 결과물 탐지
@@ -257,6 +306,7 @@ build_android_apk() {
     # localStorage 키 안전장치 패치 (GameBridge가 런타임 분기 처리)
     bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
 
+    sync_version   # VERSION → build.gradle
     setup_java
 
     info "Gradle assembleDebug 실행 중..."
@@ -300,6 +350,8 @@ build_ios() {
         fail "CocoaPods 없음. 설치: sudo gem install cocoapods"
     fi
 
+    sync_version   # VERSION → project.yml (xcodegen 전에 주입)
+
     info "Xcode 프로젝트 생성 + Pod 설치..."
     ( cd "$IOS_DIR" && xcodegen generate && pod install )
 
@@ -324,12 +376,13 @@ build_android_aab() {
     # localStorage 키 안전장치 패치 (GameBridge가 런타임 분기 처리)
     bash "$ANDROID_DIR/patch-index.sh" "$ANDROID_ASSETS/index.html"
 
-    setup_java
-
     # 서명 설정 확인
     if [ ! -f "$ANDROID_DIR/signing.properties" ]; then
         fail "signing.properties 없음! cp signing.properties.template signing.properties 후 설정하세요."
     fi
+
+    sync_version   # VERSION → build.gradle
+    setup_java
 
     info "Gradle bundleRelease 실행 중..."
     cd "$ANDROID_DIR"
@@ -366,10 +419,14 @@ case "${1:-}" in
     ios)
         build_ios
         ;;
+    bump)
+        bump_version "$2" "$3"
+        ;;
     all)
-        build_toss
-        build_android_apk
-        build_android_aab
+        build_toss                 # Brotli 빌드 + ait
+        SKIP_UNITY=1 build_ios     # 토스 Brotli 재사용 (재빌드 없이 동기화)
+        build_android_apk          # 비압축 빌드 + APK (디버그)
+        build_android_aab          # 기존 비압축 재사용 + AAB (릴리즈)
         ;;
     *)
         echo ""
@@ -379,7 +436,8 @@ case "${1:-}" in
         echo "  android       Android APK (Unity 비압축 + Gradle debug)"
         echo "  android-aab   Android AAB (Unity 비압축 + Gradle release)"
         echo "  ios           iOS WKWebView 래퍼 (Unity Brotli + xcodegen/pod)"
-        echo "  all           전체 빌드"
+        echo "  all           전체 빌드 (toss + ios + android apk/aab)"
+        echo "  bump V B      버전 올리기: VERSION 갱신 → Android/iOS 주입  예) bump 1.2.2 16"
         echo ""
         echo "옵션:"
         echo "  SKIP_UNITY=1 ./build.sh android   Unity 빌드 건너뛰기 (기존 빌드 재사용)"
