@@ -8,3 +8,13 @@ target 'AnimalPop' do
   # 로컬 루프백 HTTP 서버 (WebGL Brotli 서빙)
   pod 'GCDWebServer', '~> 3.0'
 end
+
+# Xcode 15+는 libarclite 제거 → 배포타깃 낮은 Pod 링크 실패.
+# 모든 Pod 배포타깃을 앱과 동일(iOS 15)로 강제.
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+end
