@@ -5,7 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>애니멀 팝</title>
     <!-- 플랫폼 감지 (AndroidBridge는 MainActivity.addJavascriptInterface로 DOM 전에 주입됨) -->
-    <script>window.AP_PLATFORM = window.AndroidBridge ? 'android' : 'toss';</script>
+    <script>
+        window.AP_PLATFORM = window.AndroidBridge ? 'android'
+            : ((window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) ? 'ios' : 'toss');
+        // iOS: JS → 네이티브 호출 헬퍼 (WKScriptMessageHandler)
+        window._iosCall = function(action, payload) {
+            try { window.webkit.messageHandlers.iosBridge.postMessage(Object.assign({ action: action }, payload || {})); }
+            catch (e) { console.warn('[iosBridge] ' + e); }
+        };
+    </script>
     <!-- Apps in Toss Bridge (Vite bundling entry) — Android에서는 404되지만 module script는 무시됨 -->
     <script type="module" src="./unity-bridge.ts"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1094,10 +1102,50 @@
             };
         }
 
+        // ── iOS 네이티브 콜백 등록 (Android와 동일 동작, WKWebView는 비동기) ──
+        if (P === 'ios') {
+            window._iosRewardedReady = false; // 동기 호출 불가 → readiness 캐시
+            window.onInterstitialClosedFromIOS = function() {
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                if (window._onInterstitialDone) { window._onInterstitialDone(); window._onInterstitialDone = null; }
+            };
+            window.onAdRewardedFromIOS = function() {
+                var t = window._pendingAdType || 0;
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                var ui = window.unityInstance;
+                if (!ui) return;
+                if (t === 0) {
+                    if (typeof window._dismissGameOverForRevive === 'function') window._dismissGameOverForRevive();
+                    ui.SendMessage('BridgeManager', 'OnReviveSuccess');
+                } else {
+                    ui.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+                }
+            };
+            window.onAdFailedFromIOS = function() {
+                if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
+                if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
+            };
+            window.onRewardedAdReadyFromIOS = function() {
+                window._iosRewardedReady = true;
+            };
+            window.onPurchaseSuccessFromIOS = function(productId, token) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|' + token);
+            };
+            window.onPurchaseFailedFromIOS = function(productId, code) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseFailed', productId + '|' + code);
+            };
+            window.onPurchaseCancelledFromIOS = function(productId) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseCancelled', productId);
+            };
+            window.onPurchaseRestoredFromIOS = function(productId, token) {
+                if (window.unityInstance) window.unityInstance.SendMessage('BridgeManager', 'OnPurchaseRestored', productId + '|' + token);
+            };
+        }
+
         // ── 통합 브릿지 ──
         window.GameBridge = {
             platform: P,
-            hasLeaderboard: P === 'toss',
+            hasLeaderboard: P === 'toss' || P === 'ios',
 
             // 보상형 광고 (adType: 0=리바이브, 1=스피드부스트)
             showRewardedAd: function(adType) {
@@ -1110,6 +1158,10 @@
                         console.warn('[GameBridge] AndroidBridge not available');
                         if (typeof window._showAdUnavailableToast === 'function') window._showAdUnavailableToast();
                     }
+                } else if (P === 'ios') {
+                    window._pendingAdType = adType;
+                    if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
+                    window._iosCall('showRewardedAd');
                 } else {
                     // Toss: C# jslib 경유
                     if (window.unityInstance) {
@@ -1129,6 +1181,10 @@
                     } else {
                         if (callback) callback();
                     }
+                } else if (P === 'ios') {
+                    window._onInterstitialDone = callback;
+                    if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
+                    window._iosCall('showInterstitialAd');
                 } else {
                     // Toss: 기존 _showInterstitialThenToss() 호출
                     window._showInterstitialThenToss(callback);
@@ -1142,6 +1198,9 @@
                 if (P === 'android') {
                     // Android: 네이티브 AdMob 배너가 항상 표시됨 (50dp)
                     document.documentElement.style.setProperty('--ad-offset', '50px');
+                } else if (P === 'ios') {
+                    // iOS: 네이티브 AdMob 배너 (50pt) — GameViewController가 표시
+                    document.documentElement.style.setProperty('--ad-offset', '50px');
                 } else {
                     // Toss: TossAds SDK 배너
                     window._initBannerAdToss();
@@ -1154,6 +1213,8 @@
                     if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
                         window.AndroidBridge.launchPurchase(productId);
                     }
+                } else if (P === 'ios') {
+                    window._iosCall('launchPurchase', { productId: productId });
                 } else {
                     window._purchasePremiumSpeedToss();
                 }
@@ -1165,13 +1226,22 @@
                     window.AppsInToss.openGameCenterLeaderboard().catch(function(e) {
                         console.error('[Leaderboard] open failed:', e);
                     });
+                } else if (P === 'ios') {
+                    window._iosCall('showLeaderboard');
                 }
+            },
+
+            // Game Center 점수 제출 (iOS 전용; Toss/Android는 no-op)
+            submitScore: function(score) {
+                if (P === 'ios') window._iosCall('submitScore', { score: Number(score) || 0 });
             },
 
             // 공유
             share: function(text) {
                 if (P === 'android' && window.AndroidBridge && typeof window.AndroidBridge.shareText === 'function') {
                     window.AndroidBridge.shareText(text);
+                } else if (P === 'ios') {
+                    window._iosCall('shareText', { text: text });
                 } else if (navigator.share) {
                     navigator.share({ text: text }).catch(function(){});
                 }
@@ -2020,6 +2090,9 @@
         _stopSpawnWatchdog();
         var scoreNum = Number(score);
         var bestNum  = Number(best);
+
+        // iOS: Game Center 점수 제출
+        if (window.GameBridge && typeof window.GameBridge.submitScore === 'function') window.GameBridge.submitScore(scoreNum);
         _lastAdWatched  = adWatched;
         _lastSpareLives = spareLives;
 
