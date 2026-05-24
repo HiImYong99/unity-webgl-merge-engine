@@ -1,0 +1,10 @@
+platform :ios, '15.0'
+
+target 'AnimalPop' do
+  use_frameworks!
+
+  # AdMob (전면/보상형/배너). GAD 프리픽스 API 안정 버전(11.x)에 고정.
+  pod 'Google-Mobile-Ads-SDK', '~> 11.13'
+  # 로컬 루프백 HTTP 서버 (WebGL Brotli 서빙)
+  pod 'GCDWebServer', '~> 3.0'
+end

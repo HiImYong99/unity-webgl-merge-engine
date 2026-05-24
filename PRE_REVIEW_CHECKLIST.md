@@ -62,3 +62,36 @@ Unity 빌드 완료 후, 앱인토스 규격에 맞는 번들 파일을 새로 �
     - ca-app-pub-3940256099942544~3347511713 → 실제 앱 ID = ca-app-pub-2371797890397990~9633993882
     - ca-app-pub-3940256099942544/1033173712 → 실제 전면 광고 단위= ca-app-pub-2371797890397990/8608686822
     - ca-app-pub-3940256099942544/5224354917 → 실제 보상형 광고 단위 = ca-app-pub-2371797890397990/7714912138
+
+---
+
+# iOS (App Store)
+상세: `ios-wrapper/README.md`
+
+## 빌드 전 교체 (현재 Google 테스트 ID)
+  - [ ] Apple Team ID → `ios-wrapper/project.yml` (`DEVELOPMENT_TEAM`)
+  - [ ] AdMob iOS 앱 ID → `ios-wrapper/AnimalPop/Info.plist` (`GADApplicationIdentifier`)
+  - [ ] AdMob iOS 광고 단위 ID(전면/보상형/배너) → `ios-wrapper/AnimalPop/AdManager.swift`
+  - [ ] Game Center 리더보드 ID → `ios-wrapper/AnimalPop/GameCenterManager.swift` (`leaderboardId`)
+  - [ ] SKAdNetwork 전체 목록 보강 → `Info.plist` (`SKAdNetworkItems`, Google 공식 목록)
+
+## App Store Connect 등록
+  - [ ] 앱 레코드 (Bundle ID `com.animalpop.app`)
+  - [ ] 인앱 구매 비소모성 `remove_ads_hint_pack`
+  - [ ] Game Center 리더보드 `animalpop_highscore`
+  - [ ] 개인정보 처리방침 URL · 개인정보 라벨 · 스크린샷(`애니멀팝_스크린샷/`)
+
+## 환경
+  - [ ] Xcode 설치 (현재 미설치 — 빌드/서명/제출 필수)
+  - [ ] Apple Developer Program 가입
+
+## 심사 4.2(최소 기능) 대응
+  - [ ] 리뷰 노트에 네이티브 기능 명시 (StoreKit 결제, Game Center, 오프라인 플레이)
+
+## 기기 QA (시뮬레이터/실기기)
+  - [ ] WebGL 로드 + 게임플레이 부드러움
+  - [ ] 전면(게임오버)/보상형(이어하기)/배너 광고 표시
+  - [ ] 결제(Sandbox) + 복원 동작, 광고 제거 반영
+  - [ ] 리더보드 버튼 → Game Center, 신기록 점수 제출
+  - [ ] 백그라운드 시 오디오 정지 / 복귀 시 재개
+  - [ ] 토스 + 안드로이드 빌드 회귀 없음

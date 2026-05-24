@@ -17,6 +17,8 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AIT_DIR="$PROJECT_DIR/ait-build"
 ANDROID_DIR="$PROJECT_DIR/android-wrapper"
 ANDROID_ASSETS="$ANDROID_DIR/app/src/main/assets"
+IOS_DIR="$PROJECT_DIR/ios-wrapper"
+IOS_WEB="$IOS_DIR/AnimalPop/web"
 
 # ── 색상 ──
 RED='\033[0;31m'
@@ -270,6 +272,42 @@ build_android_apk() {
     echo -e "  설치: ${YELLOW}adb install AnimalPop.apk${NC}"
 }
 
+build_ios() {
+    echo ""
+    echo -e "${CYAN}══════════════════════════════════════${NC}"
+    echo -e "${CYAN}  iOS WKWebView 래퍼 빌드${NC}"
+    echo -e "${CYAN}══════════════════════════════════════${NC}"
+
+    # iOS는 토스용 Brotli 빌드 그대로 재사용 (WebKit이 Brotli 디코딩 지원)
+    if [ "${SKIP_UNITY:-}" != "1" ]; then
+        unity_build_toss
+    fi
+
+    detect_webgl_build
+
+    info "WebGL 빌드 → ios-wrapper/web/ 동기화: $WEBGL_BUILD_DIR → $IOS_WEB"
+    rm -rf "$IOS_WEB"
+    mkdir -p "$IOS_WEB"
+    cp -R "$WEBGL_BUILD_DIR/Build" "$IOS_WEB/Build"
+    cp "$WEBGL_BUILD_DIR/index.html" "$IOS_WEB/index.html"
+    [ -d "$WEBGL_BUILD_DIR/sprites" ]      && cp -R "$WEBGL_BUILD_DIR/sprites" "$IOS_WEB/sprites"
+    [ -d "$WEBGL_BUILD_DIR/TemplateData" ] && cp -R "$WEBGL_BUILD_DIR/TemplateData" "$IOS_WEB/TemplateData"
+
+    if ! command -v xcodegen &>/dev/null; then
+        fail "xcodegen 없음. 설치: brew install xcodegen"
+    fi
+    if ! command -v pod &>/dev/null; then
+        fail "CocoaPods 없음. 설치: sudo gem install cocoapods"
+    fi
+
+    info "Xcode 프로젝트 생성 + Pod 설치..."
+    ( cd "$IOS_DIR" && xcodegen generate && pod install )
+
+    ok "iOS 동기화 완료!"
+    echo -e "  다음: ${YELLOW}open $IOS_DIR/AnimalPop.xcworkspace${NC} → Team 설정 → Archive → App Store Connect 업로드"
+    echo -e "  (Xcode 설치 + Apple Developer 계정 필요)"
+}
+
 build_android_aab() {
     echo ""
     echo -e "${CYAN}══════════════════════════════════════${NC}"
@@ -325,6 +363,9 @@ case "${1:-}" in
     android-aab|aab)
         build_android_aab
         ;;
+    ios)
+        build_ios
+        ;;
     all)
         build_toss
         build_android_apk
@@ -337,6 +378,7 @@ case "${1:-}" in
         echo "  toss          앱인토스 빌드 (Unity Brotli + ait build)"
         echo "  android       Android APK (Unity 비압축 + Gradle debug)"
         echo "  android-aab   Android AAB (Unity 비압축 + Gradle release)"
+        echo "  ios           iOS WKWebView 래퍼 (Unity Brotli + xcodegen/pod)"
         echo "  all           전체 빌드"
         echo ""
         echo "옵션:"

@@ -141,3 +141,13 @@ game-test-*.png
 android-wrapper/app/src/main/assets/Build/
 android-wrapper/app/src/main/assets/TemplateData/
 android-wrapper/app/src/main/assets/sprites/
+
+# [iOS Wrapper — generated project, pods, copied WebGL build]
+# -------------------------------------------------------------------------
+ios-wrapper/AnimalPop/web/
+ios-wrapper/Pods/
+ios-wrapper/Podfile.lock
+ios-wrapper/AnimalPop.xcodeproj/
+ios-wrapper/AnimalPop.xcworkspace/
+ios-wrapper/build/
+ios-wrapper/DerivedData/

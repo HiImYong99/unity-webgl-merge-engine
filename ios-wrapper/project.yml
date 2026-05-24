@@ -1,0 +1,34 @@
+name: AnimalPop
+options:
+  bundleIdPrefix: com.animalpop
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.2.1"
+    CURRENT_PROJECT_VERSION: "15"
+    DEVELOPMENT_TEAM: ""                              # [USER ACTION] Apple Team ID
+    PRODUCT_BUNDLE_IDENTIFIER: com.animalpop.app
+    SWIFT_VERSION: "5.0"
+targets:
+  AnimalPop:
+    type: application
+    platform: iOS
+    sources:
+      # Swift 소스 (web/ 제외 — 컴파일 대상 아님)
+      - path: AnimalPop
+        excludes:
+          - "web/**"
+      # WebGL 빌드: 폴더 레퍼런스로 번들에 복사 (Build/ 등 하위 구조 보존)
+      - path: AnimalPop/web
+        type: folder
+        optional: true
+        buildPhase: resources
+    settings:
+      base:
+        INFOPLIST_FILE: AnimalPop/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AnimalPop/AnimalPop.entitlements
+        ENABLE_BITCODE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
