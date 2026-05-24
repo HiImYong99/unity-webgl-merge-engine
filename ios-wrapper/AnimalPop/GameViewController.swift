@@ -47,7 +47,9 @@ final class GameViewController: UIViewController {
                            adManager: adManager,
                            storeManager: storeManager ?? NSNull(),
                            gameCenter: gameCenter)
-        config.userContentController.add(bridge, name: IosBridge.name)
+        // 약한 프록시로 등록 — WKUserContentController가 핸들러를 강하게 잡아
+        // GameViewController가 해제되지 않는 retain cycle 방지
+        config.userContentController.add(WeakScriptMessageHandler(bridge), name: IosBridge.name)
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -118,5 +120,14 @@ final class GameViewController: UIViewController {
 extension GameViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         gameCenter.authenticate()
+    }
+}
+
+/// WKUserContentController가 실제 핸들러를 강하게 retain하지 않도록 감싸는 약한 프록시.
+final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    private weak var delegate: WKScriptMessageHandler?
+    init(_ delegate: WKScriptMessageHandler) { self.delegate = delegate }
+    func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(ucc, didReceive: message)
     }
 }

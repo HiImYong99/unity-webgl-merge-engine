@@ -122,8 +122,10 @@ extension AdManager: GADFullScreenContentDelegate {
             loadRewarded()
             if !rewardEarned {
                 onRewardFail?()
-                onRewardFail = nil
             }
+            // 보상 여부와 무관하게 보류 콜백 정리 (stale 강참조 방지)
+            onReward = nil
+            onRewardFail = nil
         }
     }
 
@@ -138,6 +140,7 @@ extension AdManager: GADFullScreenContentDelegate {
             rewarded = nil
             loadRewarded()
             onRewardFail?()
+            onReward = nil
             onRewardFail = nil
         }
     }

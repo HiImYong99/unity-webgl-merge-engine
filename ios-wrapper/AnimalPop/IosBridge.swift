@@ -32,11 +32,19 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
             self?.callJS("window.onRewardedAdReadyFromIOS && onRewardedAdReadyFromIOS()")
         }
         if #available(iOS 15.0, *), let store = storeManager as? StoreManager {
-            store.onSuccess  = { [weak self] id, t in self?.callJS("window.onPurchaseSuccessFromIOS && onPurchaseSuccessFromIOS('\(id)','\(t)')") }
-            store.onFailed   = { [weak self] id, c in self?.callJS("window.onPurchaseFailedFromIOS && onPurchaseFailedFromIOS('\(id)',\(c))") }
-            store.onCancelled = { [weak self] id in self?.callJS("window.onPurchaseCancelledFromIOS && onPurchaseCancelledFromIOS('\(id)')") }
-            store.onRestored = { [weak self] id, t in self?.callJS("window.onPurchaseRestoredFromIOS && onPurchaseRestoredFromIOS('\(id)','\(t)')") }
+            store.onSuccess  = { [weak self] id, t in self?.callJS("window.onPurchaseSuccessFromIOS && onPurchaseSuccessFromIOS(\(Self.js(id)),\(Self.js(t)))") }
+            store.onFailed   = { [weak self] id, c in self?.callJS("window.onPurchaseFailedFromIOS && onPurchaseFailedFromIOS(\(Self.js(id)),\(c))") }
+            store.onCancelled = { [weak self] id in self?.callJS("window.onPurchaseCancelledFromIOS && onPurchaseCancelledFromIOS(\(Self.js(id)))") }
+            store.onRestored = { [weak self] id, t in self?.callJS("window.onPurchaseRestoredFromIOS && onPurchaseRestoredFromIOS(\(Self.js(id)),\(Self.js(t)))") }
         }
+    }
+
+    /// 문자열을 JS 리터럴로 안전 인코딩 (따옴표/백슬래시 이스케이프) → JS 인젝션 방지
+    static func js(_ s: String) -> String {
+        if let data = try? JSONEncoder().encode(s), let str = String(data: data, encoding: .utf8) {
+            return str   // JSON 문자열은 그대로 유효한 JS 문자열 리터럴
+        }
+        return "''"
     }
 
     private func callJS(_ js: String) {

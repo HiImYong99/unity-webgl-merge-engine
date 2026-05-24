@@ -18,12 +18,16 @@ final class StoreManager {
     var onRestored: ((String, String) -> Void)?
 
     private var updatesTask: Task<Void, Never>?
+    /// 이미 처리한 트랜잭션 — purchase() 인라인 경로와 Transaction.updates 경로가
+    /// 같은 트랜잭션을 중복 지급하지 않도록 dedupe (@MainActor 접근이라 락 불필요)
+    private var handledTransactionIDs = Set<UInt64>()
 
-    /// 앱 시작 시 호출 — 미완료/Ask-to-Buy 트랜잭션 수신
+    /// 앱 시작 시 호출 — 미완료/Ask-to-Buy/백그라운드 완료 트랜잭션 수신.
+    /// updates 스트림은 "완료해야 할 트랜잭션"이므로 신규 구매로 처리(onSuccess).
     func startObserving() {
-        updatesTask = Task.detached { [weak self] in
+        updatesTask = Task { [weak self] in
             for await result in Transaction.updates {
-                await self?.handle(verificationResult: result, isRestore: true)
+                await self?.handle(verificationResult: result, isRestore: false)
             }
         }
     }
@@ -75,6 +79,16 @@ final class StoreManager {
     private func handle(verificationResult result: VerificationResult<Transaction>, isRestore: Bool) async {
         guard case .verified(let transaction) = result else {
             NSLog("[StoreManager] 검증 실패 트랜잭션")
+            return
+        }
+        // 환불/취소된 구매: 보상 재지급 방지 — 콜백 없이 종료 처리
+        if transaction.revocationDate != nil {
+            await transaction.finish()
+            return
+        }
+        // 중복 지급 방지: 같은 트랜잭션이 두 경로로 와도 1회만 콜백
+        guard handledTransactionIDs.insert(transaction.id).inserted else {
+            await transaction.finish()
             return
         }
         let id = transaction.productID

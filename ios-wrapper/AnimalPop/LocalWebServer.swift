@@ -15,7 +15,8 @@ final class LocalWebServer {
 
     init() {
         // 앱 번들 내 web/ 디렉토리 (build.sh ios가 Unity Build/ 복사)
-        webRoot = Bundle.main.bundleURL.appendingPathComponent("web", isDirectory: true)
+        let root = Bundle.main.resourceURL ?? Bundle.main.bundleURL
+        webRoot = root.appendingPathComponent("web", isDirectory: true)
     }
 
     func start() {
@@ -32,11 +33,14 @@ final class LocalWebServer {
                 let relative = request.path.hasPrefix("/") ? String(request.path.dropFirst()) : request.path
                 let filePath = self.webRoot.appendingPathComponent(relative).path
 
-                let byteRange = request.hasByteRange()
-                    ? request.byteRange
-                    : NSRange(location: NSNotFound, length: 0)
-
-                guard let resp = GCDWebServerFileResponse(file: filePath, byteRange: byteRange) else {
+                // range 요청이면 부분(206), 아니면 전체 파일 — 각각 전용 이니셜라이저 사용
+                let resp: GCDWebServerFileResponse?
+                if request.hasByteRange() {
+                    resp = GCDWebServerFileResponse(file: filePath, byteRange: request.byteRange)
+                } else {
+                    resp = GCDWebServerFileResponse(file: filePath)
+                }
+                guard let resp = resp else {
                     return GCDWebServerResponse(statusCode: 404)
                 }
                 resp.setValue("br", forAdditionalHeader: "Content-Encoding")
@@ -65,8 +69,8 @@ final class LocalWebServer {
         do {
             try server.start(options: [
                 GCDWebServerOption_BindToLocalhost: true,
-                GCDWebServerOption_Port: 0,                       // 빈 포트 자동 할당
-                GCDWebServerOption_AutomaticallySuspendInBackground: false
+                GCDWebServerOption_Port: 0                        // 빈 포트 자동 할당
+                // AutomaticallySuspendInBackground 기본값(true) 유지 — 포그라운드 복귀 시 자동 재개
             ])
             baseURL = server.serverURL
         } catch {
