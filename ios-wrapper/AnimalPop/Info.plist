@@ -13,25 +13,48 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleDisplayName</key>
-    <string>애니멀 팝</string>
+    <string>Animal Pop</string>
     <key>CFBundleName</key>
     <string>AnimalPop</string>
+    <!-- 글로벌: 지원 로케일 명시 (홈화면 표시명/ATT 문구는 *.lproj/InfoPlist.strings로 현지화) -->
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ko</string>
+        <string>ja</string>
+        <string>zh-Hans</string>
+        <string>zh-Hant</string>
+        <string>es</string>
+        <string>pt</string>
+        <string>de</string>
+        <string>fr</string>
+        <string>id</string>
+    </array>
     <key>CFBundleShortVersionString</key>
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <!-- 수출규정: 표준 HTTPS만 사용(면제) → TestFlight/심사 compliance 자동 통과, 매 빌드 수동 응답 불필요 -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 
-    <!-- ★ [USER ACTION] AdMob 콘솔의 iOS 앱 ID로 교체 (현재 Google 테스트 앱 ID) -->
+    <!-- AdMob iOS 앱 ID (실 ID, 2026-06-21) -->
     <key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-3940256099942544~1458002511</string>
+    <string>ca-app-pub-4036435726138230~7984186398</string>
 
     <!-- ATT: 개인화 광고 추적 권한 요청 문구 -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>맞춤형 광고를 제공하기 위해 사용돼요. 거부해도 게임은 그대로 이용할 수 있어요.</string>
+    <string>Used to deliver personalized ads. You can keep playing even if you decline.</string>
 
     <!-- 화면 -->
+    <!-- ★ 런치스크린 미설정 시 iOS가 레거시 호환 모드(320×480)로 띄워 화면을 못 채우고
+         게임 레이아웃이 어긋난다. 빈 UILaunchScreen으로 네이티브 전체화면 렌더를 활성화. -->
+    <key>UILaunchScreen</key>
+    <dict/>
     <key>UIRequiresFullScreen</key>
     <true/>
     <key>UIStatusBarHidden</key>

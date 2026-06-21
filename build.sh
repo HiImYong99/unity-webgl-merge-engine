@@ -21,7 +21,9 @@ ANDROID_DIR="$PROJECT_DIR/android-wrapper"
 ANDROID_ASSETS="$ANDROID_DIR/app/src/main/assets"
 IOS_DIR="$PROJECT_DIR/ios-wrapper"
 IOS_WEB="$IOS_DIR/AnimalPop/web"
-VERSION_FILE="$PROJECT_DIR/VERSION"
+# 주의: 파일명이 'VERSION'이면 macOS(대소문자 무시 APFS)에서 C++ 표준헤더 <version>과 충돌 →
+# WebGL il2cpp 빌드가 emcc '-I.'로 ./VERSION을 <version>으로 잘못 include해 빌드 실패. 'VERSION.txt'로 회피.
+VERSION_FILE="$PROJECT_DIR/VERSION.txt"
 
 # ── 색상 ──
 RED='\033[0;31m'
@@ -342,6 +344,21 @@ build_ios() {
     cp "$WEBGL_BUILD_DIR/index.html" "$IOS_WEB/index.html"
     [ -d "$WEBGL_BUILD_DIR/sprites" ]      && cp -R "$WEBGL_BUILD_DIR/sprites" "$IOS_WEB/sprites"
     [ -d "$WEBGL_BUILD_DIR/TemplateData" ] && cp -R "$WEBGL_BUILD_DIR/TemplateData" "$IOS_WEB/TemplateData"
+
+    # WKWebView는 plain HTTP(루프백 서버)에서 Content-Encoding: br를 디코딩하지 않으므로
+    # (HTTPS 전용) 토스용 Brotli(.br) 빌드를 그대로 쓰면 Unity 로더가 raw brotli를 받아
+    # 파싱 실패 → 검정화면. .br 파일을 미리 해제(identity)하고 파일명(.br)은 유지한다.
+    # index.html이 .br URL을 참조하므로 이름은 그대로 두고 내용만 해제하면 된다.
+    if command -v brotli &>/dev/null; then
+        info ".br 파일 해제(identity) — WKWebView Brotli 미지원(HTTP) 대응"
+        # process substitution으로 메인 셸에서 실행 → set -e/실패 전파 보장
+        while IFS= read -r f; do
+            brotli -d -c "$f" > "$f.dec" || { rm -f "$f.dec"; fail "brotli 해제 실패: $f"; }
+            mv "$f.dec" "$f"
+        done < <(find "$IOS_WEB/Build" -name "*.br")
+    else
+        fail "brotli 없음. 설치: brew install brotli (iOS .br 해제에 필요)"
+    fi
 
     if ! command -v xcodegen &>/dev/null; then
         fail "xcodegen 없음. 설치: brew install xcodegen"

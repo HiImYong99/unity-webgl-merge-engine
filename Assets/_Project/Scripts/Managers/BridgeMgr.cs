@@ -37,6 +37,7 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void notifyDangerZoneFromUnity(bool active);
     [DllImport("__Internal")] private static extern void notifyNewHighScoreFromUnity(int score);
     [DllImport("__Internal")] private static extern void onMergeFromUnity(int level);
+    [DllImport("__Internal")] private static extern void notifyGamePlayedFromUnity();
     [DllImport("__Internal")] private static extern void TossIAPPurchase(string productId);
     [DllImport("__Internal")] private static extern void TossIAPRestorePendingOrders();
     [DllImport("__Internal")] private static extern void TossPayCheckout(string payToken);
@@ -74,6 +75,7 @@ public class BridgeMgr : MonoBehaviour
     private static void notifyDangerZoneFromUnity(bool a) { }
     private static void notifyNewHighScoreFromUnity(int s) { }
     private static void onMergeFromUnity(int l) { }
+    private static void notifyGamePlayedFromUnity() { }
     private static void TossIAPPurchase(string productId) {
         Debug.Log($"[BridgeMgr MOCK] IAP Purchase: {productId}");
         Instance.OnIAPSuccess(productId);
@@ -119,7 +121,8 @@ public class BridgeMgr : MonoBehaviour
     public void RequestLogin() => TossAppLogin();
     public void RequestSafeArea() => TossGetSafeArea();
     public void RequestShare(string msg) => TossShare(msg);
-    public void RequestShare(int score, int level, string base64) => TossShare("제 점수는 " + score + "점이에요! 함께 애니멀 팝 즐겨봐요!");
+    // 점수만 전달 → JS(jslib)가 기기 로케일에 맞는 공유 문구 생성 (글로벌 다국어)
+    public void RequestShare(int score, int level, string base64) => TossShare(score.ToString());
     public void RequestVibrate(string style = "medium") => TossVibrate(style);
     public void RequestExit() => TossExitApp();
     public void SubmitLeaderboardScore(int s) => TossSubmitLeaderboardScore(s);
@@ -133,6 +136,7 @@ public class BridgeMgr : MonoBehaviour
     public void NotifyDanger(bool active) => notifyDangerZoneFromUnity(active);
     public void NotifyNewRecord(int score) => notifyNewHighScoreFromUnity(score);
     public void NotifyMerge(int level) => onMergeFromUnity(level);
+    public void NotifyGamePlayed() => notifyGamePlayedFromUnity(); // 프로모션 미션: 한 판 완료(게임오버) 알림
     public void NotifyAdRemoved() => notifyAdRemovedFromUnity();
 
     public void RequestIAPPurchase()

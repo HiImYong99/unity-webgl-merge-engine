@@ -36,6 +36,7 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
             store.onFailed   = { [weak self] id, c in self?.callJS("window.onPurchaseFailedFromIOS && onPurchaseFailedFromIOS(\(Self.js(id)),\(c))") }
             store.onCancelled = { [weak self] id in self?.callJS("window.onPurchaseCancelledFromIOS && onPurchaseCancelledFromIOS(\(Self.js(id)))") }
             store.onRestored = { [weak self] id, t in self?.callJS("window.onPurchaseRestoredFromIOS && onPurchaseRestoredFromIOS(\(Self.js(id)),\(Self.js(t)))") }
+            store.onNothingRestored = { [weak self] in self?.callJS("window.onNothingRestoredFromIOS && onNothingRestoredFromIOS()") }
         }
     }
 
@@ -96,7 +97,8 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
 
         case "shareText":
             let text = (body["text"] as? String) ?? ""
-            presentShare(text: text)
+            let url = body["url"] as? String
+            presentShare(text: text, url: url)
 
         case "log":
             NSLog("[JS] \((body["message"] as? String) ?? "")")
@@ -106,9 +108,11 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
         }
     }
 
-    private func presentShare(text: String) {
+    private func presentShare(text: String, url: String? = nil) {
         guard let vc = gameVC else { return }
-        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        var items: [Any] = [text]
+        if let url = url, let u = URL(string: url) { items.append(u) } // App Store 링크 첨부(바이럴)
+        let av = UIActivityViewController(activityItems: items, applicationActivities: nil)
         av.popoverPresentationController?.sourceView = vc.view
         vc.present(av, animated: true)
     }

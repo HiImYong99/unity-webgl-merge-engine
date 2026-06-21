@@ -5,6 +5,8 @@ target 'AnimalPop' do
 
   # AdMob (전면/보상형/배너). GAD 프리픽스 API 안정 버전(11.x)에 고정.
   pod 'Google-Mobile-Ads-SDK', '~> 11.13'
+  # UMP(사용자 동의 — EEA/GDPR). AdMob 의존성이지만 import 위해 명시.
+  pod 'GoogleUserMessagingPlatform', '~> 3.0'
   # 로컬 루프백 HTTP 서버 (WebGL Brotli 서빙)
   pod 'GCDWebServer', '~> 3.0'
 end

@@ -10,8 +10,8 @@ android {
         applicationId "com.animalpop.app"
         minSdk 24
         targetSdk 35
-        versionCode 15
-        versionName "1.2.1"
+        versionCode 19
+        versionName "1.3.0"
 
         // 64-bit 지원 (구글 플레이 필수)
         ndk {

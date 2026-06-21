@@ -10,10 +10,10 @@ import GoogleMobileAds
 ///   (Android ID는 iOS에서 동작하지 않음)
 final class AdManager: NSObject {
 
-    // ── [USER ACTION] iOS 광고 단위 ID로 교체 ──────────────────────
-    private let interstitialAdUnitID = "ca-app-pub-3940256099942544/4411468910" // TEST
-    private let rewardedAdUnitID     = "ca-app-pub-3940256099942544/1712485313" // TEST
-    private let bannerAdUnitID       = "ca-app-pub-3940256099942544/2934735716" // TEST
+    // ── iOS 실 광고 단위 ID (AdMob 콘솔, 2026-06-21) ──────────────────
+    private let interstitialAdUnitID = "ca-app-pub-4036435726138230/8071816302"
+    private let rewardedAdUnitID     = "ca-app-pub-4036435726138230/5668748311"
+    private let bannerAdUnitID       = "ca-app-pub-4036435726138230/7857183564"
     // ───────────────────────────────────────────────────────────────
 
     weak var rootViewController: UIViewController?
@@ -29,22 +29,31 @@ final class AdManager: NSObject {
     private var onRewardFail: (() -> Void)?
     private var rewardEarned = false
     private var rewardedRetry = 0
+    private var bannerRetry = 0
 
+    /// UMP 동의 완료 후 호출 — SDK 시작 → 전면/보상형/배너 로드.
     func start() {
         GADMobileAds.sharedInstance().start(completionHandler: { [weak self] _ in
             self?.loadInterstitial()
             self?.loadRewarded()
+            self?.loadBanner()   // SDK init 완료 후 배너 로드(이전엔 init 전 로드돼 첫 요청 실패)
         })
     }
 
     // ── 배너 ─────────────────────────────────────────────────────
+    /// 뷰만 생성·부착 (로드는 SDK start 완료 후 loadBanner()에서).
     func makeBanner(in vc: UIViewController) -> GADBannerView {
         let banner = GADBannerView(adSize: GADAdSizeBanner)
         banner.adUnitID = bannerAdUnitID
         banner.rootViewController = vc
-        banner.load(GADRequest())
+        banner.delegate = self
         bannerView = banner
         return banner
+    }
+
+    func loadBanner() {
+        bannerRetry = 0   // 명시적 재트리거는 항상 새 재시도 허용
+        bannerView?.load(GADRequest())
     }
 
     // ── 전면 광고 ─────────────────────────────────────────────────
@@ -143,5 +152,17 @@ extension AdManager: GADFullScreenContentDelegate {
             onReward = nil
             onRewardFail = nil
         }
+    }
+}
+
+// ── 배너 콜백 (실패 시 백오프 재시도 — 빈 배너 영역 방지) ──────────
+extension AdManager: GADBannerViewDelegate {
+    func bannerViewDidReceiveAd(_ bannerView: GADBannerView) { bannerRetry = 0 }
+    func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
+        NSLog("[AdManager] 배너 로드 실패(\(bannerRetry)): \(error.localizedDescription)")
+        guard bannerRetry < 3 else { return }
+        bannerRetry += 1
+        let delay = Double(bannerRetry) * 5.0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.bannerView?.load(GADRequest()) }
     }
 }

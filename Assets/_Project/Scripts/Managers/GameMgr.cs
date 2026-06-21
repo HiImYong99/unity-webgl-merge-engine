@@ -80,6 +80,7 @@ public class GameMgr : MonoBehaviour
     }
     private float _gameOverDetectionCooldown = 0f; // 복구 후 즉시 게임오버 방지용
     private List<Animal> _activeAnimals = new List<Animal>();
+    private bool _playCountedThisSession = false; // 프로모션 미션: 한 판당 1회만 카운트 (부활 중복 방지)
 
     private void Awake()
     {
@@ -206,6 +207,7 @@ public class GameMgr : MonoBehaviour
     public void StartGame()
     {
         CurrentState = GameState.Playing;
+        _playCountedThisSession = false; // 새 판 시작 → 미션 카운트 재무장
         // 광고 2배속은 세션(이번 판)만 유효 → 새 게임 시작 시 1배속 초기화
         // 영구 구매자는 JS에서 300ms 후 SetSpeedMultiplier('2')를 다시 보냄
         SpeedBoostActive = false;
@@ -242,6 +244,14 @@ public class GameMgr : MonoBehaviour
     {
         if (CurrentState == GameState.GameOver) return;
         CurrentState = GameState.GameOver;
+
+        // 프로모션 미션: 한 판을 끝까지 플레이(게임오버)하면 1회 카운트.
+        // 부활로 이어서 해도 같은 판이므로 세션당 1회만 알린다.
+        if (!_playCountedThisSession)
+        {
+            _playCountedThisSession = true;
+            if (BridgeMgr.Instance != null) BridgeMgr.Instance.NotifyGamePlayed();
+        }
 
         // 낙하 쿨다운 중 대기중인 스폰 예약 취소
         if (SpawnMgr.Instance != null)

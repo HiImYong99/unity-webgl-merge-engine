@@ -16,6 +16,8 @@ final class StoreManager {
     var onFailed: ((String, Int) -> Void)?
     var onCancelled: ((String) -> Void)?
     var onRestored: ((String, String) -> Void)?
+    /// 복원 시 복원할 구매가 하나도 없을 때 (Apple 심사: 결과 피드백 필수)
+    var onNothingRestored: (() -> Void)?
 
     private var updatesTask: Task<Void, Never>?
     /// 이미 처리한 트랜잭션 — purchase() 인라인 경로와 Transaction.updates 경로가
@@ -68,8 +70,13 @@ final class StoreManager {
         Task {
             // AppStore.sync()는 사용자 Apple ID 재인증을 유발할 수 있어
             // 현재 entitlement 순회로 충분 (비소모성).
+            var restoredCount = 0
             for await result in Transaction.currentEntitlements {
+                if case .verified(let t) = result, t.revocationDate == nil { restoredCount += 1 }
                 await handle(verificationResult: result, isRestore: true)
+            }
+            if restoredCount == 0 {
+                await MainActor.run { self.onNothingRestored?() }
             }
         }
     }

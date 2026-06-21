@@ -60,6 +60,11 @@ mergeInto(LibraryManager.library, {
     if (typeof window.onMergeFromUnity === 'function') window.onMergeFromUnity(level);
   },
 
+  // 프로모션 미션: 한 판 완료(게임오버) 시 1회 호출 (부활 중복 제외, C# GameMgr가 세션당 1회만 보냄)
+  notifyGamePlayedFromUnity: function() {
+    if (typeof window.onGamePlayedFromUnity === 'function') window.onGamePlayedFromUnity();
+  },
+
   // ─────────────────────────────────────────────────
   // 3. 광고 및 결제 (Interstitial / Rewarded)
   // ─────────────────────────────────────────────────
@@ -420,7 +425,10 @@ mergeInto(LibraryManager.library, {
   },
 
   TossShare: function(msgPtr) {
-    var msg = UTF8ToString(msgPtr);
+    var raw = UTF8ToString(msgPtr);
+    // C#은 점수(숫자)만 전달 → 로케일별 공유문구 생성. 숫자가 아니면 그대로 사용(하위호환).
+    var msg = (window._buildShareText && /^\d+$/.test(raw)) ? window._buildShareText(raw) : raw;
+    var shareTitle = (typeof window.AP_T === 'function') ? window.AP_T('app_title') : 'Animal Pop';
     var appScheme = 'intoss://animal-pop';
     var ogImageUrl = 'https://static.toss.im/icons/png/4x/icon-share-dots-mono.png';
 
@@ -429,7 +437,7 @@ mergeInto(LibraryManager.library, {
       if (window.AppsInToss && typeof window.AppsInToss.share === 'function') {
         window.AppsInToss.share({ message: finalMsg });
       } else if (navigator.share) {
-        navigator.share({ title: '애니멀 팝!', text: finalMsg, url: window.location.href });
+        navigator.share({ title: shareTitle, text: finalMsg, url: window.location.href });
       }
     }
 

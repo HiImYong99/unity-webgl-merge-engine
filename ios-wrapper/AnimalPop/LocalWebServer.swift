@@ -3,8 +3,10 @@ import GCDWebServer
 
 /// 번들된 Unity WebGL 빌드(`web/`)를 127.0.0.1 루프백 HTTP로 서빙.
 /// - WKWebView가 `file://`로 WASM streaming 시 겪는 CORS/MIME 제약을 회피
-/// - `.br`(Brotli) 파일에 `Content-Encoding: br` + 올바른 MIME 부여
-///   (WebKit은 Brotli 디코딩을 네이티브 지원 → 토스용 Brotli 빌드 그대로 재사용)
+/// - `.br` 확장자 파일에 올바른 MIME(application/wasm 등) 부여
+///   ※ WKWebView는 plain HTTP(http://localhost)에서 `Content-Encoding: br`를
+///     디코딩하지 않는다(HTTPS 전용). 따라서 빌드 동기화 시 `.br` 파일을 미리
+///     해제(identity)해 두고, 여기서는 Content-Encoding 없이 그대로 서빙한다.
 /// - HTTP range 요청 지원 (대용량 .data 스트리밍)
 /// Android의 `WebViewAssetLoader` 대응물.
 final class LocalWebServer {
@@ -20,7 +22,8 @@ final class LocalWebServer {
     }
 
     func start() {
-        // .br 파일 전용 핸들러 (Content-Encoding 헤더 주입). 일반 파일보다 먼저 등록.
+        // .br 확장자 파일 전용 핸들러 (올바른 MIME 부여). 일반 파일보다 먼저 등록.
+        // 파일은 빌드 동기화 단계에서 이미 해제(identity)되어 있으므로 Content-Encoding은 붙이지 않는다.
         server.addHandler(
             match: { method, url, headers, path, query -> GCDWebServerRequest? in
                 guard method == "GET", path.hasSuffix(".br") else { return nil }
@@ -33,17 +36,9 @@ final class LocalWebServer {
                 let relative = request.path.hasPrefix("/") ? String(request.path.dropFirst()) : request.path
                 let filePath = self.webRoot.appendingPathComponent(relative).path
 
-                // range 요청이면 부분(206), 아니면 전체 파일 — 각각 전용 이니셜라이저 사용
-                let resp: GCDWebServerFileResponse?
-                if request.hasByteRange() {
-                    resp = GCDWebServerFileResponse(file: filePath, byteRange: request.byteRange)
-                } else {
-                    resp = GCDWebServerFileResponse(file: filePath)
-                }
-                guard let resp = resp else {
+                guard let resp = GCDWebServerFileResponse(file: filePath) else {
                     return GCDWebServerResponse(statusCode: 404)
                 }
-                resp.setValue("br", forAdditionalHeader: "Content-Encoding")
 
                 let p = request.path
                 if p.hasSuffix(".js.br") {
@@ -69,10 +64,20 @@ final class LocalWebServer {
         do {
             try server.start(options: [
                 GCDWebServerOption_BindToLocalhost: true,
-                GCDWebServerOption_Port: 0                        // 빈 포트 자동 할당
-                // AutomaticallySuspendInBackground 기본값(true) 유지 — 포그라운드 복귀 시 자동 재개
+                GCDWebServerOption_Port: 0,                       // 빈 포트 자동 할당
+                // 기본값(true)이면 start 시점에 앱이 background 상태일 경우 GCDWebServer가
+                // 실제 소켓 바인딩을 미루고 throw 없이 YES만 반환한다(_port=0, serverURL=nil).
+                // 콜드런치 초기엔 applicationState가 background인 경우가 많아 baseURL이 nil이 되고
+                // WebView 로드가 영구히 스킵되어 검정화면이 된다. false로 즉시 바인딩을 강제한다.
+                GCDWebServerOption_AutomaticallySuspendInBackground: false
             ])
-            baseURL = server.serverURL
+            // server.serverURL은 기기/시뮬에서 start 성공 후에도 간헐적으로 nil을 반환한다
+            // (주 IP 주소 결정 실패). BindToLocalhost로 띄웠으므로 바인딩된 포트로 직접 구성한다.
+            if let url = server.serverURL {
+                baseURL = url
+            } else if server.port > 0 {
+                baseURL = URL(string: "http://127.0.0.1:\(server.port)/")
+            }
         } catch {
             NSLog("[LocalWebServer] start 실패: \(error)")
         }
