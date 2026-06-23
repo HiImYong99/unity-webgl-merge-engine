@@ -9,10 +9,11 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.3.0"
-    CURRENT_PROJECT_VERSION: "20"
+    CURRENT_PROJECT_VERSION: "21"
     DEVELOPMENT_TEAM: "A3NZTDWF42"                              # [USER ACTION] Apple Team ID
     PRODUCT_BUNDLE_IDENTIFIER: com.animalpop.app
     SWIFT_VERSION: "5.0"
+    ENABLE_ON_DEMAND_RESOURCES: NO   # 앱 미사용. Xcode 26.5 actool 버그(ODR thinned가 시뮬 런타임 조회→"No available simulator runtimes") 회피
 targets:
   AnimalPop:
     type: application
