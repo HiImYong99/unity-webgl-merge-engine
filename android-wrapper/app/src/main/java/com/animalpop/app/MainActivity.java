@@ -35,6 +35,11 @@ import com.google.android.gms.ads.interstitial.InterstitialAd;
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
 import com.google.android.gms.ads.rewarded.RewardedAd;
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
+import com.google.android.ump.ConsentInformation;
+import com.google.android.ump.ConsentRequestParameters;
+import com.google.android.ump.UserMessagingPlatform;
+import android.util.DisplayMetrics;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Animal Pop – 메인 액티비티
@@ -53,9 +58,9 @@ public class MainActivity extends Activity {
 
     // ── AdMob 광고 단위 ID ──────────────────────────────────────
     // AdMob 실제 광고 단위 ID
-    private static final String INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-2371797890397990/8608686822";
-    private static final String REWARDED_AD_UNIT_ID     = "ca-app-pub-2371797890397990/7714912138";
-    private static final String BANNER_AD_UNIT_ID       = "ca-app-pub-2371797890397990/8721980233"; // 실제 배너
+    private static final String INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-4036435726138230/6160074039";
+    private static final String REWARDED_AD_UNIT_ID     = "ca-app-pub-4036435726138230/3533910694";
+    private static final String BANNER_AD_UNIT_ID       = "ca-app-pub-4036435726138230/2224698459"; // 실제 배너
     // ────────────────────────────────────────────────────────────
 
     private WebView webView;
@@ -66,6 +71,9 @@ public class MainActivity extends Activity {
     private RewardedAd     rewardedAd;
     private AdView         bannerAdView;
     private BillingManager billingManager;
+    private PlayGamesManager playGames;
+    private ConsentInformation consentInformation;
+    private final AtomicBoolean adsInitialized = new AtomicBoolean(false);
     private boolean pageLoaded = false;
 
     @Override
@@ -87,7 +95,7 @@ public class MainActivity extends Activity {
         // 배너 광고 (하단 고정)
         bannerAdView = new AdView(this);
         bannerAdView.setAdUnitId(BANNER_AD_UNIT_ID);
-        bannerAdView.setAdSize(AdSize.BANNER);
+        bannerAdView.setAdSize(getAdaptiveBannerAdSize());
         FrameLayout.LayoutParams bannerParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT);
@@ -133,14 +141,26 @@ public class MainActivity extends Activity {
             }
         });
 
-        // AdMob SDK 초기화 → 광고 프리로드
-        MobileAds.initialize(this, initStatus -> {
-            Log.d(TAG, "AdMob initialized");
-            loadInterstitialAd();
-            loadRewardedAd();
-            // 배너 광고 로드
-            bannerAdView.loadAd(new AdRequest.Builder().build());
+        // UMP(EEA/GDPR) 동의 → canRequestAds일 때만 AdMob 시작 (iOS GameViewController와 동일 흐름)
+        consentInformation = UserMessagingPlatform.getConsentInformation(this);
+        ConsentRequestParameters consentParams = new ConsentRequestParameters.Builder().build();
+        consentInformation.requestConsentInfoUpdate(this, consentParams,
+            () -> UserMessagingPlatform.loadAndShowConsentFormIfRequired(this, formError -> {
+                if (formError != null) Log.w(TAG, "[Consent] form: " + formError.getMessage());
+                if (consentInformation.canRequestAds()) initializeAdsOnce();
+            }),
+            requestError -> {
+                Log.w(TAG, "[Consent] info update failed: " + requestError.getMessage());
+                if (consentInformation.canRequestAds()) initializeAdsOnce();
+            });
+        // 재방문(이미 동의 처리됨)이면 폼 없이 즉시 시작 (initializeAdsOnce가 중복 방지)
+        if (consentInformation.canRequestAds()) initializeAdsOnce();
+
+        // Play Games Services(리더보드) 초기화 — 사인인 성공 시 JS에 통지하여 리더보드 버튼 노출
+        playGames = new PlayGamesManager(this, authenticated -> {
+            if (authenticated) callJs("window.onPlayGamesReadyFromAndroid && window.onPlayGamesReadyFromAndroid()");
         });
+        playGames.init();
 
         // file:// 대신 로컬 HTTPS로 로드 (WASM streaming 정상 동작)
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
@@ -207,6 +227,10 @@ public class MainActivity extends Activity {
                 // 페이지 로드 완료 후 기구매 복원 (JS 함수가 정의된 뒤에 호출)
                 if (billingManager != null) {
                     mainHandler.postDelayed(() -> billingManager.restorePurchases(), 500);
+                }
+                // PGS 사인인이 페이지 로드 전에 완료된 경우(캐시된 인증) JS 핸들러가 없어 콜백이 유실됨 → 여기서 재통지
+                if (playGames != null && playGames.isAuthenticated()) {
+                    callJs("window.onPlayGamesReadyFromAndroid && window.onPlayGamesReadyFromAndroid()");
                 }
             }
         });
@@ -370,11 +394,49 @@ public class MainActivity extends Activity {
         public void logFromJS(String message) {
             Log.d(TAG, "[JS] " + message);
         }
+
+        // ── Play Games Services 리더보드 (iOS Game Center 대응) ───────────
+
+        /** 게임오버 점수를 PGS 리더보드에 제출 (window.GameBridge.submitScore) */
+        @JavascriptInterface
+        public void submitScore(long score) {
+            mainHandler.post(() -> { if (playGames != null) playGames.submitScore(score); });
+        }
+
+        /** 리더보드 버튼 → PGS 리더보드 UI 표시 */
+        @JavascriptInterface
+        public void showLeaderboard() {
+            mainHandler.post(() -> { if (playGames != null) playGames.showLeaderboard(); });
+        }
+
+        /** 리더보드 사용 가능(사인인 완료) 여부 */
+        @JavascriptInterface
+        public boolean isLeaderboardReady() {
+            return playGames != null && playGames.isAuthenticated();
+        }
     }
 
     // ══════════════════════════════════════════════════════
     //  AdMob 로드 메서드
     // ══════════════════════════════════════════════════════
+
+    /** AdMob SDK 1회 초기화 + 광고 프리로드 (UMP 동의 통과 후 호출; AtomicBoolean으로 중복 방지). */
+    private void initializeAdsOnce() {
+        if (!adsInitialized.compareAndSet(false, true)) return;
+        MobileAds.initialize(this, initStatus -> {
+            Log.d(TAG, "AdMob initialized");
+            loadInterstitialAd();
+            loadRewardedAd();
+            bannerAdView.loadAd(new AdRequest.Builder().build());
+        });
+    }
+
+    /** 화면 너비 기반 anchored adaptive 배너 크기 (고정 320×50 대비 fill/eCPM↑). */
+    private AdSize getAdaptiveBannerAdSize() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int adWidthDp = Math.round(dm.widthPixels / dm.density);
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this, adWidthDp);
+    }
 
     private void loadInterstitialAd() {
         AdRequest req = new AdRequest.Builder().build();
@@ -452,6 +514,13 @@ public class MainActivity extends Activity {
             })
             .setCancelable(true)
             .show();
+    }
+
+    // ── 리더보드 등 외부 액티비티 복귀 시 몰입 모드 복원 ──────────────────
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        applyImmersiveMode();
     }
 
     // ── 백그라운드 진입 시 오디오 정지 ──────────────────────────────────

@@ -43,7 +43,9 @@ final class AdManager: NSObject {
     // ── 배너 ─────────────────────────────────────────────────────
     /// 뷰만 생성·부착 (로드는 SDK start 완료 후 loadBanner()에서).
     func makeBanner(in vc: UIViewController) -> GADBannerView {
-        let banner = GADBannerView(adSize: GADAdSizeBanner)
+        // anchored adaptive 배너 (고정 320×50 대비 fill/eCPM↑). 세로 고정 앱이라 화면 너비 사용.
+        let adSize = GADCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(UIScreen.main.bounds.width)
+        let banner = GADBannerView(adSize: adSize)
         banner.adUnitID = bannerAdUnitID
         banner.rootViewController = vc
         banner.delegate = self

@@ -18,7 +18,12 @@
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-2371797890397990~9633993882"/>
+            android:value="ca-app-pub-4036435726138230~1099319049"/>
+
+        <!-- Play Games Services v2: PGS 프로젝트 ID (strings.xml에서 실제 값으로 교체) -->
+        <meta-data
+            android:name="com.google.android.gms.games.APP_ID"
+            android:value="@string/game_services_project_id"/>
 
         <activity
             android:name=".MainActivity"

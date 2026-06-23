@@ -1176,11 +1176,15 @@
 
         // ── Android 네이티브 콜백 등록 (Toss에서는 no-op) ──
         if (P === 'android') {
-            // 리더보드 버튼 숨기기 (Android에는 없음)
+            // 리더보드 버튼: PGS 사인인 성공 전까지 숨김(미인증 시 죽은 버튼 방지) → onPlayGamesReadyFromAndroid에서 노출
             var lgLb = document.getElementById('lg-leaderboard-btn');
             var goLb = document.getElementById('go-leaderboard-btn');
             if (lgLb) lgLb.style.display = 'none';
             if (goLb) goLb.style.display = 'none';
+            window.onPlayGamesReadyFromAndroid = function() {
+                if (lgLb) lgLb.style.removeProperty('display');
+                if (goLb) goLb.style.removeProperty('display');
+            };
 
             // Android 네이티브 → JS 콜백
             window.onInterstitialClosedFromAndroid = function() {
@@ -1273,7 +1277,7 @@
         // ── 통합 브릿지 ──
         window.GameBridge = {
             platform: P,
-            hasLeaderboard: P === 'toss' || P === 'ios',
+            hasLeaderboard: P === 'toss' || P === 'ios' || P === 'android',
 
             // 보상형 광고 (adType: 0=리바이브, 1=스피드부스트)
             showRewardedAd: function(adType) {
@@ -1367,12 +1371,15 @@
                     });
                 } else if (P === 'ios') {
                     window._iosCall('showLeaderboard');
+                } else if (P === 'android' && window.AndroidBridge && typeof window.AndroidBridge.showLeaderboard === 'function') {
+                    window.AndroidBridge.showLeaderboard();
                 }
             },
 
-            // Game Center 점수 제출 (iOS 전용; Toss/Android는 no-op)
+            // 리더보드 점수 제출 (iOS Game Center / Android Play Games; Toss는 no-op)
             submitScore: function(score) {
                 if (P === 'ios') window._iosCall('submitScore', { score: Number(score) || 0 });
+                else if (P === 'android' && window.AndroidBridge && typeof window.AndroidBridge.submitScore === 'function') window.AndroidBridge.submitScore(Number(score) || 0);
             },
 
             // 공유
@@ -1937,6 +1944,11 @@
         if (el) el.style.display = 'none';
     }
 
+    // 인터스티셜 최소 노출 간격(75s): 매판 전면광고 과다노출 방지 → 리텐션/정책/순수익 개선
+    function _interstitialAllowed() {
+        return (Date.now() - (window._lastInterstitialAt || 0)) >= 75000;
+    }
+
     function onRestartClicked() {
         // 처음부터 다시하기 → 전면(비보상형) 광고 후 재시작.
         // (광고제거 구매자 / 이번 판 부활 2회 소진 시엔 _showInterstitialThenToss가 자동 스킵)
@@ -1944,7 +1956,8 @@
         window._restartInProgress = true;
         _showRestartLoading();                 // 광고 로딩 동안 스피너 (무반응처럼 보이지 않게)
         var go = function() { _hideRestartLoading(); window._restartInProgress = false; restartGame(); };
-        if (window.GameBridge && typeof window.GameBridge.showInterstitialAd === 'function') {
+        if (window.GameBridge && typeof window.GameBridge.showInterstitialAd === 'function' && _interstitialAllowed()) {
+            window._lastInterstitialAt = Date.now();
             window.GameBridge.showInterstitialAd(go);
         } else {
             go();
