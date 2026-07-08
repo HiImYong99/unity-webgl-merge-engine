@@ -1,11 +1,8 @@
 import UIKit
-import AppTrackingTransparency
 import GoogleMobileAds
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-
-    private var didRequestATT = false
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -13,22 +10,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        requestTrackingPermissionOnce()
-    }
-
-    /// ATT(App Tracking Transparency) 권한 1회 요청.
-    /// 거부 시 AdMob은 자동으로 비개인화 광고로 폴백.
-    private func requestTrackingPermissionOnce() {
-        guard !didRequestATT else { return }
-        didRequestATT = true
-        if #available(iOS 14, *) {
-            // 앱이 active 상태가 된 직후 요청 (Apple 요구사항)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                ATTrackingManager.requestTrackingAuthorization { _ in }
-            }
-        }
-    }
+    // ATT(App Tracking Transparency) 요청은 GameViewController의 UMP 동의 흐름 뒤에서 수행한다.
+    // UMP 동의 폼과 ATT 프롬프트가 동시에 표시되면 iOS가 ATT를 조용히 무시하고,
+    // 1회 가드 때문에 재요청도 안 돼 프롬프트가 영영 안 뜬다(App Store 2.1 반려 원인).
 
     // MARK: UISceneSession
     func application(_ application: UIApplication,

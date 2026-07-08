@@ -54,6 +54,7 @@ public class PlayGamesManager {
     /** 게임오버 점수 제출 (미인증 시 무시) */
     void submitScore(long score) {
         if (!authenticated) { Log.d(TAG, "[PGS] submitScore skipped (not authenticated)"); return; }
+        if (activity.isFinishing()) { Log.d(TAG, "[PGS] submitScore skipped (activity finishing)"); return; }
         PlayGames.getLeaderboardsClient(activity).submitScore(leaderboardId, score);
         Log.d(TAG, "[PGS] submitScore " + score);
     }

@@ -1,29 +1,28 @@
 #!/bin/bash
-# ait-build 조립 + 배포 v2 — SDK 2.0.0 스캐폴드 사용 (`ait build`, 서버 요구 번들 포맷)
+# ait-build 조립 + 배포 v3 — web-framework 2.10.1 (프로젝트 BuildConfig 단일 진실원)
 # 선행: Unity AITBuildScript.BuildWebGL 로 ait-build/public + ait-build/index.html (AnimalPop) 생성됨
-# 1.14.1(granite build)은 서버가 "필수 번들 파일 누락"으로 거부 → 2.0.0 `ait build` 필요
+# SDK 소스 = Assets/.../BuildConfig~ (2.10.1). PackageCache(휘발성) 의존 제거, pnpm-lock 매 빌드 재생성.
 set -e
 PROJ="/Users/yong/Desktop/unity-webgl-merge-engine"
 AIT="$PROJ/ait-build"
-# 2.0.0 스캐폴드: SDK 패키지의 BuildConfig~ (프로젝트 BuildConfig는 1.14.1로 outdated)
-BC="$PROJ/Library/PackageCache/im.toss.apps-in-toss-unity-sdk@1d218b7779/WebGLTemplates/AITTemplate/BuildConfig~"
+# 2.10.1 스캐폴드: 프로젝트 BuildConfig~ (단일 진실원)
+BC="$PROJ/Assets/WebGLTemplates/AITTemplate/BuildConfig~"
 NODEBIN="$HOME/.ait-unity-sdk/nodejs/v24.13.0/darwin-arm64/bin"
 export PATH="$NODEBIN:$PATH"
 
 [ -f "$AIT/index.html" ] || { echo "FAIL: $AIT/index.html 없음 — Unity 빌드 먼저"; exit 1; }
 [ -d "$AIT/public/Build" ] || { echo "FAIL: $AIT/public/Build 없음 — Unity 빌드 먼저"; exit 1; }
 
-echo "[0] 이전 1.14.1 잔재 정리 (node_modules/lock/dist/.ait)"
+echo "[0] 이전 잔재 정리 (node_modules/lock/dist/.ait)"
 rm -rf "$AIT/node_modules" "$AIT/pnpm-lock.yaml" "$AIT/dist" "$AIT"/*.ait
 
-echo "[1] 2.0.0 BuildConfig 스캐폴드 복사 (public/·index.html 은 건드리지 않음)"
+echo "[1] 2.10.1 BuildConfig 스캐폴드 복사 (public/·index.html 은 건드리지 않음)"
 cp "$BC/package.json"    "$AIT/package.json"
 cp "$BC/vite.config.ts"  "$AIT/vite.config.ts"
 cp "$BC/tsconfig.json"   "$AIT/tsconfig.json"
 cp "$BC/unity-bridge.ts" "$AIT/unity-bridge.ts"
-cp "$BC/pnpm-lock.yaml"  "$AIT/pnpm-lock.yaml"
 
-echo "[2] granite.config.ts 생성 (AITConfig 값 치환, 2.0.0 스키마)"
+echo "[2] granite.config.ts 생성 (AITConfig 값 치환)"
 cat > "$AIT/granite.config.ts" <<'EOF'
 import { defineConfig } from '@apps-in-toss/web-framework/config';
 
@@ -56,14 +55,17 @@ const sdkConfig = {
 //// SDK_GENERATED_END ////
 
 //// USER_CONFIG_START ////
-const userConfig = {};
+const userConfig = {
+  // 게임 내비게이션 바: 투명 배경 + 검정 더보기/닫기 버튼 (2.10.1 기본 불투명 헤더 회귀 방지)
+  navigationBar: { theme: 'light', transparentBackground: true },
+};
 //// USER_CONFIG_END ////
 
 export default defineConfig({ ...sdkConfig, ...userConfig });
 EOF
 
 cd "$AIT"
-echo "[3] pnpm install (web-framework 2.0.0, 번들 node $(node -v))"
+echo "[3] pnpm install (web-framework 2.10.1, 번들 node $(node -v))"
 pnpm install
 
 echo "[4] 설치된 web-framework 버전 확인"

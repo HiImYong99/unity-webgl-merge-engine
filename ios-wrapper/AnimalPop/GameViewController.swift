@@ -2,6 +2,7 @@ import UIKit
 import WebKit
 import GoogleMobileAds
 import UserMessagingPlatform
+import AppTrackingTransparency
 
 /// [진단] print는 시뮬레이터 통합로그/Console에 잡히지 않으므로 NSLog로 출력한다.
 /// (실기기 `devicectl --console`·시뮬 `log show` 양쪽에서 캡처됨)
@@ -67,9 +68,35 @@ final class GameViewController: UIViewController {
                         if let formError = formError {
                             NSLog("[Consent] 폼 오류: \(formError.localizedDescription)")
                         }
-                        self?.startAdsIfAllowed()
+                        // UMP 동의 폼이 닫힌 뒤 ATT 요청 → 완료 후 광고 시작 (모달 충돌 방지, Apple 2.1)
+                        self?.requestATTThenStartAds()
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - ATT (App Tracking Transparency — Apple 2.1)
+    /// UMP 동의 폼이 닫힌 뒤 ATT 권한 프롬프트를 띄우고, 완료 후 광고를 시작한다.
+    /// - Apple 요구: 추적 데이터 수집(광고 로드) '전에' 프롬프트가 떠야 함.
+    /// - AdMob 가이드: requestTrackingAuthorization 완료 핸들러를 기다린 뒤 광고 로드.
+    /// - iOS는 앱이 foreground-active일 때만 프롬프트를 표시(아니면 조용히 무시) → 상태 확인 후 요청.
+    private func requestATTThenStartAds() {
+        guard #available(iOS 14, *) else { startAdsIfAllowed(); return }
+        let request = { [weak self] in
+            ATTrackingManager.requestTrackingAuthorization { _ in
+                DispatchQueue.main.async { self?.startAdsIfAllowed() }
+            }
+        }
+        if UIApplication.shared.applicationState == .active {
+            request()
+        } else {
+            // 아직 active가 아니면 프롬프트가 무시되므로, active 전환 시 1회만 요청.
+            var observer: NSObjectProtocol?
+            observer = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+                if let observer = observer { NotificationCenter.default.removeObserver(observer) }
+                request()
             }
         }
     }

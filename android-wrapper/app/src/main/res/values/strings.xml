@@ -5,6 +5,6 @@
     <!-- ★ Play Games Services: 아래 두 값을 Play Console에서 발급받은 실제 값으로 교체 필수.
          (Play Console > Play Games Services > 설정 및 관리 > 구성)
          교체 전까지는 PGS 사인인이 실패하여 리더보드 버튼이 숨겨진 채로 동작함. -->
-    <string name="game_services_project_id" translatable="false">000000000000</string>
-    <string name="leaderboard_highscore" translatable="false">REPLACE_WITH_LEADERBOARD_ID</string>
+    <string name="game_services_project_id" translatable="false">181161078664</string>
+    <string name="leaderboard_highscore" translatable="false">CgkIiN-q8KIFEAIQAQ</string>
 </resources>
