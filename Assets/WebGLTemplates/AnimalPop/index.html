@@ -1438,6 +1438,13 @@
                     window._iosCall('haptic', { kind: kind });
                 } else if (P === 'android' && window.AndroidBridge && typeof window.AndroidBridge.haptic === 'function') {
                     window.AndroidBridge.haptic(kind);
+                } else if (P === 'toss' && window.AppsInToss && typeof window.AppsInToss.generateHapticFeedback === 'function') {
+                    // 토스 SDK 햅틱 타입으로 매핑 (light/medium/success/warning/error → tickWeak/tickMedium/success/basicMedium/error)
+                    var _hm = { light: 'tickWeak', medium: 'tickMedium', success: 'success', warning: 'basicMedium', error: 'error' };
+                    try {
+                        var _hp = window.AppsInToss.generateHapticFeedback({ type: _hm[kind] || 'tickWeak' });
+                        if (_hp && _hp.catch) _hp.catch(function(){});
+                    } catch (e) { /* noop */ }
                 }
             },
 
