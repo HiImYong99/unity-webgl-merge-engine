@@ -30,7 +30,7 @@ import { defineConfig } from '@apps-in-toss/web-framework/config';
 const sdkConfig = {
   appName: 'animal-pop',
   brand: {
-    displayName: '애니멀 팝',
+    displayName: '애니멀 팝: 동물 합치기',
     primaryColor: '#3182F6',
     icon: 'https://static.toss.im/appsintoss/25373/13ee6c7f-08f9-42ef-8294-dafbb535be7f.png',
     bridgeColorMode: 'inverted',
