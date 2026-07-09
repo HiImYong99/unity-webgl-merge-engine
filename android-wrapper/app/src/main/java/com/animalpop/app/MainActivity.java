@@ -414,6 +414,44 @@ public class MainActivity extends Activity {
         public boolean isLeaderboardReady() {
             return playGames != null && playGames.isAuthenticated();
         }
+
+        // ── 햅틱 / 인앱 리뷰 ────────────────────────────────────────
+
+        /** 게임 이벤트 햅틱 (병합/신기록/위험존/게임오버). kind: light|medium|success|warning|error */
+        @JavascriptInterface
+        public void haptic(String kind) {
+            mainHandler.post(() -> {
+                android.os.Vibrator vib = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (vib == null || !vib.hasVibrator()) return;
+                long ms; int amp;
+                switch (kind == null ? "light" : kind) {
+                    case "medium":  ms = 30; amp = 160; break;
+                    case "success": ms = 40; amp = 200; break;
+                    case "warning": ms = 45; amp = 220; break;
+                    case "error":   ms = 55; amp = 255; break;
+                    default:        ms = 18; amp = 90;  break;
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    vib.vibrate(android.os.VibrationEffect.createOneShot(ms, amp));
+                } else {
+                    vib.vibrate(ms);
+                }
+            });
+        }
+
+        /** 신기록 모먼트 Google Play In-App Review — 노출 빈도는 Play가 throttle */
+        @JavascriptInterface
+        public void requestReview() {
+            mainHandler.post(() -> {
+                com.google.android.play.core.review.ReviewManager rm =
+                        com.google.android.play.core.review.ReviewManagerFactory.create(MainActivity.this);
+                rm.requestReviewFlow().addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && !isFinishing()) {
+                        rm.launchReviewFlow(MainActivity.this, task.getResult());
+                    }
+                });
+            });
+        }
     }
 
     // ══════════════════════════════════════════════════════

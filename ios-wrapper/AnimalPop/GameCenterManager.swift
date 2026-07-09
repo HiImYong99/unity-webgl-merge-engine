@@ -16,19 +16,33 @@ final class GameCenterManager: NSObject {
     private(set) var isAuthenticated = false
     /// 인증 시 표시해야 할 VC가 있으면 호출 (rootVC가 present)
     var presentAuthVC: ((UIViewController) -> Void)?
+    /// 리더보드 요청이 미인증으로 확정 실패했을 때 (JS 안내 토스트용)
+    var onUnavailable: (() -> Void)?
+    /// 미인증 상태에서 리더보드 버튼을 누른 경우, 재인증 성공 후 바로 표시하기 위한 보류 VC
+    private weak var pendingPresentVC: UIViewController?
 
     func authenticate() {
         GKLocalPlayer.local.authenticateHandler = { [weak self] vc, error in
+            guard let self = self else { return }
             if let vc = vc {
-                self?.presentAuthVC?(vc)
+                self.presentAuthVC?(vc)
                 return
             }
             if let error = error {
                 NSLog("[GameCenter] 인증 실패: \(error.localizedDescription)")
-                self?.isAuthenticated = false
+                self.isAuthenticated = false
+                if self.pendingPresentVC != nil {
+                    self.pendingPresentVC = nil
+                    self.onUnavailable?()
+                }
                 return
             }
-            self?.isAuthenticated = GKLocalPlayer.local.isAuthenticated
+            self.isAuthenticated = GKLocalPlayer.local.isAuthenticated
+            if let host = self.pendingPresentVC {
+                self.pendingPresentVC = nil
+                if self.isAuthenticated { self.present(from: host) }
+                else { self.onUnavailable?() }
+            }
         }
     }
 
@@ -46,9 +60,15 @@ final class GameCenterManager: NSObject {
 
     func presentLeaderboard(from vc: UIViewController) {
         guard isAuthenticated else {
+            // 미인증: 재인증 시도 후 성공하면 바로 표시, 확정 실패면 onUnavailable (버튼 무반응 방지)
+            pendingPresentVC = vc
             authenticate()
             return
         }
+        present(from: vc)
+    }
+
+    private func present(from vc: UIViewController) {
         let gcVC = GKGameCenterViewController(leaderboardID: GameCenterManager.leaderboardId,
                                               playerScope: .global,
                                               timeScope: .allTime)

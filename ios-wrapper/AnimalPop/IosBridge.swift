@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import WebKit
+import StoreKit
 
 /// JS → 네이티브 브릿지. JS는 다음과 같이 호출:
 ///   window.webkit.messageHandlers.iosBridge.postMessage({ action: "...", ... })
@@ -16,6 +17,11 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
     private let adManager: AdManager
     private let storeManager: Any   // StoreManager (iOS 15+); Any로 보관 후 캐스팅
     private let gameCenter: GameCenterManager
+
+    // 햅틱 제너레이터 (매 호출 생성 비용 회피 — 병합은 고빈도)
+    private let hapticLight  = UIImpactFeedbackGenerator(style: .light)
+    private let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticNotify = UINotificationFeedbackGenerator()
 
     init(gameVC: GameViewController, adManager: AdManager, storeManager: Any, gameCenter: GameCenterManager) {
         self.gameVC = gameVC
@@ -37,6 +43,9 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
             store.onCancelled = { [weak self] id in self?.callJS("window.onPurchaseCancelledFromIOS && onPurchaseCancelledFromIOS(\(Self.js(id)))") }
             store.onRestored = { [weak self] id, t in self?.callJS("window.onPurchaseRestoredFromIOS && onPurchaseRestoredFromIOS(\(Self.js(id)),\(Self.js(t)))") }
             store.onNothingRestored = { [weak self] in self?.callJS("window.onNothingRestoredFromIOS && onNothingRestoredFromIOS()") }
+        }
+        gameCenter.onUnavailable = { [weak self] in
+            self?.callJS("window.onLeaderboardUnavailableFromIOS && onLeaderboardUnavailableFromIOS()")
         }
     }
 
@@ -100,11 +109,34 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
             let url = body["url"] as? String
             presentShare(text: text, url: url)
 
+        case "haptic":
+            playHaptic(kind: (body["kind"] as? String) ?? "light")
+
+        case "requestReview":
+            // 신기록 모먼트 리뷰 요청 — 노출 빈도는 OS가 throttle (연 3회 상한)
+            if let scene = gameVC?.view.window?.windowScene {
+                if #available(iOS 16.0, *) {
+                    AppStore.requestReview(in: scene)
+                } else {
+                    SKStoreReviewController.requestReview(in: scene)
+                }
+            }
+
         case "log":
             NSLog("[JS] \((body["message"] as? String) ?? "")")
 
         default:
             NSLog("[IosBridge] 알 수 없는 action: \(action)")
+        }
+    }
+
+    private func playHaptic(kind: String) {
+        switch kind {
+        case "medium":  hapticMedium.impactOccurred()
+        case "success": hapticNotify.notificationOccurred(.success)
+        case "warning": hapticNotify.notificationOccurred(.warning)
+        case "error":   hapticNotify.notificationOccurred(.error)
+        default:        hapticLight.impactOccurred()
         }
     }
 

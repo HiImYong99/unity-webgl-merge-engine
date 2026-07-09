@@ -75,6 +75,8 @@ dependencies {
     implementation 'com.android.billingclient:billing:7.1.1'
     // Google Play Games Services v2 – 리더보드(랭킹)
     implementation 'com.google.android.gms:play-services-games-v2:21.0.0'
+    // Google Play In-App Review – 신기록 모먼트 별점 요청
+    implementation 'com.google.android.play:review:2.0.2'
     // UMP(EEA/GDPR 동의)는 play-services-ads에 번들됨 → 별도 dependency 불필요
     // (com.google.android.ump.* 클래스는 play-services-ads 경유로 제공)
 }

@@ -5,6 +5,8 @@
     <uses-permission android:name="com.android.vending.BILLING" />
     <!-- AdMob: 광고 ID 접근 권한 (구글 플레이 정책 필수) -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- 햅틱 피드백 (AndroidBridge.haptic — 미선언 시 SecurityException 크래시) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="false"
