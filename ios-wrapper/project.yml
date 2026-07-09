@@ -9,7 +9,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.4.0"
-    CURRENT_PROJECT_VERSION: "24"
+    CURRENT_PROJECT_VERSION: "25"
     DEVELOPMENT_TEAM: "A3NZTDWF42"                              # [USER ACTION] Apple Team ID
     PRODUCT_BUNDLE_IDENTIFIER: com.animalpop.app
     SWIFT_VERSION: "5.0"

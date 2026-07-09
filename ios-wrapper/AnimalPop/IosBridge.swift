@@ -104,6 +104,11 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
         case "showLeaderboard":
             if let vc = gameVC { gameCenter.presentLeaderboard(from: vc) }
 
+        case "reportAchievement":
+            let id = (body["id"] as? String) ?? ""
+            let percent = (body["percent"] as? Double) ?? Double((body["percent"] as? Int) ?? 0)
+            if !id.isEmpty { gameCenter.reportAchievement(id: id, percent: percent) }
+
         case "shareText":
             let text = (body["text"] as? String) ?? ""
             let url = body["url"] as? String

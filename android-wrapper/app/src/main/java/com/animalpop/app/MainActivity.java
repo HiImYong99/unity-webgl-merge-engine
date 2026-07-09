@@ -415,6 +415,22 @@ public class MainActivity extends Activity {
             return playGames != null && playGames.isAuthenticated();
         }
 
+        /**
+         * 업적 보고 (JS는 벤더 키 'animalpop_*'를 넘김 → strings.xml achievement_* 리소스로 콘솔 ID 해석).
+         * PGS 콘솔에서 업적 생성 전(플레이스홀더)에는 무시됨.
+         */
+        @JavascriptInterface
+        public void reportAchievement(String key, int percent) {
+            if (key == null) return;
+            mainHandler.post(() -> {
+                if (playGames == null) return;
+                String resName = "achievement_" + key.replace("animalpop_", "");
+                int resId = getResources().getIdentifier(resName, "string", getPackageName());
+                if (resId == 0) return;
+                playGames.reportAchievement(getString(resId), percent);
+            });
+        }
+
         // ── 햅틱 / 인앱 리뷰 ────────────────────────────────────────
 
         /** 게임 이벤트 햅틱 (병합/신기록/위험존/게임오버). kind: light|medium|success|warning|error */

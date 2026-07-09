@@ -5,4 +5,4 @@
 # 버전 올리기: ./build.sh bump <버전> <빌드번호>   예) ./build.sh bump 1.2.2 16
 # (Toss는 ait 툴링이 별도 관리)
 APP_VERSION=1.4.0
-BUILD_NUMBER=24
+BUILD_NUMBER=25

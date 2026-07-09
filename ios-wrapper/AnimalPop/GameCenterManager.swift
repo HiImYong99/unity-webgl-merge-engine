@@ -58,6 +58,19 @@ final class GameCenterManager: NSObject {
         }
     }
 
+    /// 업적 보고 (percent 0~100). GC가 중복 보고/배너 노출을 알아서 처리.
+    func reportAchievement(id: String, percent: Double) {
+        guard isAuthenticated else { return }
+        let achievement = GKAchievement(identifier: id)
+        achievement.percentComplete = min(100, max(0, percent))
+        achievement.showsCompletionBanner = true
+        GKAchievement.report([achievement]) { error in
+            if let error = error {
+                NSLog("[GameCenter] 업적 보고 실패(\(id)): \(error.localizedDescription)")
+            }
+        }
+    }
+
     func presentLeaderboard(from vc: UIViewController) {
         guard isAuthenticated else {
             // 미인증: 재인증 시도 후 성공하면 바로 표시, 확정 실패면 onUnavailable (버튼 무반응 방지)

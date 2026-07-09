@@ -7,4 +7,15 @@
          교체 전까지는 PGS 사인인이 실패하여 리더보드 버튼이 숨겨진 채로 동작함. -->
     <string name="game_services_project_id" translatable="false">181161078664</string>
     <string name="leaderboard_highscore" translatable="false">CgkIiN-q8KIFEAIQAQ</string>
+
+    <!-- ★ Play Games 업적 ID: PGS 콘솔에서 업적 8개 생성 후 실제 ID(CgkI...)로 교체.
+         교체 전(REPLACE 플레이스홀더)에는 unlock 호출이 무시됨(크래시 없음). -->
+    <string name="achievement_first_merge" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_shiba" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_panda" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_lion" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_merges_100" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_merges_1000" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_score_5000" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
+    <string name="achievement_games_50" translatable="false">REPLACE_WITH_ACHIEVEMENT_ID</string>
 </resources>

@@ -72,6 +72,15 @@ public class PlayGamesManager {
         });
     }
 
+    /** 업적 보고: PGS 표준 업적이라 100%(달성)에서만 unlock. (진행형 %는 iOS GC 전용) */
+    void reportAchievement(String achievementId, int percent) {
+        if (!authenticated || percent < 100) return;
+        if (activity.isFinishing()) return;
+        if (achievementId == null || achievementId.isEmpty() || achievementId.startsWith("REPLACE")) return;
+        PlayGames.getAchievementsClient(activity).unlock(achievementId);
+        Log.d(TAG, "[PGS] unlock achievement " + achievementId);
+    }
+
     private void presentLeaderboardUi() {
         PlayGames.getLeaderboardsClient(activity)
                 .getLeaderboardIntent(leaderboardId)
