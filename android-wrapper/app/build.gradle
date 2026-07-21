@@ -4,14 +4,14 @@ plugins {
 
 android {
     namespace 'com.animalpop.app'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.animalpop.app"
         minSdk 24
-        targetSdk 35
-        versionCode 21
-        versionName "1.4.0"
+        targetSdk 36
+        versionCode 22
+        versionName "1.4.1"
 
         // 64-bit 지원 (구글 플레이 필수)
         ndk {
