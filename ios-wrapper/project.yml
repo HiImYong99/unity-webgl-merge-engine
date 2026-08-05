@@ -8,8 +8,8 @@ options:
   knownRegions: [en, ko, ja, zh-Hans, zh-Hant, es, pt, de, fr, id]
 settings:
   base:
-    MARKETING_VERSION: "1.4.0"
-    CURRENT_PROJECT_VERSION: "25"
+    MARKETING_VERSION: "1.4.2"
+    CURRENT_PROJECT_VERSION: "27"
     DEVELOPMENT_TEAM: "A3NZTDWF42"                              # [USER ACTION] Apple Team ID
     PRODUCT_BUNDLE_IDENTIFIER: com.animalpop.app
     SWIFT_VERSION: "5.0"

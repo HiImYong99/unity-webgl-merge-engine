@@ -1,6 +1,8 @@
 package com.animalpop.app;
 
 import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -10,6 +12,7 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
@@ -36,12 +39,17 @@ public class BillingManager implements PurchasesUpdatedListener {
 
     private static final String TAG = "BillingManager";
 
+    // SERVICE_DISCONNECTED 시 단순 재시도 (공식 권장: 유저 발동 액션은 짧은 재시도)
+    private static final int  MAX_RETRY      = 1;
+    private static final long RETRY_DELAY_MS = 2000L;
+
     // ── 상품 ID (구글 플레이 콘솔 등록 ID와 일치해야 함) ──────────────
     public static final String PRODUCT_ID_PREMIUM_PACK = "remove_ads_hint_pack";
     // ────────────────────────────────────────────────────────────────
 
     private final Activity        activity;
     private final BillingCallback callback;
+    private final Handler         mainHandler = new Handler(Looper.getMainLooper());
     private       BillingClient   billingClient;
 
     // 현재 구매 시도 중인 ProductDetails (launchBillingFlow에 필요)
@@ -70,7 +78,13 @@ public class BillingManager implements PurchasesUpdatedListener {
     private void buildAndConnect() {
         billingClient = BillingClient.newBuilder(activity)
             .setListener(this)
-            .enablePendingPurchases()
+            // PBL 8+ : 파라미터 없는 enablePendingPurchases() 제거됨
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .build())
+            // 연결 끊김 시 SDK가 지수 백오프로 자동 재연결 (PBL 7.1+)
+            .enableAutoServiceReconnection()
             .build();
 
         billingClient.startConnection(new BillingClientStateListener() {
@@ -87,9 +101,8 @@ public class BillingManager implements PurchasesUpdatedListener {
 
             @Override
             public void onBillingServiceDisconnected() {
-                Log.w(TAG, "BillingClient 연결 끊김 – 재연결 시도");
-                // 간단한 재연결 (실제 배포 시 지수 백오프 권장)
-                buildAndConnect();
+                // enableAutoServiceReconnection() 으로 SDK가 자동 재연결하므로 로그만 남김
+                Log.w(TAG, "BillingClient 연결 끊김 – SDK 자동 재연결 대기");
             }
         });
     }
@@ -100,13 +113,17 @@ public class BillingManager implements PurchasesUpdatedListener {
      * 내부적으로 상품 조회 후 자동으로 BillingFlow를 실행한다.
      */
     public void launchPurchaseFlow(@NonNull String productId) {
+        queryAndLaunch(productId, 0);
+    }
+
+    /**
+     * isReady() 로 먼저 걸러내지 않는다 — enableAutoServiceReconnection() 이
+     * '호출 시점'에 재연결을 시도하므로, 미준비 상태여도 그대로 호출해야 복구된다.
+     * 재연결 후에도 SERVICE_DISCONNECTED면 공식 권장대로 단순 재시도.
+     */
+    private void queryAndLaunch(@NonNull String productId, int attempt) {
         if (!billingClient.isReady()) {
-            Log.w(TAG, "BillingClient 미준비 – 재연결 후 재시도");
-            buildAndConnect();
-            callback.onPurchaseFailed(productId,
-                BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
-                "BillingClient not ready");
-            return;
+            Log.w(TAG, "BillingClient 미준비 – SDK 자동 재연결에 맡기고 호출 진행");
         }
 
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
@@ -118,10 +135,24 @@ public class BillingManager implements PurchasesUpdatedListener {
             ))
             .build();
 
-        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
+        // PBL 8+ : 콜백 2번째 인자가 List<ProductDetails> → QueryProductDetailsResult 로 변경
+        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsResult) -> {
+            List<ProductDetails> productDetailsList = productDetailsResult == null
+                ? null : productDetailsResult.getProductDetailsList();
+
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK
                     || productDetailsList == null || productDetailsList.isEmpty()) {
-                Log.e(TAG, "상품 조회 실패: " + billingResult.getDebugMessage());
+                if (billingResult.getResponseCode()
+                        == BillingClient.BillingResponseCode.SERVICE_DISCONNECTED
+                        && attempt < MAX_RETRY) {
+                    Log.w(TAG, "연결 끊김 – 상품 조회 재시도 " + (attempt + 1) + "/" + MAX_RETRY);
+                    mainHandler.postDelayed(
+                        () -> queryAndLaunch(productId, attempt + 1), RETRY_DELAY_MS);
+                    return;
+                }
+                Log.e(TAG, "상품 조회 실패: " + billingResult.getDebugMessage()
+                    + (productDetailsResult == null ? ""
+                       : " / unfetched=" + productDetailsResult.getUnfetchedProductList()));
                 callback.onPurchaseFailed(productId,
                     billingResult.getResponseCode(),
                     billingResult.getDebugMessage());
@@ -217,14 +248,17 @@ public class BillingManager implements PurchasesUpdatedListener {
      * 이전에 구매했으나 보상이 누락된 케이스를 복구한다.
      */
     public void restorePurchases() {
-        if (!billingClient.isReady()) return;
-
+        // isReady() 게이트 없음 — 미준비 상태면 SDK가 자동 재연결 후 호출을 처리한다
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.INAPP)
                 .build(),
             (billingResult, purchases) -> {
-                if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) return;
+                if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+                    Log.w(TAG, "구매 복원 조회 실패 [" + billingResult.getResponseCode() + "]: "
+                        + billingResult.getDebugMessage());
+                    return;
+                }
                 for (Purchase purchase : purchases) {
                     handlePurchase(purchase, true);
                 }
@@ -234,6 +268,8 @@ public class BillingManager implements PurchasesUpdatedListener {
 
     // ── 생명주기 ────────────────────────────────────────────────────
     public void destroy() {
+        // 예약된 재시도가 endConnection() 이후 실행되면 IllegalStateException / Activity 누수
+        mainHandler.removeCallbacksAndMessages(null);
         if (billingClient != null && billingClient.isReady()) {
             billingClient.endConnection();
         }

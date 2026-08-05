@@ -10,8 +10,8 @@ android {
         applicationId "com.animalpop.app"
         minSdk 24
         targetSdk 36
-        versionCode 22
-        versionName "1.4.1"
+        versionCode 27
+        versionName "1.4.2"
 
         // 64-bit 지원 (구글 플레이 필수)
         ndk {
@@ -71,8 +71,8 @@ dependencies {
     implementation 'com.google.android.gms:play-services-ads:23.6.0' // 2024-12 latest stable
     // WebViewAssetLoader – WASM/gzip 파일 로컬 HTTPS 서빙용 (file:// MIME 문제 해결)
     implementation 'androidx.webkit:webkit:1.8.0'
-    // Google Play Billing Library
-    implementation 'com.android.billingclient:billing:7.1.1'
+    // Google Play Billing Library (Play 정책: 2026-08-31부터 8.0.0+ 필수)
+    implementation 'com.android.billingclient:billing:9.1.0'
     // Google Play Games Services v2 – 리더보드(랭킹)
     implementation 'com.google.android.gms:play-services-games-v2:21.0.0'
     // Google Play In-App Review – 신기록 모먼트 별점 요청
