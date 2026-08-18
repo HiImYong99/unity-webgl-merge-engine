@@ -1,7 +1,8 @@
 {
-    "sdkVersion": "2.0.0",
-    "buildTime": "2026-03-10T15:33:41.9125880Z",
-    "compressionFormat": 1,
+    "sdkVersion": "3.0.3",
+    "buildTime": "2026-08-18T15:00:29.6625460Z",
+    "compressionFormat": 0,
+    "decompressionFallback": false,
     "profileName": "Production",
     "unityVersion": "2022.3.62f3"
 }

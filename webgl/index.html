@@ -3,11 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>애니멀 팝 🐾</title>
+    <title>애니멀 팝</title>
     <!-- Apps in Toss Bridge (Vite bundling entry) -->
     <script type="module" src="./unity-bridge.ts"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 비동기 로드: 폰트가 없어도 렌더링 차단 없음 (Nunito만 요청, Pretendard은 구글폰트에 없으므로 제외) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap"></noscript>
     <style>
         /* ════════════════════════════════════════════════
            RESET & CSS VARIABLES
@@ -101,12 +104,34 @@
             50%      { transform: translateY(-14px) scale(1.05); }
         }
         .load-bar-bg {
-            width: 160px; height: 3px;
-            background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
+            width: 200px; height: 4px;
+            background: rgba(0,0,0,0.08); border-radius: 99px; overflow: hidden;
         }
         .load-bar-fill {
             height: 100%; width: 0%; background: var(--toss-blue);
-            border-radius: 99px; transition: width .25s ease;
+            border-radius: 99px; transition: width .4s ease;
+        }
+        .load-animals {
+            display: flex; gap: 10px; margin-top: 4px;
+            font-size: 22px;
+        }
+        .load-animals span {
+            display: inline-block;
+            animation: animalPop 1.6s ease-in-out infinite;
+            opacity: 0.35;
+        }
+        .load-animals span.active {
+            opacity: 1;
+            animation: animalPopActive 0.4s ease forwards;
+        }
+        @keyframes animalPopActive {
+            0%   { transform: translateY(0) scale(1); opacity:1; }
+            40%  { transform: translateY(-10px) scale(1.3); }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+        }
+        @keyframes animalPop {
+            0%,100% { transform: scale(1); }
+            50%      { transform: scale(1.08); }
         }
         .load-text {
             font-size: 13px; font-weight: 700; color: var(--text-tertiary);
@@ -192,7 +217,7 @@
         ════════════════════════════════════════════════ */
         #game-hud {
             position: fixed;
-            top:  calc(var(--safe-top) + 20px);
+            top:  calc(var(--safe-top) + 56px);
             left: 20px; right: 20px;
             z-index: 50;
             display: flex; flex-direction: column; align-items: stretch; gap: 8px;
@@ -320,7 +345,7 @@
         #danger-banner {
             position: fixed;
             left: 20px; right: 20px;
-            top: calc(var(--safe-top) + 100px);
+            top: calc(var(--safe-top) + 136px);
             z-index: 55;
             background: linear-gradient(135deg,
                 rgba(255,80,80,0.92) 0%,
@@ -735,6 +760,14 @@
         }
         .rotate-title { font-size: 18px; font-weight: 800; }
         .rotate-sub   { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+        /* 디버그 콘솔 */
+        #debug-log {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 120px;
+            background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace;
+            font-size: 10px; padding: 10px; overflow-y: auto; z-index: 9999;
+            pointer-events: auto; display: none;
+        }
+        #debug-log.visible { display: block; }
     </style>
 </head>
 
@@ -751,11 +784,19 @@
         <canvas id="unity-canvas" data-pixel-art="true"></canvas>
     </div>
 
+    <!-- 디버그 로그 -->
+    <div id="debug-log">
+        <button onclick="resetIAPData()" style="position: absolute; right: 10px; top: 10px; z-index: 10001; padding: 5px 10px; background: #f44; color: white; border: none; border-radius: 4px; font-weight: bold;">Reset IAP</button>
+    </div>
+
     <!-- ── 로딩 ── -->
     <div id="loading-overlay">
-        <div class="load-icon">🐾</div>
+        <div class="load-icon" id="load-icon">🐾</div>
         <div class="load-bar-bg"><div class="load-bar-fill" id="loading-fill"></div></div>
         <div class="load-text" id="loading-text">준비 중이에요...</div>
+        <div class="load-animals" id="load-animals">
+            <span>🐣</span><span>🐭</span><span>🦔</span><span>🐰</span><span>🐱</span><span>🐕</span><span>🐑</span><span>🐒</span><span>🐷</span><span>🐼</span><span>🦁</span>
+        </div>
     </div>
 
     <!-- ── 랜딩 ── -->
@@ -773,10 +814,6 @@
                 <span class="lg-best-val" id="html-best-score">0</span>
             </div>
             <button class="lg-start-btn" onclick="onHtmlStartClicked()">게임 시작</button>
-            <div class="lg-rating-bar" style="margin-top:20px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <div style="background:#00a854; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:4px;">전체이용가</div>
-                <div style="font-size:10px; color:var(--text-tertiary); font-weight:600;">게임물관리위원회 심의 준수</div>
-            </div>
             <div class="lg-howto">동물을 떨어뜨려 합쳐보세요 · 최대 레벨까지 도전!</div>
         </div>
     </div>
@@ -918,19 +955,12 @@
                     <div class="tog-track"></div><div class="tog-thumb"></div>
                 </label>
             </div>
-            <div class="sht-row">
-                <div class="sht-left">
-                    <span class="sht-icon">🔄</span>
-                    <div class="sht-lbl">데이터 초기화 (테스트용)</div>
-                </div>
-                <button class="sht-btn sht-ghost" style="width:auto;margin:0;padding:8px 16px;font-size:13px;" onclick="resetAppData()">초기화</button>
-            </div>
             <button class="sht-btn sht-primary" onclick="onRestartFromSettings()">처음부터 다시 할게요</button>
             <button class="sht-btn sht-ghost" onclick="closeSettings()">닫기</button>
         </div>
     </div>
 
-    <script src="Build/916a570da3f960f57b7a78eb131d82d9.loader.js"></script>
+    <script src="Build/694606a045132e74e49b0af1b1e77e48.loader.js"></script>
     <script>
     // ════════════════════════════════════════════════════
     //  DOM References
@@ -1011,7 +1041,7 @@
                 slot.className = 'dex-slot';
                 slot.id = 'dex-slot-' + lv;
                 var img = document.createElement('img');
-                img.src = 'TemplateData/sprites/Animal_' + lv + '.png';
+                img.src = 'TemplateData/sprites/Animal_' + lv + '.webp';
                 img.alt = 'Lv.' + lv;
                 slot.appendChild(img);
 
@@ -1123,20 +1153,72 @@
     // ════════════════════════════════════════════════════
     //  WebGL AudioContext 자동 Resume
     // ════════════════════════════════════════════════════
-    var _audioResumed = false;
-    function resumeWebGLAudio() {
-        if (_audioResumed) return;
-        try {
-            if (typeof Module !== 'undefined' && Module.WEBAudio && Module.WEBAudio.audioContext) {
-                var ac = Module.WEBAudio.audioContext;
-                if (ac.state === 'suspended') {
-                    ac.resume().then(function() { _audioResumed = true; });
-                } else if (ac.state === 'running') {
-                    _audioResumed = true;
-                }
-                // if state is 'closed' or audioContext not ready yet, don't set _audioResumed so we retry
+    // Unity 2022 WebGL: WEBAudio는 framework.js 내부 지역변수라 외부 접근 불가
+    // → AudioContext 생성자를 인터셉트해서 Unity가 만든 AC를 캡처
+    var _unityAudioContext = null;
+    var _OrigAudioContext = window.AudioContext || window.webkitAudioContext;
+    (function() {
+        var _orig = _OrigAudioContext;
+        function PatchedAudioContext() {
+            var ac = new _orig();
+            // 첫 번째로 생성된 AC가 Unity의 것
+            if (!_unityAudioContext) {
+                _unityAudioContext = ac;
+
             }
+            return ac;
+        }
+        PatchedAudioContext.prototype = _orig.prototype;
+        window.AudioContext = PatchedAudioContext;
+        if (window.webkitAudioContext) window.webkitAudioContext = PatchedAudioContext;
+    })();
+
+    function _getAudioCtx() {
+        return _unityAudioContext;
+    }
+    // AudioContext가 없거나 dead 상태면 재생성 (패치 안 된 원본 생성자 사용)
+    function _recreateAudioContext() {
+        try {
+            var newAC = new _OrigAudioContext();
+            _unityAudioContext = newAC;
+            return newAC;
+        } catch(e) {
+            return null;
+        }
+    }
+    // _audioNeedsRestore: true일 때 다음 user gesture에서 Stop+Play로 BGM 강제 재생성
+    var _audioNeedsRestore = true; // 첫 실행도 user gesture 필요
+    function _restoreAudio() {
+        _audioNeedsRestore = false;
+        if (!unityInstance) return;
+        // ForceRestartBGM: 내부적으로 _isBgmMuted=false, Stop→Play 실행
+        if (!bgmMuted) {
+            try { unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM'); } catch(e) {}
+        }
+        // 오염된 Unity 저장 데이터 보정: JS 상태를 Unity에 동기화
+        try {
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+            unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
         } catch(e) {}
+    }
+    function resumeWebGLAudio() {
+        if (!unityInstance) return;
+        // 아직 캡처 안 됐으면 계속 시도
+        var ac = _getAudioCtx();
+        // AudioContext가 null이면 광고 SDK가 파괴한 것 — 새로 생성
+        if (!ac) {
+
+            ac = _recreateAudioContext();
+            if (!ac) return;
+        }
+        var st = ac.state;
+        if (st !== 'running') {
+            ac.resume().then(function() {
+                if (_audioNeedsRestore) _restoreAudio();
+            }).catch(function(){});
+        } else if (_audioNeedsRestore) {
+            _restoreAudio();
+        }
     }
     document.addEventListener('click',    resumeWebGLAudio, { passive: true });
     document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
@@ -1146,9 +1228,9 @@
     //  Unity 초기화
     // ════════════════════════════════════════════════════
     var config = {
-        dataUrl:            "Build/55bdead7b1d9a06561a42239aaead4ba.data.unityweb",
-        frameworkUrl:       "Build/67a9ff93c005aa9b320a2f463991bb60.framework.js.unityweb",
-        codeUrl:            "Build/3ddf4538981bfe5af7b50a620f242adb.wasm.unityweb",
+        dataUrl:            "Build/d0eb7e11ae24a87f0310c154522cd3b7.data.br",
+        frameworkUrl:       "Build/5284dee89f681378b6408e2e7d3e8bb0.framework.js.br",
+        codeUrl:            "Build/7fc84e98b5ad87ac2c6accf61e3ce961.wasm.br",
         streamingAssetsUrl: "StreamingAssets",
         companyName:        "DefaultCompany",
         productName:        "animal-pop",
@@ -1157,26 +1239,78 @@
         webglContextAttributes: { alpha: true },
     };
 
+    // 로딩 진행감 유지: 90% 이후 천천히 99%까지 크리핑
+    var _displayPct = 0;
+    var _targetPct  = 0;
+    var _animalIdx  = 0;
+    var _animalEls  = document.querySelectorAll('#load-animals span');
+    var _loadingMessages = [
+        '동물들을 깨우는 중이에요...',
+        '병아리가 알에서 나오고 있어요 🐣',
+        '동물들이 모이고 있어요...',
+        '거의 다 됐어요! 🎉'
+    ];
+
+    function _activateNextAnimal() {
+        if (_animalIdx < _animalEls.length) {
+            _animalEls[_animalIdx].classList.add('active');
+            _animalIdx++;
+        }
+    }
+
+    // 부드러운 진행바 업데이트 (requestAnimationFrame 기반)
+    function _tickLoadBar() {
+        if (_displayPct < _targetPct) {
+            _displayPct = Math.min(_displayPct + 0.8, _targetPct);
+            loadFill.style.width = _displayPct.toFixed(1) + '%';
+            // 11마리 → 9% 간격마다 1마리씩 활성화
+            var expectedIdx = Math.floor(_displayPct / 9);
+            while (_animalIdx < expectedIdx && _animalIdx < _animalEls.length) {
+                _activateNextAnimal();
+            }
+        }
+        if (_displayPct < 100) requestAnimationFrame(_tickLoadBar);
+    }
+    requestAnimationFrame(_tickLoadBar);
+
+    // 90% 이후 크리핑 (Unity가 90에서 멈춰 있을 때 사용자 이탈 방지)
+    var _creepInterval = null;
+    function _startCreep() {
+        if (_creepInterval) return;
+        _creepInterval = setInterval(function() {
+            if (_targetPct >= 99) { clearInterval(_creepInterval); return; }
+            _targetPct = Math.min(_targetPct + 0.3, 99);
+            var msgIdx = _targetPct < 60 ? 0 : _targetPct < 80 ? 1 : _targetPct < 95 ? 2 : 3;
+            loadText.textContent = _loadingMessages[msgIdx];
+        }, 150);
+    }
+
     createUnityInstance(canvas, config, function(progress) {
         var pct = Math.round(progress * 100);
-        loadFill.style.width = pct + '%';
-        loadText.textContent = pct < 100 ? pct + '%' : '거의 다 됐어요!';
+        _targetPct = Math.max(_targetPct, pct);
+        if (pct >= 90) _startCreep();
+        var msgIdx = pct < 60 ? 0 : pct < 80 ? 1 : pct < 95 ? 2 : 3;
+        loadText.textContent = _loadingMessages[msgIdx];
     }).then(function(instance) {
         unityInstance = instance;
         window.unityInstance = instance;
         gameReady = true;
-        resumeWebGLAudio();
-        loadFill.style.width = '100%';
-        loadText.textContent = '준비 완료!';
 
-        // 8초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
+        // AudioContext 인터셉트로 자동 캡처됨 (PatchedAudioContext)
+
+        resumeWebGLAudio();
+        if (_creepInterval) clearInterval(_creepInterval);
+        _targetPct = 100;
+        loadText.textContent = '시작해요! 🎉';
+
+        // 3초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
         setTimeout(function() {
             if (!loadOverlay.classList.contains('hidden')) {
                 console.warn('[Loading] Timeout — forcing landing.');
                 hideLoading();
                 if (!gameHud.classList.contains('visible')) showLanding();
             }
-        }, 8000);
+        }, 3000);
 
         updateLocalBestScore();
 
@@ -1191,19 +1325,28 @@
     // ════════════════════════════════════════════════════
     //  광고 프리로드 (앱인토스 loadFullScreenAd)
     // ════════════════════════════════════════════════════
-    var REVIVE_AD_ID = 'ait-ad-test-rewarded-id'; // TODO: 실제 adGroupId로 교체
+    var REVIVE_AD_ID = 'ait.v2.live.79b8c799130343ec';
     var _reviveAdLoaded = false;
     var _reviveAdUnregister = null;
 
+    // 광고 API 탐지: TossAds (2.0 ver2) → GoogleAdMob (2.0) 폴백
+    function _getAdLoadFn() {
+        var ait = window.AppsInToss;
+        if (!ait) return null;
+        if (ait.TossAds && typeof ait.TossAds.loadFullScreenAd === 'function') return ait.TossAds.loadFullScreenAd;
+        if (ait.GoogleAdMob && typeof ait.GoogleAdMob.loadAppsInTossAdMob === 'function') return ait.GoogleAdMob.loadAppsInTossAdMob;
+        return null;
+    }
+
     window._preloadReviveAd = function() {
-        if (!window.AppsInToss || !window.AppsInToss.TossAds || typeof window.AppsInToss.TossAds.loadFullScreenAd !== 'function') return;
-        if (!window.AppsInToss.TossAds.loadFullScreenAd.isSupported || !window.AppsInToss.TossAds.loadFullScreenAd.isSupported()) return;
+        var loadFn = _getAdLoadFn();
+        if (!loadFn) return;
 
         // 이전 리스너 정리
         if (_reviveAdUnregister) { _reviveAdUnregister(); _reviveAdUnregister = null; }
         _reviveAdLoaded = false;
 
-        _reviveAdUnregister = window.AppsInToss.TossAds.loadFullScreenAd({
+        _reviveAdUnregister = loadFn({
             options: { adGroupId: REVIVE_AD_ID },
             onEvent: function(event) {
                 if (event.type === 'loaded') {
@@ -1270,7 +1413,13 @@
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
         unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+        _startSpawnWatchdog();
+        try { if (window.AppsInToss && window.AppsInToss.Analytics) window.AppsInToss.Analytics.click({ log_name: 'game_start' }); } catch(e) {}
     }
+
+    // 스폰 워치독 제거 — C# 내부 교착 감지로 대체
+    function _startSpawnWatchdog() {}
+    function _stopSpawnWatchdog() {}
 
     // ════════════════════════════════════════════════════
     //  게임 오버 버튼
@@ -1301,7 +1450,7 @@
     var _speedBoostBtn = null;
     var _premiumSpeedOwned = false;   // 영구 구매 여부
     var _premiumSpeedOn    = false;   // 영구 구매자의 현재 ON/OFF 상태
-    var SPEED_SKU = 'double_speed_permanent';
+    var SPEED_SKU = 'ait.0000022018.560c8f2d.99adbacd5a.3325211470';
 
     // localStorage에서 영구 구매 상태 복원
     try {
@@ -1402,9 +1551,9 @@
 
     // 앱인토스 IAP 결제
     function _purchasePremiumSpeed() {
+        _log('[IAP] Purchase Request: ' + SPEED_SKU);
         if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
-            console.warn('[IAP] AppsInToss IAP를 사용할 수 없는 환경이에요.');
-            // 개발 환경 테스트용 폴백
+            _log('[IAP] AppsInToss IAP Not Found - Fallback to confirm');
             if (confirm('[개발] IAP 미지원 환경. 구매 성공 시뮬레이션?')) {
                 _onPremiumSpeedGranted();
             }
@@ -1415,19 +1564,84 @@
             options: {
                 sku: SPEED_SKU,
                 processProductGrant: function(params) {
+                    // params가 문자열인 경우와 객체인 경우 모두 대응
+                    var orderId = (params && params.orderId) ? params.orderId : (typeof params === 'string' ? params : null);
+                    _log('[IAP] processProductGrant: ' + orderId + ' (params: ' + JSON.stringify(params) + ')');
+                    
+                    if (!orderId) {
+                        _log('[IAP] Warning: processProductGrant called without a valid orderId. Skipping grant.');
+                        return true; // 일단 true를 반환하여 SDK 핸들러를 종료시킵니다.
+                    }
+                    
+                    // 1. 권한 부여
                     _onPremiumSpeedGranted();
+                    
+                    // 2. 중요: SDK 2.x 형식에 맞춰 호출 { params: { orderId: '...' } }
+                    if (window.AppsInToss && window.AppsInToss.IAP && window.AppsInToss.IAP.completeProductGrant) {
+                        window.AppsInToss.IAP.completeProductGrant({ params: { orderId: orderId } })
+                            .then(function() { _log('[IAP] completeProductGrant success: ' + orderId); })
+                            .catch(function(e) { 
+                                _log('[IAP] completeProductGrant error: ' + JSON.stringify(e)); 
+                                // 이미 완료된 주문(INVALID_REQUEST)인 경우 무시 가능
+                            });
+                    }
+                    
+                    // 3. Unity 통보
+                    if (unityInstance) {
+                        unityInstance.SendMessage('BridgeManager', 'OnProductGrant', orderId);
+                    }
+                    
                     return true;
                 }
             },
             onEvent: function(event) {
+                _log('[IAP] Event: ' + event.type);
                 if (event.type === 'success') { cleanup && cleanup(); }
             },
             onError: function(error) {
-                console.error('[IAP] 결제 실패:', error);
+                _log('[IAP] Error: ' + JSON.stringify(error));
                 cleanup && cleanup();
             }
         });
     }
+
+    function _log(msg) {
+        console.log(msg);
+        var el = document.getElementById('debug-log');
+        if (el) {
+            el.innerHTML += '<div>' + msg + '</div>';
+            el.scrollTop = el.scrollHeight;
+        }
+    }
+    // 디버그 로그 토글 (설정창 등에서 활용 가능)
+    function toggleDebugLog() {
+        var el = document.getElementById('debug-log');
+        if (el) el.classList.toggle('visible');
+    }
+
+    // [TEST] 인앱 데이터 강제 초기화
+    window.resetIAPData = function() {
+        if (!confirm('로컬의 프리미엄 구매 데이터를 초기화하고 재시작하시겠습니까?')) return;
+        
+        try {
+            localStorage.removeItem('animalpop_premium_speed');
+            _premiumSpeedOwned = false;
+            _premiumSpeedOn = false;
+            _refreshSpeedBtn();
+            
+            if (unityInstance) {
+                unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '1');
+            }
+            
+            _log('[IAP] 로컬 데이터 초기화 완료. 페이지를 새로고침합니다.');
+            setTimeout(function() {
+                location.reload();
+            }, 500);
+        } catch (e) {
+            _log('[IAP] 초기화 오류: ' + e.message);
+        }
+    }
+
 
     // 영구 구매 지급 처리
     function _onPremiumSpeedGranted() {
@@ -1446,9 +1660,17 @@
         window.AppsInToss.IAP.getPendingOrders().then(function(res) {
             if (!res) return;
             var orders = res.orders || [];
-            var hasSpeed = orders.some(function(o) { return o.sku === SPEED_SKU; });
-            if (hasSpeed) _onPremiumSpeedGranted();
-        }).catch(function(e) { console.warn('[IAP] getPendingOrders 실패:', e); });
+            _log('[IAP] Pending orders found: ' + orders.length);
+            orders.forEach(function(o) {
+                if (o.sku === SPEED_SKU) {
+                    _log('[IAP] Granting pending speed order: ' + o.orderId);
+                    _onPremiumSpeedGranted();
+                    if (window.AppsInToss.IAP.completeProductGrant) {
+                        window.AppsInToss.IAP.completeProductGrant({ params: { orderId: o.orderId } });
+                    }
+                }
+            });
+        }).catch(function(e) { _log('[IAP] getPendingOrders Error: ' + JSON.stringify(e)); });
     }
     _recoverPendingSpeedOrders();
 
@@ -1459,6 +1681,30 @@
         setTimeout(function() {
             if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
         }, 1000);
+    };
+
+    // 광고 로드 실패 시 토스트 안내
+    window._showAdUnavailableToast = function() {
+        var existing = document.getElementById('ad-unavail-toast');
+        if (existing) existing.remove();
+        var toast = document.createElement('div');
+        toast.id = 'ad-unavail-toast';
+        toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);z-index:999;' +
+            'background:rgba(25,31,40,0.92);color:#fff;padding:16px 24px;border-radius:14px;' +
+            'font-size:14px;font-weight:600;text-align:center;line-height:1.5;' +
+            'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);' +
+            'box-shadow:0 8px 32px rgba(0,0,0,0.3);opacity:0;transition:opacity .25s,transform .25s;';
+        toast.textContent = '광고를 불러올 수 없어요';
+        document.body.appendChild(toast);
+        requestAnimationFrame(function() {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%,-50%) scale(1)';
+        });
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%,-50%) scale(0.9)';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 2000);
     };
 
     // Unity → JS: 스피드부스트 활성화 완료 알림
@@ -1487,7 +1733,7 @@
     // 다음 동물 업데이트
     window.updateNextFromUnity = function(level) {
         if (nextImg) {
-            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.png';
+            nextImg.src = 'TemplateData/sprites/Animal_' + level + '.webp';
             nextImg.classList.remove('pop');
             void nextImg.offsetWidth;
             nextImg.classList.add('pop');
@@ -1508,6 +1754,7 @@
 
     // 게임 오버
     window.showGameOverFromUnity = function(score, best, adWatched, spareLives) {
+        _stopSpawnWatchdog();
         var scoreNum = Number(score);
         var bestNum  = Number(best);
         _lastAdWatched  = adWatched;
@@ -1569,6 +1816,12 @@
             var prev = parseInt(localStorage.getItem('animalpop_best') || '0');
             if (bestNum > prev) localStorage.setItem('animalpop_best', String(bestNum));
         } catch(e){}
+
+        try {
+            if (window.AppsInToss && window.AppsInToss.Analytics) {
+                window.AppsInToss.Analytics.click({ log_name: 'game_over', score: scoreNum, best: bestNum, is_new_best: isNewBest ? 1 : 0, merge_count: _mergeCount });
+            }
+        } catch(e) {}
     };
 
     // 랜딩 표시 (Unity 준비 완료 시 호출)
@@ -1581,6 +1834,7 @@
         showHUD(false);
         goOverlay.classList.remove('visible');
         showLanding();
+        try { if (window.AppsInToss && window.AppsInToss.Analytics) window.AppsInToss.Analytics.screen({ log_name: 'landing_view' }); } catch(e) {}
 
         // ── 로딩완료 시 바로 배경음악 재생 ──
         if (unityInstance && typeof bgmMuted !== 'undefined' && !bgmMuted) {
@@ -1611,6 +1865,13 @@
     function openSettings() {
         document.getElementById('toggle-bgm').checked = !bgmMuted;
         document.getElementById('toggle-sfx').checked = !sfxMuted;
+        // 구매 데이터가 있으면 초기화 버튼 표시
+        var resetBtn = document.getElementById('reset-purchase-btn');
+        if (resetBtn) {
+            var hasPurchase = _premiumSpeedOwned;
+            try { hasPurchase = hasPurchase || localStorage.getItem('animalpop_premium_speed') === '1'; } catch(e){}
+            resetBtn.style.display = hasPurchase ? 'block' : 'none';
+        }
         document.getElementById('settings-overlay').classList.add('visible');
     }
     function closeSettings() {
@@ -1622,8 +1883,17 @@
     function onBgmToggle(cb) {
         bgmMuted = !cb.checked;
         if (unityInstance) {
-            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
-            if (!bgmMuted) unityInstance.SendMessage('GameManager', 'ForcePlayBGM');
+            // AudioContext가 suspended일 수 있으므로 먼저 resume
+            var ac = _getAudioCtx();
+            if (ac && ac.state !== 'running') {
+                ac.resume().then(function() {
+                    unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+                    if (!bgmMuted) unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM');
+                }).catch(function(){});
+            } else {
+                unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+                if (!bgmMuted) unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM');
+            }
         }
         try { localStorage.setItem('animalpop_bgm', bgmMuted ? '0' : '1'); } catch(e){}
     }
@@ -1632,18 +1902,37 @@
         if (unityInstance) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
         try { localStorage.setItem('animalpop_sfx', sfxMuted ? '0' : '1'); } catch(e){}
     }
-    
-    // [테스트 유틸] 앱 데이터 초기화 (구매 내역 및 기록)
-    function resetAppData() {
-        if (!confirm('기록과 구매 내역을 초기화할까요?')) return;
-        localStorage.removeItem('animalpop_premium_speed');
-        localStorage.removeItem('animalpop_best');
-        localStorage.removeItem('animalpop_bgm');
-        localStorage.removeItem('animalpop_sfx');
-        alert('초기화되었습니다. 페이지를 새로고침합니다.');
-        location.reload();
+    function onResetPurchaseData() {
+        try {
+            localStorage.removeItem('animalpop_premium_speed');
+        } catch(e){}
+        _premiumSpeedOwned = false;
+        _premiumSpeedOn = false;
+        _speedBoostActive = false;
+        _refreshSpeedBtn();
+        if (unityInstance) unityInstance.SendMessage('BridgeManager', 'SetSpeedMultiplier', '1');
+        document.getElementById('reset-purchase-btn').style.display = 'none';
+        window._showAdUnavailableToast && (function() {
+            var toast = document.createElement('div');
+            toast.id = 'ad-unavail-toast';
+            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);z-index:999;' +
+                'background:rgba(25,31,40,0.92);color:#fff;padding:16px 24px;border-radius:14px;' +
+                'font-size:14px;font-weight:600;text-align:center;line-height:1.5;' +
+                'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);' +
+                'box-shadow:0 8px 32px rgba(0,0,0,0.3);opacity:0;transition:opacity .25s,transform .25s;';
+            toast.textContent = '구매 데이터를 초기화했어요';
+            document.body.appendChild(toast);
+            requestAnimationFrame(function() {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%,-50%) scale(1)';
+            });
+            setTimeout(function() {
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 2000);
+        })();
+        closeSettings();
     }
-
     function onRestartFromSettings() {
         closeSettings();
         restartGame();
@@ -1675,6 +1964,11 @@
         function finish() {
             if (done) return;
             done = true;
+            // AudioContext 직접 resume (user gesture 없이도 시도)
+            var ac = _getAudioCtx && _getAudioCtx();
+            if (ac && ac.state !== 'running') {
+                try { ac.resume(); } catch(e) {}
+            }
             if (typeof window.resumeAudioAfterAd === 'function') window.resumeAudioAfterAd();
             cb();
         }
@@ -1709,13 +2003,13 @@
 
     function restartGame() {
         if (!unityInstance) { location.reload(); return; }
-        goOverlay.classList.remove('visible');
-        hideDangerBanner();
-        showHUD(false);
-        if (newBestBadge) newBestBadge.classList.remove('show');
-
-        // 전면광고를 먼저 띄우고 종료 후 실제 재시작
+        // 광고 로딩 중에는 게임오버 오버레이를 유지 (조작 방지)
+        // 광고 종료 후 콜백에서 오버레이 제거
         _showInterstitialThen(function() {
+            goOverlay.classList.remove('visible');
+            hideDangerBanner();
+            showHUD(false);
+            if (newBestBadge) newBestBadge.classList.remove('show');
             _currentDisplayScore = 0;
             if (scoreEl) scoreEl.textContent = '0';
             // 스피드부스트 상태 초기화 (영구 구매자는 ON/OFF 상태 유지)
@@ -1730,6 +2024,12 @@
             resetSidePanel();
             startPlayTimer();
             unityInstance.SendMessage('GameManager', 'StartGame');
+            _startSpawnWatchdog();
+            // 광고 후 오디오 복원: AudioContext resume + BGM 재시작
+            resumeWebGLAudio();
+            setTimeout(function() {
+                try { unityInstance.SendMessage('SoundMgr', 'ForceRestartBGM'); } catch(e) {}
+            }, 200);
             setTimeout(function() { showHUD(true); }, 200);
         });
     }
@@ -1763,6 +2063,10 @@
         if (document.visibilityState === 'hidden' && unityInstance) {
             console.log("[JS] Visibility changed to hidden. Requesting save...");
             unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
+        } else if (document.visibilityState === 'visible') {
+            // 플래그만 설정 — 실제 복원은 다음 user gesture(click/touch)에서 처리
+            // (iOS WKWebView에서 non-gesture AC resume는 무시됨)
+            _audioNeedsRestore = true;
         }
     });
     window.addEventListener('pagehide', function() {
@@ -1771,6 +2075,70 @@
             unityInstance.SendMessage('GameManager', 'RequestSaveFromJS');
         }
     });
+
+    // ════════════════════════════════════════════════════
+    //  광고/결제 중 오디오 제어
+    // ════════════════════════════════════════════════════
+    // 광고 중 오디오: user gesture에서만 복원 (iOS WKWebView 호환)
+    // 광고 전: AC를 suspend
+    window.pauseAudioForAd = function() {
+        _audioNeedsRestore = true;
+        var ac = _unityAudioContext;
+        if (ac) {
+            try { ac.suspend(); } catch(e) {}
+        }
+    };
+    window.resumeAudioAfterAd = function() {
+        _audioNeedsRestore = true;
+    };
+
+    // 광고 제거 IAP 완료 시 Unity → JS 알림
+    window.notifyAdRemovedFromUnity = function() {
+        _onPremiumSpeedGranted();
+    };
+
+    // ════════════════════════════════════════════════════
+    //  OS 뒤로가기 제스처 비활성화 + 종료 확인 모달
+    // ════════════════════════════════════════════════════
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function() {
+        history.pushState(null, null, location.href);
+        _showExitConfirmModal();
+    });
+
+    window._showExitConfirmModal = function() {
+        if (document.getElementById('exit-confirm-modal')) return;
+        var modal = document.createElement('div');
+        modal.id = 'exit-confirm-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);';
+        modal.innerHTML = [
+            '<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:480px;',
+            'padding:28px 24px calc(var(--safe-bottom,0px) + 28px);box-shadow:0 -4px 24px rgba(0,0,0,0.12);">',
+            '<div style="font-size:17px;font-weight:800;color:#191f28;text-align:center;margin-bottom:8px;">게임을 종료할까요?</div>',
+            '<div style="font-size:13px;color:#8b95a1;text-align:center;margin-bottom:24px;">진행 중인 기록이 저장되지 않을 수 있어요</div>',
+            '<button id="exit-confirm-yes" style="width:100%;padding:16px;background:#3182f6;color:#fff;border:none;',
+            'border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">종료하기</button>',
+            '<button id="exit-confirm-no" style="width:100%;padding:14px;background:none;color:#8b95a1;border:none;',
+            'font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">계속 하기</button>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(modal);
+        document.getElementById('exit-confirm-yes').onclick = function() {
+            modal.remove();
+            if (window.AppsInToss && typeof window.AppsInToss.close === 'function') window.AppsInToss.close();
+            else window.close();
+        };
+        document.getElementById('exit-confirm-no').onclick = function() {
+            modal.remove();
+            history.pushState(null, null, location.href);
+        };
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+                history.pushState(null, null, location.href);
+            }
+        });
+    };
     </script>
 </body>
 </html>
