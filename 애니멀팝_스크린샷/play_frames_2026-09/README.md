@@ -17,3 +17,8 @@ python3 upload_play.py            # validate만 / --commit 으로 반영 (play.p
 ```
 raw 캡처(로케일당 ~12MB)는 커밋하지 않는다. 인도네시아어는 `--lang=id-ID`로 찍고 `raw/id`로 이름을 바꾼다(Play 로케일 코드가 `id`).
 동시 실행은 4개까지 — 6개를 띄우면 로딩이 늦어 Start 탭이 빗나간다(재시도 루프는 넣어둠).
+
+## iOS (App Store) 버전
+`IOS=1 python3 render.py <locales>` → `out_ios/<locale>/1..5.png` (1290×2796, 6.9"). **아직 미업로드** — iOS 스크린샷은 버전 바운드라 새 버전+빌드+심사가 필요한데,
+sdk-3x-v2 브랜치 VERSION.txt(1.4.0/25)가 iOS 라이브 1.4.1(build 26)·Play 1.4.2(27, origin/merge wip)보다 뒤라 어느 트리로 빌드할지 먼저 정해야 한다.
+ASC 로케일 매핑: ko-KR→ko, ja-JP→ja, zh-CN→zh-Hans, zh-TW→zh-Hant, id→id, 나머지 동일.
