@@ -477,10 +477,9 @@ mergeInto(LibraryManager.library, {
     if (window.AndroidBridge && typeof window.AndroidBridge.launchPurchase === 'function') {
       window.AndroidBridge.launchPurchase(productId);
     } else {
-      console.log('[TossBridge] IAP mock purchase: ' + productId);
-      setTimeout(function() {
-        SendMessage('BridgeManager', 'OnPurchaseSuccess', productId + '|mock_token_' + Date.now());
-      }, 800);
+      // No native billing here (portal / plain browser): faking success would grant premium for free.
+      console.warn('[TossBridge] RequestPurchase: AndroidBridge not available');
+      SendMessage('BridgeManager', 'OnPurchaseFailed', productId + '|SDK_NOT_AVAILABLE');
     }
   },
 
