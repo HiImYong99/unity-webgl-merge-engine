@@ -73,6 +73,9 @@ for var, val in {
 }.items():
     sub('{{{ %s }}}' % var, val)
 
+# 로딩 문구: i18n 스크립트(본문 끝)가 돌기 전 첫 페인트에 한국어가 비치지 않게
+sub('data-i18n="loading_default">준비 중이에요...</div>', 'data-i18n="loading_default">Getting ready...</div>')
+
 # 토스 번들 진입점 (포털에선 404)
 sub('    <!-- Apps in Toss Bridge (Vite bundling entry) — Android에서는 404되지만 module script는 무시됨 -->\n'
     '    <script type="module" src="./unity-bridge.ts"></script>\n', '')
