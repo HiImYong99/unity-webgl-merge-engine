@@ -218,18 +218,17 @@ window.addEventListener('pagehide', save);
 // ───────────────────────────────────────────── 호스트 일시정지·음소거
 // Unity는 터치(mousedown/touchstart)와 사운드 재생 때마다 AudioContext를 resume한다 →
 // suspend로는 소리를 못 막는다. Unity가 연결하는 destination 앞에 마스터 게인을 끼워 끈다.
-let masterGain = null;
+const masterGains = []; // 컨텍스트마다 1개 (템플릿 _recreateAudioContext가 새로 만들어도 음소거 유지)
 const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
 if (NativeAudioContext) {
   const HostAudioContext = function (...args) {
     const ac = new NativeAudioContext(...args);
-    if (!masterGain) {
-      // 첫 컨텍스트 = Unity(WEBAudio). 채널마다 gain.connect(audioContext.destination) 한다
-      masterGain = ac.createGain();
-      masterGain.connect(ac.destination);
-      Object.defineProperty(ac, 'destination', { value: masterGain });
-      applyHost();
-    }
+    // Unity(WEBAudio)는 채널마다 gain.connect(audioContext.destination) 한다
+    const gain = ac.createGain();
+    gain.connect(ac.destination);
+    Object.defineProperty(ac, 'destination', { value: gain });
+    masterGains.push(gain);
+    applyHost();
     return ac;
   };
   HostAudioContext.prototype = NativeAudioContext.prototype;
@@ -244,7 +243,8 @@ let pauseListener = null;
 let pausedNotified = false;
 
 function applyHost() {
-  if (masterGain) masterGain.gain.value = hostPaused || !hostAudio || adRunning ? 0 : 1;
+  const volume = hostPaused || !hostAudio || adRunning ? 0 : 1;
+  masterGains.forEach((g) => (g.gain.value = volume));
   const paused = hostPaused || adRunning;
   if (paused === pausedNotified) return;
   pausedNotified = paused;

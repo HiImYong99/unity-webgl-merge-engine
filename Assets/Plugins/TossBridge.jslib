@@ -213,10 +213,9 @@ mergeInto(LibraryManager.library, {
 
     if (!window.AppsInToss || !window.AppsInToss.IAP ||
         typeof window.AppsInToss.IAP.createOneTimePurchaseOrder !== 'function') {
-      console.warn('[TossBridge] IAP SDK Not Found - Simulating Success');
-      setTimeout(function() {
-        SendMessage('BridgeManager', 'OnIAPSuccess', productId);
-      }, 500);
+      // SDK 없는 환경(포털·일반 브라우저)에서 성공으로 흉내 내면 프리미엄이 무료로 지급된다
+      console.warn('[TossBridge] IAP SDK Not Found - purchase unavailable');
+      SendMessage('BridgeManager', 'OnIAPFailed', 'SDK_NOT_AVAILABLE');
       return;
     }
 
@@ -321,10 +320,8 @@ mergeInto(LibraryManager.library, {
     }
 
     if (!checkoutFn) {
-      console.warn('[TossBridge] TossPay.checkoutPayment not found - Simulating success for testing');
-      setTimeout(function() {
-        SendMessage('BridgeManager', 'OnIAPSuccess', 'toss_pay_success_mock');
-      }, 500);
+      console.warn('[TossBridge] TossPay.checkoutPayment not found - payment unavailable');
+      SendMessage('BridgeManager', 'OnIAPFailed', 'SDK_NOT_AVAILABLE');
       return;
     }
 
