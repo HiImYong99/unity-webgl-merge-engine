@@ -152,3 +152,6 @@ ios-wrapper/AnimalPop.xcworkspace/
 ios-wrapper/build/
 ios-wrapper/DerivedData/
 .gstack/
+
+# Portal preview videos (store/portals/make_videos.sh output)
+store/portals/*.mp4
