@@ -1,0 +1,14 @@
+{
+  "name": "animal-pop-playgama",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "bash build.sh",
+    "test": "node test/host.test.mjs"
+  },
+  "devDependencies": {
+    "@playgama/bridge": "2.2.0",
+    "esbuild": "0.28.2",
+    "fflate": "0.8.3"
+  }
+}

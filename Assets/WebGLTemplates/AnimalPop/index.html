@@ -4,10 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Animal Pop</title>
-    <!-- 플랫폼 감지 (AndroidBridge는 MainActivity.addJavascriptInterface로 DOM 전에 주입됨) -->
+    <!-- 플랫폼 감지 (AndroidBridge는 MainActivity.addJavascriptInterface로 DOM 전에 주입됨,
+         PlaygamaHost는 Playgama 빌드(playgama/build.sh)가 이 스크립트 앞에 넣는 번들) -->
     <script>
-        window.AP_PLATFORM = window.AndroidBridge ? 'android'
+        window.AP_PLATFORM = window.PlaygamaHost ? 'playgama'
+            : window.AndroidBridge ? 'android'
             : ((window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) ? 'ios' : 'toss');
+        if (window.AP_PLATFORM === 'playgama') document.documentElement.classList.add('ap-playgama');
         // iOS: JS → 네이티브 호출 헬퍼 (WKScriptMessageHandler)
         window._iosCall = function(action, payload) {
             try { window.webkit.messageHandlers.iosBridge.postMessage(Object.assign({ action: action }, payload || {})); }
@@ -42,16 +45,20 @@
         id:["","Anak Ayam","Tikus","Landak","Kelinci","Kucing","Shiba","Domba","Monyet","Babi","Panda","Singa"]
       };
       var SUP = ["ko","en","ja","zh-Hans","zh-Hant","es","pt","de","fr","id"];
+      function pick(tag){
+        var l=(tag||"").toLowerCase();
+        if(l.indexOf("zh")===0){
+          if(l.indexOf("hant")>=0||l.indexOf("tw")>=0||l.indexOf("hk")>=0||l.indexOf("mo")>=0) return "zh-Hant";
+          return "zh-Hans";
+        }
+        var b=l.split("-")[0];
+        return SUP.indexOf(b)>=0 ? b : null;
+      }
       function detect(){
         var navs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || "en"];
         for (var i=0;i<navs.length;i++){
-          var l=(navs[i]||"").toLowerCase();
-          if(l.indexOf("zh")===0){
-            if(l.indexOf("hant")>=0||l.indexOf("tw")>=0||l.indexOf("hk")>=0||l.indexOf("mo")>=0) return "zh-Hant";
-            return "zh-Hans";
-          }
-          var b=l.split("-")[0];
-          if(SUP.indexOf(b)>=0) return b;
+          var p=pick(navs[i]);
+          if(p) return p;
         }
         return "en";
       }
@@ -61,6 +68,14 @@
       window.AP_ANIMALS = A;
       window.AP_T = function(k){ var d=I[L]; if(d && d[k]!=null) return d[k]; return (I.en[k]!=null)?I.en[k]:k; };
       try{ document.documentElement.lang = L; }catch(e){}
+      // Playgama: 포털 언어는 브리지 초기화 뒤에 온다 → 지원 언어면 교체 (바뀌면 true)
+      window.AP_SET_LANG = function(tag){
+        var p=pick(tag);
+        if(!p || p===L) return false;
+        L=p; window.AP_LANG=p;
+        try{ document.documentElement.lang = p; }catch(e){}
+        return true;
+      };
     })();
     </script>
     <!-- Apps in Toss Bridge (Vite bundling entry) — Android에서는 404되지만 module script는 무시됨 -->
@@ -908,6 +923,21 @@
         @media (max-width: 896px) and (orientation: landscape) {
             #rotate-overlay { display: flex !important; }
         }
+        /* 포털은 데스크톱 iframe이 좁은 가로일 수 있다 → 회전 안내는 터치 기기에서만 */
+        @media (pointer: fine) {
+            .ap-playgama #rotate-overlay { display: none !important; }
+        }
+        /* 포털 가로 화면: 캔버스를 세로 비율(1:2)로 가운데에. 넓은 캔버스면 CameraScaler가 시야 높이를
+           줄여 떨어뜨릴 동물(스폰 y=7)이 화면 위로 잘린다. 좌우 여백은 게임 배경색(#fffafa)으로 이어 붙인다 */
+        @media (min-aspect-ratio: 1/2) {
+            .ap-playgama body { background: #fffafa; }
+            .ap-playgama #unity-container { left: 50%; right: auto; width: 50vh; transform: translateX(-50%); }
+        }
+        /* 포털의 낮은 iframe: 랜딩·게임오버·설정 카드가 잘리지 않게 축소 */
+        @media (max-height: 640px) { .ap-playgama :is(.lg-card, .go-card, .sht) { zoom: .9; } }
+        @media (max-height: 580px) { .ap-playgama :is(.lg-card, .go-card, .sht) { zoom: .8; } }
+        @media (max-height: 520px) { .ap-playgama :is(.lg-card, .go-card, .sht) { zoom: .7; } }
+        @media (max-height: 440px) { .ap-playgama :is(.lg-card, .go-card, .sht) { zoom: .6; } }
         #rotate-overlay {
             display: none;
             position: fixed; inset: 0; z-index: 9999;
@@ -1122,7 +1152,7 @@
                     <svg class="eico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 3L8.5 6.5M12 3l3.5 3.5"/><path d="M6 11.5H4.5a1.5 1.5 0 00-1.5 1.5v6a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-6a1.5 1.5 0 00-1.5-1.5H18"/></svg> <span id="go-btn-share-revive-text"></span>
                 </button>
                 <button id="go-btn-restart" class="go-btn go-btn-secondary" onclick="onRestartClicked()" data-i18n="restart_button">처음부터 다시하기</button>
-                <button class="go-btn go-btn-ghost" onclick="onShareClicked()"><svg class="eico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 3L8.5 6.5M12 3l3.5 3.5"/><path d="M6 11.5H4.5a1.5 1.5 0 00-1.5 1.5v6a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-6a1.5 1.5 0 00-1.5-1.5H18"/></svg> <span data-i18n="share_button">결과 공유하기</span></button>
+                <button class="go-btn go-btn-ghost" id="go-btn-share" onclick="onShareClicked()"><svg class="eico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 3L8.5 6.5M12 3l3.5 3.5"/><path d="M6 11.5H4.5a1.5 1.5 0 00-1.5 1.5v6a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-6a1.5 1.5 0 00-1.5-1.5H18"/></svg> <span data-i18n="share_button">결과 공유하기</span></button>
                 <button class="go-btn" id="go-restore" onclick="window.GameBridge && window.GameBridge.restorePurchases()" data-i18n="restore_button" style="display:none;background:rgba(49,130,246,0.06);border:1.5px solid var(--toss-blue);color:var(--toss-blue)">Restore Purchases</button>
             </div>
         </div>
@@ -1343,6 +1373,8 @@
                     window._pendingAdType = adType;
                     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
                     window._iosCall('showRewardedAd');
+                } else if (P === 'playgama') {
+                    _apShowRewarded(adType);
                 } else {
                     // Toss: C# jslib 경유
                     if (window.unityInstance) {
@@ -1366,6 +1398,8 @@
                     window._onInterstitialDone = callback;
                     if (typeof window.pauseAudioForAd === 'function') window.pauseAudioForAd();
                     window._iosCall('showInterstitialAd');
+                } else if (P === 'playgama') {
+                    _apShowInterstitial(callback);
                 } else {
                     // Toss: 기존 _showInterstitialThenToss() 호출
                     window._showInterstitialThenToss(callback);
@@ -1382,6 +1416,8 @@
                 } else if (P === 'ios') {
                     // iOS: 네이티브 AdMob 배너 (50pt) — GameViewController가 표시
                     document.documentElement.style.setProperty('--ad-offset', '50px');
+                } else if (P === 'playgama') {
+                    // 포털: 배너 없음
                 } else {
                     // Toss: TossAds SDK 배너
                     window._initBannerAdToss();
@@ -1396,6 +1432,8 @@
                     }
                 } else if (P === 'ios') {
                     window._iosCall('launchPurchase', { productId: productId });
+                } else if (P === 'playgama') {
+                    // 포털: 인앱결제 없음
                 } else {
                     window._purchasePremiumSpeedToss();
                 }
@@ -1488,7 +1526,9 @@
         };
 
         console.log('[GameBridge] Platform:', P);
-        if (P !== 'toss') { ['settings-restore','lg-restore','go-restore'].forEach(function(id){ var _e = document.getElementById(id); if (_e) _e.style.display = ''; }); }
+        if (P === 'android' || P === 'ios') { ['settings-restore','lg-restore','go-restore'].forEach(function(id){ var _e = document.getElementById(id); if (_e) _e.style.display = ''; }); }
+        // 포털: 리더보드·공유 없음
+        if (P === 'playgama') { ['lg-leaderboard-btn','go-leaderboard-btn','go-btn-share'].forEach(function(id){ var _e = document.getElementById(id); if (_e) _e.style.display = 'none'; }); }
     })();
 
     // 사이드 패널 상태
@@ -1693,6 +1733,84 @@
     document.addEventListener('click',    resumeWebGLAudio, { passive: true });
     document.addEventListener('touchend', resumeWebGLAudio, { passive: true });
 
+    // ════════════════════════════════════════════════════
+    //  Playgama (HTML5 포털) — playgama/src/host.js의 PlaygamaHost. 다른 플랫폼에선 _PG = null
+    // ════════════════════════════════════════════════════
+    var _PG = window.AP_PLATFORM === 'playgama' ? window.PlaygamaHost : null;
+    var _apFrozen = false;
+    var _apPrefsLoaded = false;
+
+    // 포털 일시정지(탭 전환·포털 UI)·광고 중엔 Unity 메인 루프를 멈춘다. 소리는 PlaygamaHost가 끈다
+    // (Unity가 터치마다 AudioContext를 resume하므로 여기서 suspend하는 방식은 새어 나온다)
+    function _apFreeze(on) {
+        var m = unityInstance && unityInstance.Module;
+        if (!m || on === _apFrozen) return;
+        _apFrozen = on;
+        if (on) m.pauseMainLoop(); else m.resumeMainLoop();
+    }
+
+    // 보상형 (adType: 0=부활, 1=2배속). 보상은 호스트가 rewarded를 보냈을 때만
+    function _apShowRewarded(adType) {
+        _PG.showRewarded().then(function(result) {
+            if (result === 'failed') window._showAdUnavailableToast();
+            if (result !== 'rewarded' || !unityInstance) return;
+            if (adType === 0) {
+                window._dismissGameOverForRevive();
+                unityInstance.SendMessage('BridgeManager', 'OnReviveSuccess');
+            } else {
+                unityInstance.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
+            }
+        });
+    }
+
+    // 전면 (게임오버 → 다시하기에서만). 실패·미지원이어도 done은 반드시 호출
+    function _apShowInterstitial(done) {
+        var cb = done || function() {};
+        // 이번 판 부활 2회 소진 시 생략 (Toss와 같은 규칙)
+        if (_lastSpareLives >= 2) { cb(); return; }
+        _PG.showInterstitial().then(cb);
+    }
+
+    // 세이브 선로드(브리지)가 끝난 뒤에만 랜딩을 연다 — 먼저 열면 늦게 온 세이브가 방금 바꾼 설정을 덮는다
+    function _apWhenReady(fn) {
+        if (!_PG) { fn(); return; }
+        _PG.ready.then(function() {
+            _apLoadHostPrefs();
+            fn();
+            _PG.gameReady();
+        });
+    }
+
+    // 선로드로 채워진 localStorage를 다시 읽고 포털 언어·YouTube 규칙 적용 (1회)
+    function _apLoadHostPrefs() {
+        if (_apPrefsLoaded) return;
+        _apPrefsLoaded = true;
+        try {
+            bgmMuted = localStorage.getItem('animalpop_bgm') === '0';
+            sfxMuted = localStorage.getItem('animalpop_sfx') === '0';
+        } catch (e) {}
+        if (unityInstance) {
+            unityInstance.SendMessage('SoundMgr', 'SetBgmMuteFromJS', bgmMuted ? '1' : '0');
+            unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
+        }
+        if (window.AP_SET_LANG(_PG.language())) {
+            DEX_NAMES = window.AP_ANIMALS[window.AP_LANG] || window.AP_ANIMALS.en;
+            applyStaticI18n();
+        }
+        // YouTube는 플레이어 음소거를 쓴다 → 게임 내 사운드 토글 숨김
+        if (_PG.platformId() === 'youtube') {
+            ['toggle-bgm', 'toggle-sfx'].forEach(function(id) {
+                var el = document.getElementById(id);
+                var row = el && el.closest('.sht-row');
+                if (row) row.style.display = 'none';
+            });
+        }
+        updateLocalBestScore();
+        _dcRefreshUI();
+    }
+
+    if (_PG) _PG.onPause(_apFreeze);
+
 
     // ════════════════════════════════════════════════════
     //  Unity 초기화
@@ -1775,11 +1893,13 @@
 
         // 3초 안전장치: Unity가 _ShowHtmlLanding을 호출 안 하면 강제로 랜딩 표시
         setTimeout(function() {
-            if (!loadOverlay.classList.contains('hidden')) {
-                console.warn('[Loading] Timeout — forcing landing.');
-                hideLoading();
-                if (!gameHud.classList.contains('visible')) showLanding();
-            }
+            _apWhenReady(function() {
+                if (!loadOverlay.classList.contains('hidden')) {
+                    console.warn('[Loading] Timeout — forcing landing.');
+                    hideLoading();
+                    if (!gameHud.classList.contains('visible')) showLanding();
+                }
+            });
         }, 3000);
 
         updateLocalBestScore();
@@ -1991,6 +2111,7 @@
         startPlayTimer();
         unityInstance.SendMessage('GameManager', 'StartGame');
         unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
+        if (_PG) _PG.levelStarted();
         _startSpawnWatchdog();
         try { if (window.AppsInToss && window.AppsInToss.Analytics) window.AppsInToss.Analytics.click({ log_name: 'game_start' }); } catch(e) {}
     }
@@ -2011,6 +2132,7 @@
         // 광고 후 AudioContext suspended 상태 → 강제 resume
         resumeWebGLAudio();
         try { if (unityInstance) unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM'); } catch(e) {}
+        if (_PG) _PG.gameplayResumed();
     };
 
     function onReviveClicked() {
@@ -2186,6 +2308,8 @@
             if (unityInstance) unityInstance.SendMessage('BridgeManager', 'OnSpeedBoostAdSuccess');
             return;
         }
+        // 포털: 결제 없음 → 바로 보상형 광고
+        if (_PG) { window.GameBridge.showRewardedAd(1); return; }
         // 결제 시트: 광고 시청 / 990원 결제
         _showSpeedChoiceSheet();
     }
@@ -2241,10 +2365,7 @@
     window._purchasePremiumSpeedToss = function() {
         _log('[IAP] Purchase Request: ' + SPEED_SKU);
         if (typeof window.AppsInToss === 'undefined' || !window.AppsInToss.IAP) {
-            _log('[IAP] AppsInToss IAP Not Found - Fallback to confirm');
-            if (confirm('[개발] IAP 미지원 환경. 구매 성공 시뮬레이션?')) {
-                _onPremiumSpeedGranted();
-            }
+            _log('[IAP] AppsInToss IAP Not Found - purchase unavailable');
             return;
         }
 
@@ -2454,7 +2575,9 @@
     window.showGameOverFromUnity = function(score, best, adWatched, spareLives) {
         _stopSpawnWatchdog();
         var scoreNum = Number(score);
-        var bestNum  = Number(best);
+        // Playgama: Unity PlayerPrefs(IndexedDB)만 지워진 기기에선 브리지 세이브의 최고 점수가 더 높다
+        var bestNum  = _PG ? _PG.best(best) : Number(best);
+        if (_PG) _PG.levelFailed();
         window._lastScore = scoreNum; // 공유용
         if (window.GameBridge) window.GameBridge.haptic('error'); // 게임오버 햅틱
         _dcReport('score', scoreNum);
@@ -2559,6 +2682,7 @@
             var prev = parseInt(localStorage.getItem('animalpop_best') || '0');
             if (bestNum > prev) localStorage.setItem('animalpop_best', String(bestNum));
         } catch(e){}
+        if (_PG) _PG.save();
 
         try {
             if (window.AppsInToss && window.AppsInToss.Analytics) {
@@ -2778,9 +2902,9 @@
     }
 
     // 랜딩 표시 (Unity 준비 완료 시 호출)
-    window._ShowHtmlLanding = function(bestScore) {
+    window._ShowHtmlLanding = function(bestScore) { _apWhenReady(function() {
         if (bestScore !== undefined) {
-            var n = Number(bestScore);
+            var n = _PG ? _PG.best(bestScore) : Number(bestScore);
             document.getElementById('html-best-score').textContent = n.toLocaleString();
         }
         hideLoading();
@@ -2793,7 +2917,7 @@
         if (unityInstance && typeof bgmMuted !== 'undefined' && !bgmMuted) {
             unityInstance.SendMessage('SoundMgr', 'ForcePlayBGM');
         }
-    };
+    }); };
 
 
     // 위험 구역 경고
@@ -2809,6 +2933,7 @@
 
     // 신기록 갱신 인라인 알림
     window.notifyNewHighScoreFromUnity = function(score) {
+        if (_PG && Number(score) <= _PG.best(0)) return; // Unity 쪽 최고 점수가 브리지 세이브보다 낮은 경우
         if (newBestBadge) {
             // 판당 1회(뱃지 첫 표시)만 성공 햅틱 — 뱃지는 restartGame에서 리셋됨
             if (!newBestBadge.classList.contains('show') && window.GameBridge) window.GameBridge.haptic('success');
@@ -2853,11 +2978,13 @@
             }
         }
         try { localStorage.setItem('animalpop_bgm', bgmMuted ? '0' : '1'); } catch(e){}
+        if (_PG) _PG.save();
     }
     function onSfxToggle(cb) {
         sfxMuted = !cb.checked;
         if (unityInstance) unityInstance.SendMessage('SoundMgr', 'SetSfxMuteFromJS', sfxMuted ? '1' : '0');
         try { localStorage.setItem('animalpop_sfx', sfxMuted ? '0' : '1'); } catch(e){}
+        if (_PG) _PG.save();
     }
     function onResetPurchaseData() {
         try {
@@ -2995,6 +3122,7 @@
         startPlayTimer();
         _achGameCounted = false; // 새 판 시작 — 판 수 카운트 게이트 해제
         unityInstance.SendMessage('GameManager', 'StartGame');
+        if (_PG) _PG.levelStarted();
         _startSpawnWatchdog();
         resumeWebGLAudio();
         setTimeout(function() {
@@ -3009,6 +3137,7 @@
     function updateLocalBestScore() {
         try {
             var s = parseInt(localStorage.getItem('animalpop_best') || '0');
+            if (_PG) s = _PG.best(s);
             var el = document.getElementById('html-best-score');
             if (el) el.textContent = s.toLocaleString();
         } catch(e){}
@@ -3235,11 +3364,14 @@
     // ════════════════════════════════════════════════════
     //  OS 뒤로가기 제스처 비활성화 + 종료 확인 모달
     // ════════════════════════════════════════════════════
-    history.pushState(null, null, location.href);
-    window.addEventListener('popstate', function() {
+    // 포털(iframe)에서는 브라우저 뒤로가기를 가로채지 않는다
+    if (!_PG) {
         history.pushState(null, null, location.href);
-        _showExitConfirmModal();
-    });
+        window.addEventListener('popstate', function() {
+            history.pushState(null, null, location.href);
+            _showExitConfirmModal();
+        });
+    }
 
     window._showExitConfirmModal = function() {
         if (document.getElementById('exit-confirm-modal')) return;

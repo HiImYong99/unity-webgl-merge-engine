@@ -7,6 +7,7 @@
 #    ./build.sh android-aab # Android AAB 빌드 (릴리즈)
 #    ./build.sh ios         # iOS WKWebView 래퍼 빌드
 #    ./build.sh all         # 전체 빌드 (toss + ios + android)
+#    ./build.sh playgama    # HTML5 포털(Playgama·CrazyGames) zip — Unity 재빌드 없음
 #    ./build.sh bump 1.2.2 16  # 버전 올리기 (Android+iOS 동시)
 #
 #  Unity WebGL 빌드는 별도로 먼저 해야 합니다.
@@ -436,6 +437,9 @@ case "${1:-}" in
     ios)
         build_ios
         ;;
+    playgama)
+        bash "$PROJECT_DIR/playgama/build.sh"
+        ;;
     bump)
         bump_version "$2" "$3"
         ;;
@@ -454,6 +458,7 @@ case "${1:-}" in
         echo "  android-aab   Android AAB (Unity 비압축 + Gradle release)"
         echo "  ios           iOS WKWebView 래퍼 (Unity Brotli + xcodegen/pod)"
         echo "  all           전체 빌드 (toss + ios + android apk/aab)"
+        echo "  playgama      HTML5 포털 zip (마지막 토스 WebGL 빌드 재사용 → build/animal-pop-playgama.zip)"
         echo "  bump V B      버전 올리기: VERSION 갱신 → Android/iOS 주입  예) bump 1.2.2 16"
         echo ""
         echo "옵션:"
