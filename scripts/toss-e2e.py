@@ -60,7 +60,7 @@ def check(name, ok, detail=''):
 
 
 # 가짜 SDK. window.__cfg로 광고 지연·실패·보상 여부를 바꾸고, window.__log에 호출을 남긴다.
-# 브리지(module script)가 진짜 SDK 네임스페이스를 대입하면 무시하고, 테스트 번들 치환기가 만든 파생 객체는 받는다.
+# 브리지(module script)가 진짜 SDK 네임스페이스를 대입하면 무시한다(모듈 네임스페이스가 아닌 객체만 받는다).
 STUB = r"""
 window.__log = [];
 window.__cfg = { loadDelay: {}, loadFail: {}, rewardMode: 'reward', orders: [] };

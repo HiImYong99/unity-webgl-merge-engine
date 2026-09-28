@@ -11,8 +11,9 @@
 # 예전 경로(AITBuildScript.BuildWebGL + pnpm build)는 3.x ait build가 dist/web을 새로 만들지 않아
 # 옛 dist/web을 그대로 다시 포장했다(템플릿 수정이 번들에 빠짐). 쓰지 않는다.
 #
-# 테스트 번들: 운영 광고 그룹 ID로 QR 테스트를 하면 제재 대상이다. 테스트 번들은 운영 번들과 같은 dist/web에
-# scripts/ait-test-ads.js(운영 ID → ait-ad-test-* 치환)를 주입하고 미션을 TEST_ 프로모션 코드로 바꾼다.
+# 테스트 번들: 운영 광고 그룹 ID로 QR 테스트를 하면 제재 대상이다. 테스트 번들은 운영 번들과 같은 dist/web에서
+# 운영 광고 ID를 ait-ad-test-*로 바꾸고(템플릿 index.html + jslib가 든 framework.js.br) 미션을 TEST_ 프로모션 코드로 바꾼다.
+# 번들 안 어느 파일(.br은 풀어서)에도 운영 ID가 남으면 실패한다.
 # 운영 번들에는 테스트 ID·TEST_ 호출이 들어가지 않는다(아래 검증).
 set -e
 
@@ -107,36 +108,65 @@ PY
 if [ "$MAKE_TEST" = "1" ]; then
     echo ""
     echo "[3/3] 테스트 번들 (테스트 광고 ID + TEST_ 프로모션 코드)..."
+    command -v brotli >/dev/null || fail "brotli CLI가 필요해요 (brew install brotli)"
+    FRAMEWORK_BR="$(ls "$AIT_DIR/dist/web/Build/"*.framework.js.br 2>/dev/null | head -1)"
+    [ -n "$FRAMEWORK_BR" ] || fail "dist/web/Build/*.framework.js.br가 없어요"
     BACKUP_DIR="$(mktemp -d)"
     cp "$WEB_INDEX" "$BACKUP_DIR/index.html"
+    cp "$FRAMEWORK_BR" "$BACKUP_DIR/framework.js.br"
     cp "$AIT_DIR/animal-pop.ait" "$BACKUP_DIR/animal-pop.ait"
     restore() {
         cp "$BACKUP_DIR/index.html" "$WEB_INDEX"
+        cp "$BACKUP_DIR/framework.js.br" "$FRAMEWORK_BR"
         cp "$BACKUP_DIR/animal-pop.ait" "$AIT_DIR/animal-pop.ait"
         rm -rf "$BACKUP_DIR"
     }
     trap restore EXIT
 
-    python3 - "$WEB_INDEX" "$PROJECT_DIR/scripts/ait-test-ads.js" <<'PY' || fail "테스트 주입 실패"
+    brotli -dc "$FRAMEWORK_BR" > "$BACKUP_DIR/framework.js"
+    python3 - "$WEB_INDEX" "$BACKUP_DIR/framework.js" <<'PY' || fail "테스트 ID 치환 실패"
 import re, sys
-index, shim_path = sys.argv[1], sys.argv[2]
-html = open(index, encoding='utf-8-sig').read()
-shim = open(shim_path, encoding='utf-8').read()
-# 브리지 module script(window.AppsInToss 설정) 바로 뒤 — module script는 문서 순서대로 실행된다
-html, n = re.subn(r'(<script type="module"[^>]*src="[^"]*assets/[^"]*\.js"></script>)',
-                  lambda m: m.group(1) + '\n<script type="module">\n' + shim + '\n</script>', html, count=1)
-assert n == 1, 'bridge module script not found'
+index, framework = sys.argv[1], sys.argv[2]
+TEST_IDS = {
+    'ait.v2.live.79b8c799130343ec': 'ait-ad-test-rewarded-id',      # 리워드 (부활·2배속·미션)
+    'ait.v2.live.f8b6b46c862f48f4': 'ait-ad-test-interstitial-id',  # 전면 (처음부터 다시하기)
+    'ait.v2.live.629331886f8c49bd': 'ait-ad-test-banner-id',        # 배너
+}
+def swap(text, name):
+    for live, test in TEST_IDS.items():
+        text = text.replace(live, test)
+    left = re.findall(r'ait\.v2\.live\.[0-9a-f]+', text)
+    assert not left, f'{name}: 매핑에 없는 운영 광고 ID {sorted(set(left))}'
+    return text
+html = swap(open(index, encoding='utf-8-sig').read(), 'index.html')
 html, n = re.subn(r"\btest: false,", "test: true, ", html, count=1)
 assert n == 1, 'MISSION.test not found'
 open(index, 'w', encoding='utf-8').write(html)
+fw = open(framework, encoding='utf-8').read()
+open(framework, 'w', encoding='utf-8').write(swap(fw, 'framework.js'))
 PY
+    brotli -f -q 11 -o "$FRAMEWORK_BR" "$BACKUP_DIR/framework.js"
     ait_build || fail "테스트 ait build 실패"
     mv "$AIT_DIR/animal-pop.ait" "$AIT_DIR/animal-pop-test.ait"
     python3 - "$AIT_DIR/animal-pop-test.ait" <<'PY' || fail "테스트 번들 검증 실패"
-import sys, zipfile
-html = zipfile.ZipFile(sys.argv[1]).read('sources/index.html').decode('utf-8-sig')
+import re, subprocess, sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+live, found = {}, set()
+for n in z.namelist():
+    if n.endswith('/'):
+        continue
+    b = z.read(n)
+    if n.endswith('.br'):
+        b = subprocess.run(['brotli', '-dc'], input=b, capture_output=True, check=True).stdout
+    t = b.decode('utf-8', 'ignore')
+    hits = re.findall(r'ait\.v2\.live\.[0-9a-f]+', t)
+    if hits:
+        live[n] = len(hits)
+    found.update(re.findall(r'ait-ad-test-(?:rewarded|interstitial|banner)-id', t))
+html = z.read('sources/index.html').decode('utf-8-sig')
 for name, passed in {
-    '테스트 광고 ID 치환기 있음': 'ait-ad-test-rewarded-id' in html and 'ait-ad-test-interstitial-id' in html and 'ait-ad-test-banner-id' in html,
+    '테스트 광고 ID 3종 있음': found == {'ait-ad-test-rewarded-id', 'ait-ad-test-interstitial-id', 'ait-ad-test-banner-id'},
+    f'운영 광고 ID 없음(.br 포함 전체 파일) {live or ""}': not live,
     '미션 TEST_ 코드(test: true)': 'test: true, ' in html,
 }.items():
     print(('  OK   ' if passed else '  FAIL ') + name)
