@@ -88,17 +88,27 @@ EOF
 #  WebGL 빌드 결과물 탐지
 # ═══════════════════════════════════════════════════════════════
 
+# index.html과 Build/*.loader.js가 모두 있는 Unity WebGL 출력 중 index.html이 가장 최근인 폴더
+# (build-ait.sh의 AITPackageOnlyBuild는 webgl/에 쓰고 ait-build/public엔 index.html을 남기지 않는다)
+latest_unity_out() {
+    local best="" d
+    for d in "$AIT_DIR/public" "$PROJECT_DIR/webgl"; do
+        [ -f "$d/index.html" ] && ls "$d/Build/"*.loader.js >/dev/null 2>&1 || continue
+        if [ -z "$best" ] || [ "$d/index.html" -nt "$best/index.html" ]; then best="$d"; fi
+    done
+    echo "$best"
+}
+
 # Unity WebGL 빌드 결과물 위치 자동 탐지
-# 우선순위: ait-build/public/Build > WebGL Build 폴더
+# 우선순위: ait-build/public·webgl/ 중 최신 > android-wrapper
 detect_webgl_build() {
-    # 1) ait-build/public/Build (가장 최신)
-    if [ -d "$AIT_DIR/public/Build" ]; then
-        local count=$(ls "$AIT_DIR/public/Build/"*.loader.js 2>/dev/null | wc -l)
-        if [ "$count" -gt 0 ]; then
-            WEBGL_BUILD_DIR="$AIT_DIR/public"
-            ok "WebGL 빌드 발견: $WEBGL_BUILD_DIR/Build/"
-            return 0
-        fi
+    # 1) ait-build/public 또는 webgl/ (index.html까지 있는 최신 Unity 출력)
+    local out
+    out=$(latest_unity_out)
+    if [ -n "$out" ]; then
+        WEBGL_BUILD_DIR="$out"
+        ok "WebGL 빌드 발견: $WEBGL_BUILD_DIR/Build/"
+        return 0
     fi
 
     # 2) android-wrapper에 이미 있는 경우
@@ -434,7 +444,10 @@ case "${1:-}" in
         build_ios
         ;;
     playgama)
-        bash "$PROJECT_DIR/playgama/build.sh"
+        # 입력: UNITY_OUT을 주면 그대로, 아니면 index.html까지 있는 최신 Unity 출력(토스 빌드 뒤엔 webgl/)
+        UNITY_OUT="${UNITY_OUT:-$(latest_unity_out)}"
+        [ -n "$UNITY_OUT" ] || fail "Unity WebGL 빌드(index.html)가 없습니다. ./build.sh toss를 먼저 실행하세요."
+        UNITY_OUT="$UNITY_OUT" bash "$PROJECT_DIR/playgama/build.sh"
         ;;
     bump)
         bump_version "$2" "$3"

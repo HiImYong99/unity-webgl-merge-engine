@@ -120,7 +120,11 @@ window.__cfg = { loadDelay: {}, loadFail: {}, rewardMode: 'reward', orders: [] }
     destroyAll: supported(function () {})
   };
   var IAP = {
-    getPendingOrders: function () { return Promise.resolve({ orders: [] }); },
+    getPendingOrders: function () {
+      // 미지원 토스앱처럼 동기 throw (SDK withUnsupportedThrow)
+      if (window.__cfg.pendingThrows) { log('iapPendingThrow', ''); throw new Error('UNSUPPORTED_APP_VERSION'); }
+      return Promise.resolve({ orders: [] });
+    },
     getCompletedOrRefundedOrders: supported(function () { log('iapCompleted', ''); return Promise.resolve({ hasNext: false, orders: window.__cfg.orders }); }),
     completeProductGrant: function () { return Promise.resolve(true); },
     createOneTimePurchaseOrder: function () { return function () {}; }
@@ -218,8 +222,11 @@ with sync_playwright() as p:
     restart_html = lambda: ev("document.getElementById('go-btn-restart').textContent.trim()")
     hud_visible = lambda: ev("document.getElementById('game-hud').classList.contains('visible')")
 
+    banner_visibility = lambda: ev("getComputedStyle(document.getElementById('banner-ad-container')).visibility")
+
     # 1) 게임오버 → 전면 고지 + 부활 리워드 뒤에 전면 사전 로드
     game_over()
+    check('banner hidden behind game-over modal', banner_visibility() == 'hidden', banner_visibility())
     check('restart shows ad notice', restart_html() == '광고 보고 처음부터 다시하기', restart_html())
     check('mission notice visible', ev("""(() => { const n = document.querySelector('#go-mission .go-mission-notice');
         return !!n && getComputedStyle(document.getElementById('go-mission')).display !== 'none' && n.textContent.includes('사전 고지 없이 중단될 수 있어요'); })()"""))
@@ -230,6 +237,7 @@ with sync_playwright() as p:
     shows = events('show', 'interstitial')
     check('restart shows preloaded interstitial immediately', len(shows) == 1 and len(events('load', 'interstitial')) == n_inter_loads)
     check('new game after interstitial', wait_for("document.getElementById('game-hud').classList.contains('visible')", 5))
+    check('banner visible again in game', banner_visibility() == 'visible', banner_visibility())
 
     # 2) 75초 안에 다시 게임오버 → 고지 없음, 광고 없음
     game_over()
@@ -289,6 +297,89 @@ with sync_playwright() as p:
     check('no duplicate revive load while one in flight', loads_before_show2 == n_rew_loads + 1 and len(events('load', 'rewarded')) == n_rew_loads + 2,
           str([(e['ev'], e['kind']) for e in rew]))
 
+    toast_text = lambda: ev("(document.getElementById('ad-unavail-toast') || {}).textContent || ''")
+    go_visible = lambda: ev("document.getElementById('gameover-overlay').classList.contains('visible')")
+    rew_loads = lambda: len(events('load', 'rewarded'))
+
+    def settle_rewarded():
+        wait_for("!_adInFlight(REVIVE_AD_ID)", 8)
+
+    def fresh_game():
+        # 부활은 한 판에 광고 1번 → 새 판에서 다시 게임오버를 만든다
+        game_over()
+        click('#go-btn-restart')
+        wait_for("document.getElementById('game-hud').classList.contains('visible')", 5)
+        time.sleep(0.3)
+
+    # 5b) 부활 광고가 2초 넘게 걸리면 jslib에 넘기지 않고(큐 밖 로드 없음) '준비 중' 안내, 늦게 온 광고는 다음 탭에 바로 씀
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("_adReset(_adSlot(REVIVE_AD_ID)); window.__cfg.loadDelay.rewarded = 3000; window._lastInterstitialAt = Date.now()")
+    game_over()
+    n0 = rew_loads()
+    n_loaded = len(events('loaded', 'rewarded'))
+    click('#go-btn-revive')
+    time.sleep(2.4)
+    check('slow revive ad: preparing toast, no jslib load', toast_text() == '광고를 준비하고 있어요. 잠시 후 다시 눌러 주세요'
+          and go_visible() and rew_loads() == n0, f'toast={toast_text()!r} loads={rew_loads() - n0}')
+    wait_for(f"window.__log.filter(e => e.ev === 'loaded' && e.kind === 'rewarded').length === {n_loaded + 1}", 3)
+    n_show = len(events('show', 'rewarded'))
+    click('#go-btn-revive')
+    check('late revive ad used on next tap', wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 3)
+          and len(events('show', 'rewarded')) == n_show + 1 and len([e for e in events('load', 'rewarded') if e['t'] <= events('show', 'rewarded')[-1]['t']]) == n0)
+
+    # 5c) 부활 사전 로드 실패 → 탭하면 큐 맨 앞으로 다시 받음(받는 중인 전면과 겹치지 않음), jslib 자체 로드 없음
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("""_adReset(_adSlot(REVIVE_AD_ID)); _adReset(_adSlot(INTERSTITIAL_AD_ID));
+          window.__cfg.loadFail.rewarded = true; window.__cfg.loadDelay.rewarded = 300;
+          window.__cfg.loadDelay.interstitial = 900; window._lastInterstitialAt = 0;""")
+    n_err = len(events('loadError', 'rewarded'))
+    game_over()
+    wait_for(f"window.__log.filter(e => e.ev === 'loadError' && e.kind === 'rewarded').length === {n_err + 1}", 3)
+    ev("window.__cfg.loadFail.rewarded = false")
+    n0 = rew_loads()
+    t_tap = ev('Date.now()')
+    click('#go-btn-revive')
+    revived = wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 4)
+    shows_after = [e for e in events('show', 'rewarded') if e['t'] >= t_tap]
+    loads_between = [e for e in events('load', 'rewarded') if e['t'] >= t_tap and shows_after and e['t'] <= shows_after[0]['t']]
+    check('failed preload: revive re-queued, one load, no overlap', revived and len(loads_between) == 1 and ev('window.__maxInflight') == 1,
+          f'revived={revived} loads={len(loads_between)} maxInflight={ev("window.__maxInflight")}')
+
+    # 5d) 부활 광고가 계속 실패하면 안내만 하고 게임오버 화면 유지 (jslib로 넘기지 않음)
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("_adReset(_adSlot(REVIVE_AD_ID)); window.__cfg.loadFail.rewarded = true; window._lastInterstitialAt = Date.now()")
+    game_over()
+    settle_rewarded()
+    n0 = rew_loads()
+    click('#go-btn-revive')
+    time.sleep(0.8)
+    check('revive ad unavailable: toast, stays on game over, one queued load', toast_text() == '광고를 불러올 수 없어요'
+          and go_visible() and rew_loads() == n0 + 1, f'toast={toast_text()!r} loads={rew_loads() - n0}')
+
+    # 5e) 부활과 미션을 같이 누름 — 받은 광고 1개를 한 곳만 보여줌 (같은 광고 두 번 show 없음)
+    ev("window.__cfg.loadFail.rewarded = false")
+    click('#go-btn-restart')
+    wait_for("document.getElementById('game-hud').classList.contains('visible')", 5)
+    settle_rewarded()
+    ev("""localStorage.setItem('animalpop_mission_play10_count', '10');
+          localStorage.removeItem('animalpop_mission_play10_claimday');
+          _adReset(_adSlot(REVIVE_AD_ID)); window.__cfg.loadDelay.rewarded = 800; window._lastInterstitialAt = Date.now();""")
+    n_fail = len(events('failedToShow'))
+    game_over()
+    both = ev("getComputedStyle(document.getElementById('go-mission-btn')).display !== 'none' && getComputedStyle(document.getElementById('go-btn-revive')).display !== 'none'")
+    click('#go-btn-revive')
+    click('#go-mission-btn')
+    wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 4)
+    time.sleep(3)
+    check('revive + mission together: no double show of one ad', both and len(events('failedToShow')) == n_fail,
+          f'both={both} failedToShow={len(events("failedToShow")) - n_fail}')
+
     # 6) 동시 로드 없음 (전체 기록)
     check('fullscreen loads never overlap', ev('window.__maxInflight') == 1, str(ev('window.__maxInflight')))
     check('no fullscreen load started while banner loading', ev('window.__loadsDuringBanner') == 0)
@@ -302,10 +393,15 @@ with sync_playwright() as p:
 
     # 7) 평생 소장 구매 복원 (완료 주문 → 광고 제거, 환불된 주문은 제외)
     SKU = 'ait.0000022018.560c8f2d.99adbacd5a.3325211470'
-    page, errors, _ = open_page(f"window.__cfg.orders = [{{orderId: 'o1', sku: '{SKU}', status: 'COMPLETED', date: '2026-04-08T00:00:00'}}];")
+    # getPendingOrders가 미지원 토스앱처럼 동기 throw해도 템플릿 쪽은 로딩 실패로 번지지 않고 완료 주문 복원은 된다
+    # (jslib TossIAPRestorePendingOrders도 같은 호출을 가드 없이 해서 page error가 하나 남는다 — jslib는 이번 범위 밖)
+    page, errors, _ = open_page(f"window.__cfg.pendingThrows = true; window.__cfg.orders = [{{orderId: 'o1', sku: '{SKU}', status: 'COMPLETED', date: '2026-04-08T00:00:00'}}];")
     ev = lambda js: page.evaluate(js)
     time.sleep(2)
     check('premium restored from completed order', ev('_premiumSpeedOwned === true'))
+    check('unsupported getPendingOrders does not fail loading', ev("window.__log.some(e => e.ev === 'iapPendingThrow')")
+          and ev("document.getElementById('loading-text').textContent") != '로딩에 실패했어요'
+          and all('UNSUPPORTED_APP_VERSION' in e for e in errors), '; '.join(errors[:3]))
     page.click('.lg-start-btn')
     time.sleep(1.5)
     check('no banner for restored premium', not any(e['ev'] == 'banner' for e in ev('window.__log')))
