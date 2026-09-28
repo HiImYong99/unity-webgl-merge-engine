@@ -275,17 +275,13 @@ build_toss() {
     echo -e "${CYAN}  앱인토스 (Toss) 빌드${NC}"
     echo -e "${CYAN}══════════════════════════════════════${NC}"
 
+    # SDK 3.x: AITPackageOnlyBuild(WebGL 빌드 + dist/web 재생성 + ait build) — build-ait.sh 참고.
+    # 예전 경로(AITBuildScript.BuildWebGL + ait build)는 옛 dist/web을 다시 포장해 템플릿 수정이 빠진다.
     if [ "${SKIP_UNITY:-}" != "1" ]; then
-        unity_build_toss
+        bash "$PROJECT_DIR/build-ait.sh" || fail "앱인토스 빌드 실패"
+    else
+        bash "$PROJECT_DIR/build-ait.sh" --no-unity || fail "앱인토스 빌드 실패"
     fi
-
-    cd "$AIT_DIR"
-    if ! command -v npx &>/dev/null; then
-        fail "npx를 찾을 수 없습니다. Node.js를 설치하세요."
-    fi
-
-    info "ait build 실행 중..."
-    npx ait build
 
     ok "앱인토스 빌드 완료!"
     echo ""
@@ -444,8 +440,8 @@ case "${1:-}" in
         bump_version "$2" "$3"
         ;;
     all)
-        build_toss                 # Brotli 빌드 + ait
-        SKIP_UNITY=1 build_ios     # 토스 Brotli 재사용 (재빌드 없이 동기화)
+        build_toss                 # Brotli 빌드 + ait (AITPackageOnlyBuild → webgl/, ait-build/public엔 index.html 없음)
+        build_ios                  # iOS는 AITBuildScript 빌드(ait-build/public + index.html)를 직접 뽑는다
         build_android_apk          # 비압축 빌드 + APK (디버그)
         build_android_aab          # 기존 비압축 재사용 + AAB (릴리즈)
         ;;
@@ -453,7 +449,7 @@ case "${1:-}" in
         echo ""
         echo "Usage: ./build.sh <target>"
         echo ""
-        echo "  toss          앱인토스 빌드 (Unity Brotli + ait build)"
+        echo "  toss          앱인토스 빌드 (build-ait.sh: Unity 배치 빌드 + SDK 3.x 패키징)"
         echo "  android       Android APK (Unity 비압축 + Gradle debug)"
         echo "  android-aab   Android AAB (Unity 비압축 + Gradle release)"
         echo "  ios           iOS WKWebView 래퍼 (Unity Brotli + xcodegen/pod)"
