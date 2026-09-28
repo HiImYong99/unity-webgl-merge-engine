@@ -100,114 +100,6 @@
             padding: 5px;
             display: none;
         }
-
-        /* Apps in Toss Toast */
-        .ait-toast {
-            position: fixed;
-            z-index: 9999;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-            max-width: 300px;
-            text-align: center;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .ait-toast.show {
-            opacity: 1;
-        }
-        
-        .ait-toast.top {
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .ait-toast.center {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        .ait-toast.bottom {
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        /* Apps in Toss Modal */
-        .ait-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 10000;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .ait-modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            max-width: 320px;
-            width: 90%;
-            text-align: center;
-        }
-        
-        .ait-modal-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .ait-modal-message {
-            font-size: 14px;
-            line-height: 1.4;
-            margin-bottom: 20px;
-            color: #666;
-        }
-        
-        .ait-modal-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .ait-modal-button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .ait-modal-button.primary {
-            background: #3182ce;
-            color: white;
-        }
-        
-        .ait-modal-button.primary:hover {
-            background: #2c5aa0;
-        }
-        
-        .ait-modal-button.secondary {
-            background: #e2e8f0;
-            color: #4a5568;
-        }
-        
-        .ait-modal-button.secondary:hover {
-            background: #cbd5e0;
-        }
     </style>
 
     <!-- USER_HEAD_START - 이 영역에 사용자 커스텀 스크립트/스타일을 추가하세요 -->
@@ -238,24 +130,20 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="ait-toast-container"></div>
-
-    <!-- Modal Container -->
-    <div id="ait-modal" class="ait-modal">
-        <div class="ait-modal-content">
-            <div id="ait-modal-title" class="ait-modal-title"></div>
-            <div id="ait-modal-message" class="ait-modal-message"></div>
-            <div class="ait-modal-buttons">
-                <button id="ait-modal-cancel" class="ait-modal-button secondary" style="display: none;">취소</button>
-                <button id="ait-modal-confirm" class="ait-modal-button primary">확인</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Apps in Toss Unity Bridge (Unity 로더보다 먼저!) -->
-    <!-- Legacy bridge for compatibility -->
-    <script src="Runtime/appsintoss-unity-bridge.js"></script>
+    <!-- PlayerPrefs 영속화(앱인토스 Storage 미러링) 설정.
+         빌드 시 %AIT_PLAYERPREFS_PERSISTENCE% 플레이스홀더가 "true"/"false"로 치환됨.
+         미치환 리터럴('%AIT_PLAYERPREFS_PERSISTENCE%')은 "false"와 다르므로 true로 평가 — fail-open.
+         ⚠️ 반드시 ait-playerprefs.js 로드 직전에 선언한다 — 그 스크립트의 부트스트랩이
+         로드 즉시(스크립트 실행 시점) 이 값을 읽어 스냅샷 fetch 착수 여부를 결정하므로,
+         순서가 뒤바뀌면 opt-out(enabled:false) 설정이 무시되고 fetch가 착수된다. -->
+    <script>
+        window.__AIT_PLAYERPREFS = {
+            enabled: '%AIT_PLAYERPREFS_PERSISTENCE%' !== 'false',
+            bootTimeoutMs: 2500
+        };
+    </script>
+    <!-- PlayerPrefs 영속화 레이어 — Unity 로더보다 먼저 로드해 스냅샷 fetch를 미리 착수 -->
+    <script src="Runtime/ait-playerprefs.js"></script>
     <!-- Web Framework Bridge - @apps-in-toss/web-framework 함수를 window.AppsInToss에 노출 -->
     <script type="module" src="./unity-bridge.ts"></script>
 
@@ -523,6 +411,11 @@
         // 빌드 시 %AIT_FIRST_INTERACTIVE_LOG% 플레이스홀더가 "true"/"false"로 치환됨.
         // 미치환 리터럴('%AIT_FIRST_INTERACTIVE_LOG%')은 "false"와 다르므로 true로 평가 — fail-open.
         window.__AIT_FIRST_INTERACTIVE_LOG = '%AIT_FIRST_INTERACTIVE_LOG%' !== 'false';
+
+        // Unity 로더 config에 PlayerPrefs 영속화 훅(preRun 트랩)을 주입.
+        // window.__AIT_PLAYERPREFS는 ait-playerprefs.js 로드 직전(<head 이후 스크립트 블록>)에
+        // 이미 선언되어 있다. 반드시 createUnityInstance 앞에서 호출한다.
+        if (window.__AIT_PP) window.__AIT_PP.configure(config);
 
         // 기기 성능에 따른 최적 devicePixelRatio 계산
         function getOptimalDevicePixelRatio() {
@@ -918,12 +811,6 @@
             try { sessionStorage.removeItem('__ait_reload_count__'); } catch (e) {}
 
             console.log('[AIT] ✓ Unity 인스턴스 로드 완료');
-
-            // Apps in Toss Unity Bridge 초기화
-            if (typeof AppsInTossUnityBridge !== 'undefined') {
-                AppsInTossUnityBridge.setUnityInstance(unityInstance);
-                console.log('[AIT] ✓ Apps in Toss Unity Bridge 초기화 완료');
-            }
 
             // 로딩 화면 숨기기
             console.log('[AIT] ✓ 게임 로딩 완료!');
