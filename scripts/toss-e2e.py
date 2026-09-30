@@ -63,13 +63,14 @@ def check(name, ok, detail=''):
 # 브리지(module script)가 진짜 SDK 네임스페이스를 대입하면 무시한다(모듈 네임스페이스가 아닌 객체만 받는다).
 STUB = r"""
 window.__log = [];
-window.__cfg = { loadDelay: {}, loadFail: {}, rewardMode: 'reward', orders: [] };
+window.__cfg = { loadDelay: {}, delayQueue: {}, loadFail: {}, showError: {}, showMs: 500, rewardMode: 'reward', orders: [] };
 (function () {
   function kind(id) {
     return /79b8c799130343ec|ait-ad-test-rewarded-id/.test(id) ? 'rewarded'
       : /f8b6b46c862f48f4|ait-ad-test-interstitial-id/.test(id) ? 'interstitial' : 'other';
   }
-  var cache = {}, inflight = 0;
+  // cache: 그룹별로 받아 둔 광고(로드 번호) 목록. showing: 지금 화면에 떠 있는 광고의 로드 번호
+  var cache = {}, inflight = 0, loadSeq = 0, showing = {};
   window.__maxInflight = 0; window.__bannerLoading = false; window.__loadsDuringBanner = 0;
   function log(ev, id, extra) {
     var e = { t: Date.now(), ev: ev, id: id, kind: kind(id) };
@@ -78,30 +79,36 @@ window.__cfg = { loadDelay: {}, loadFail: {}, rewardMode: 'reward', orders: [] }
   }
   function supported(f) { f.isSupported = function () { return true; }; return f; }
   var loadFullScreenAd = supported(function (p) {
-    var id = p.options.adGroupId, dead = false;
+    var id = p.options.adGroupId, dead = false, seq = ++loadSeq;
     inflight++; window.__maxInflight = Math.max(window.__maxInflight, inflight);
     if (window.__bannerLoading) window.__loadsDuringBanner++;
     log('load', id, { inflight: inflight });
-    var d = window.__cfg.loadDelay[kind(id)];
+    var q = window.__cfg.delayQueue[kind(id)];
+    var d = q && q.length ? q.shift() : window.__cfg.loadDelay[kind(id)];
     setTimeout(function () {
       inflight--;
       if (window.__cfg.loadFail[kind(id)]) { log('loadError', id); if (!dead) p.onError(new Error('no fill')); return; }
-      cache[id] = (cache[id] || 0) + 1;
+      (cache[id] = cache[id] || []).push(seq);
       log('loaded', id);
       if (!dead) p.onEvent({ type: 'loaded' });
     }, d == null ? 300 : d);
-    return function () { dead = true; };
+    // 떠 있는 광고의 로드 리스너를 표시 도중에 해제하면 기록 (광고가 닫힌 뒤에 해제해야 함)
+    return function () { dead = true; if (showing[seq]) log('unregDuringShow', id); };
   });
   var showFullScreenAd = supported(function (p) {
     var id = p.options.adGroupId, dead = false;
     function emit(e) { if (!dead) p.onEvent(e); }
     log('show', id);
-    if (!cache[id]) { setTimeout(function () { log('failedToShow', id); emit({ type: 'failedToShow' }); }, 50); return function () { dead = true; }; }
-    cache[id]--;
-    setTimeout(function () { emit({ type: 'requested' }); log('shown', id); emit({ type: 'show' }); }, 100);
+    if (!(cache[id] && cache[id].length)) { setTimeout(function () { log('failedToShow', id); emit({ type: 'failedToShow' }); }, 50); return function () { dead = true; }; }
+    var seq = cache[id].pop(); // 가장 최근에 받은 광고 (템플릿 슬롯이 들고 있는 것)
+    if (window.__cfg.showError[kind(id)]) {
+      setTimeout(function () { log('showError', id); if (!dead) p.onError(new Error('show failed')); }, 50);
+      return function () { dead = true; };
+    }
+    setTimeout(function () { showing[seq] = true; emit({ type: 'requested' }); log('shown', id); emit({ type: 'show' }); }, 100);
     if (kind(id) === 'rewarded' && window.__cfg.rewardMode === 'reward')
       setTimeout(function () { log('reward', id); emit({ type: 'userEarnedReward', data: { unitType: 'x', unitAmount: 1 } }); }, 300);
-    setTimeout(function () { log('dismissed', id); emit({ type: 'dismissed' }); }, 500);
+    setTimeout(function () { delete showing[seq]; log('dismissed', id); emit({ type: 'dismissed' }); }, window.__cfg.showMs);
     return function () { dead = true; };
   });
   var TossAds = {
@@ -238,6 +245,15 @@ with sync_playwright() as p:
     check('restart shows preloaded interstitial immediately', len(shows) == 1 and len(events('load', 'interstitial')) == n_inter_loads)
     check('new game after interstitial', wait_for("document.getElementById('game-hud').classList.contains('visible')", 5))
     check('banner visible again in game', banner_visibility() == 'visible', banner_visibility())
+    # 모달 뒤 배너 숨김은 :has()가 아니라 클래스(behind-modal) — 구형 WebView에서도 동작
+    ev("window._showExitConfirmModal()")
+    time.sleep(0.1)
+    check('banner hidden behind exit modal via class', banner_visibility() == 'hidden'
+          and ev("document.getElementById('banner-ad-container').classList.contains('behind-modal')"), banner_visibility())
+    ev("document.getElementById('exit-confirm-modal').remove()")
+    time.sleep(0.1)
+    check('banner visible after exit modal closed', banner_visibility() == 'visible'
+          and not ev("document.getElementById('banner-ad-container').classList.contains('behind-modal')"), banner_visibility())
 
     # 2) 75초 안에 다시 게임오버 → 고지 없음, 광고 없음
     game_over()
@@ -379,6 +395,69 @@ with sync_playwright() as p:
     time.sleep(3)
     check('revive + mission together: no double show of one ad', both and len(events('failedToShow')) == n_fail,
           f'both={both} failedToShow={len(events("failedToShow")) - n_fail}')
+
+    # 5f) 부활 광고를 jslib에 넘겨 보여주는 중에 미션이 끝나도(대기 초과) 그 광고의 로드 리스너를 해제하지 않음
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("""localStorage.setItem('animalpop_mission_play10_count', '10');
+          localStorage.removeItem('animalpop_mission_play10_claimday');
+          _adReset(_adSlot(REVIVE_AD_ID)); window.__cfg.delayQueue.rewarded = [800, 5000];
+          window.__cfg.showMs = 3500; window._lastInterstitialAt = Date.now();""")
+    n_unreg = len(events('unregDuringShow'))
+    n_dis = len(events('dismissed', 'rewarded'))
+    game_over()
+    click('#go-btn-revive')
+    click('#go-mission-btn')
+    revived = wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 4)
+    wait_for(f"window.__log.filter(e => e.ev === 'dismissed' && e.kind === 'rewarded').length > {n_dis}", 6)
+    time.sleep(0.2)
+    check('mission ends while jslib revive ad showing: listener kept until close', revived
+          and len(events('unregDuringShow')) == n_unreg and ev('window._reviveHandoffActive === false'),
+          f'revived={revived} unregDuringShow={len(events("unregDuringShow")) - n_unreg}')
+    ev("window.__cfg.showMs = 500; window.__cfg.delayQueue.rewarded = []")
+
+    # 5g) jslib 표시 오류(onError) 경로 — 핸드오프를 정리하고 슬롯을 다시 채워 다음 탭은 바로 보여줌
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("window.__cfg.showError.rewarded = true; window._lastInterstitialAt = Date.now()")
+    game_over()
+    settle_rewarded()
+    n0 = rew_loads()
+    click('#go-btn-revive')
+    refilled = wait_for(f"window.__log.filter(e => e.ev === 'load' && e.kind === 'rewarded').length === {n0 + 1}", 2)
+    check('jslib show error: toast, handoff released, revive slot refilled', refilled and go_visible()
+          and toast_text() == '광고를 불러올 수 없어요' and ev('window._reviveHandoffActive === false'),
+          f'refilled={refilled} toast={toast_text()!r} active={ev("window._reviveHandoffActive")}')
+    ev("window.__cfg.showError.rewarded = false")
+    settle_rewarded()
+    n_show = len(events('show', 'rewarded'))
+    n0 = rew_loads()
+    click('#go-btn-revive')
+    check('after show error: next tap shows refilled ad at once', wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 2)
+          and len(events('show', 'rewarded')) == n_show + 1
+          and len([e for e in events('load', 'rewarded') if e['t'] <= events('show', 'rewarded')[-1]['t']]) == n0)
+
+    # 5h) 부활 연타 — 광고가 뜨기 전 두 번째 탭은 무시 (광고 하나만, 뜨는 중인 광고의 로드 리스너 유지)
+    settle_rewarded()
+    fresh_game()
+    settle_rewarded()
+    ev("window.__cfg.showMs = 1500; window.__cfg.loadDelay.rewarded = 300; window._lastInterstitialAt = Date.now()")
+    game_over()
+    settle_rewarded()
+    n_show = len(events('show', 'rewarded'))
+    n_unreg = len(events('unregDuringShow'))
+    n_dis = len(events('dismissed', 'rewarded'))
+    click('#go-btn-revive')
+    click('#go-btn-revive')
+    revived = wait_for("!document.getElementById('gameover-overlay').classList.contains('visible')", 3)
+    wait_for(f"window.__log.filter(e => e.ev === 'dismissed' && e.kind === 'rewarded').length > {n_dis}", 4)
+    time.sleep(0.8)
+    check('double tap on revive: one ad, listener kept while showing', revived
+          and len(events('show', 'rewarded')) == n_show + 1 and len(events('unregDuringShow')) == n_unreg,
+          f'shows={len(events("show", "rewarded")) - n_show} unregDuringShow={len(events("unregDuringShow")) - n_unreg}')
+    ev("window.__cfg.showMs = 500")
 
     # 6) 동시 로드 없음 (전체 기록)
     check('fullscreen loads never overlap', ev('window.__maxInflight') == 1, str(ev('window.__maxInflight')))

@@ -681,8 +681,9 @@
         #banner-ad-container.visible {
             opacity: 1; pointer-events: auto;
         }
-        /* 게임오버·설정·바텀시트가 열려 있는 동안 배너를 숨긴다(파괴·재생성 없음) — 모달 뒤에 가려진 채 노출되지 않게 */
-        body:has(#gameover-overlay.visible, #settings-overlay.visible, #speed-choice-sheet, #exit-confirm-modal) #banner-ad-container {
+        /* 게임오버·설정·바텀시트가 열려 있는 동안 배너를 숨긴다(파괴·재생성 없음) — 모달 뒤에 가려진 채 노출되지 않게.
+           클래스는 스크립트(_syncBannerBehindModal)가 붙인다 — :has()는 Android WebView 105+·iOS 15.4+ 전용이라 쓰지 않는다 */
+        #banner-ad-container.behind-modal {
             visibility: hidden;
         }
 
@@ -1385,6 +1386,9 @@
                     // 따로 로드한다(전면 로드와 겹치고 타임아웃·실패 안내 없음) → 받아 둔 부활 광고가 있을 때만 넘긴다.
                     // 없으면 대기열 맨 앞으로 받아 최대 2초 기다리고, 그래도 없으면 안내만 한다(받는 중인 광고는 다음 탭에 씀)
                     if (!window.unityInstance || _rewardHandoffPending) return;
+                    // 방금 jslib에 넘긴 광고가 아직 화면에 뜨기 전이다(연타) — 두 번째 탭이 뜨는 중인 광고의 로드 리스너를
+                    // 해제하거나 광고를 하나 더 넘기지 않게 무시한다. 오래 지나도 안 닫혔으면 멈춘 핸드오프로 보고 다시 받게 둔다
+                    if (_reviveHandoffActive && Date.now() - _reviveHandoffAt < REWARD_HANDOFF_GUARD_MS) return;
                     var msg = adType === 0 ? 'RequestAd' : 'RequestSpeedBoostAd';
                     if (!_getAdApi()) { window.unityInstance.SendMessage('BridgeManager', msg); return; } // SDK 없음 → jslib가 안내·OnAdFailed
                     _rewardHandoffPending = true;
@@ -1941,6 +1945,7 @@
     var AD_SHOW_TIMEOUT_MS = 60000;          // 'show' 이벤트가 끝내 안 오는 단말 대비
     var BANNER_IDLE_WAIT_MS = 3000;          // 받는 중인 배너를 기다리는 최대 시간
     var REWARD_HANDOFF_WAIT_MS = 2000;       // 부활·2배속 탭 → 받는 중인 부활 광고를 jslib에 넘기기 전 최대 대기
+    var REWARD_HANDOFF_GUARD_MS = 5000;      // jslib에 넘긴 뒤 이 시간 안의 부활·2배속 재탭은 무시 (광고가 뜨기 전 연타)
     var _rewardHandoffPending = false;
     // jslib ShowTossAd가 읽는 플래그: true면 받아 둔 광고를 바로 보여주고 false로 바꾼다(= 슬롯에서 가져감)
     var _reviveAdLoaded = false;
@@ -2076,6 +2081,8 @@
             if (slot.state !== 'loaded') { cb(false); return; }
             _releaseReviveHandoff();
             _reviveHandoffUnregister = slot.unregister;
+            _reviveHandoffActive = true;
+            _reviveHandoffAt = Date.now();
             slot.unregister = null;
             slot.state = 'idle';
             _reviveAdLoaded = true;
@@ -2089,10 +2096,14 @@
         _adPump();
     }
 
+    // jslib에 넘긴 부활 광고의 로드 리스너. jslib가 광고를 닫은 뒤(_preloadReviveAd)에만 해제한다 — 표시 중에 해제하지 않게
     var _reviveHandoffUnregister = null;
+    var _reviveHandoffActive = false;
+    var _reviveHandoffAt = 0;
     function _releaseReviveHandoff() {
         if (_reviveHandoffUnregister) { try { _reviveHandoffUnregister(); } catch (e) {} }
         _reviveHandoffUnregister = null;
+        _reviveHandoffActive = false;
     }
 
     /**
@@ -2168,13 +2179,30 @@
         waitForLoad();
     }
 
-    // 부활 리워드 사전 로드 — Unity 준비 완료·게임오버 때, 그리고 광고를 닫은 뒤(jslib ShowTossAd) 호출
+    // jslib ShowTossAd가 부활 광고를 닫거나 표시에 실패한 뒤 부른다: 핸드오프 리스너를 정리하고 슬롯을 다시 채운다.
+    // 다른 곳(게임오버·미션)은 jslib 광고가 떠 있는 중일 수 있으니 이 함수 대신 _adPreload(REVIVE_AD_ID)만 부른다
     window._preloadReviveAd = function() { _releaseReviveHandoff(); _adPreload(REVIVE_AD_ID); };
 
     // ════════════════════════════════════════════════════
     //  배너 광고 (TossAds.attachBanner)
     // ════════════════════════════════════════════════════
     var _bannerAdContainer = document.getElementById('banner-ad-container');
+
+    // 모달(게임오버·설정·2배속 시트·종료 확인)이 열려 있으면 배너에 behind-modal을 붙인다. 모달마다 여닫는 곳이 여러 군데라
+    // 오버레이 class와 body 자식 추가·삭제를 지켜본다 (시트·종료 확인은 body에 붙였다 뗀다)
+    var BANNER_COVERING_MODALS = '#gameover-overlay.visible, #settings-overlay.visible, #speed-choice-sheet, #exit-confirm-modal';
+    function _syncBannerBehindModal() {
+        _bannerAdContainer.classList.toggle('behind-modal', !!document.querySelector(BANNER_COVERING_MODALS));
+    }
+    if (_bannerAdContainer && typeof MutationObserver === 'function') {
+        var _bannerModalObserver = new MutationObserver(_syncBannerBehindModal);
+        _bannerModalObserver.observe(document.body, { childList: true });
+        ['gameover-overlay', 'settings-overlay'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) _bannerModalObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+        _syncBannerBehindModal();
+    }
     var _bannerAdDestroy = null;
     var _bannerAdReady = false;
     var BANNER_AD_ID = 'ait.v2.live.629331886f8c49bd';
@@ -2749,6 +2777,9 @@
 
     // 광고 로드 실패 시 토스트 안내 (msg를 주면 그 문구로)
     window._showAdUnavailableToast = function(msg) {
+        // jslib ShowTossAd의 표시 오류(onError) 경로는 _preloadReviveAd 없이 이 토스트만 띄운다(jslib는 수정 안 함) →
+        // 부활 광고를 jslib에 넘긴 상태면 여기서 핸드오프를 정리하고 슬롯을 다시 채운다
+        if (_reviveHandoffActive) window._preloadReviveAd();
         var existing = document.getElementById('ad-unavail-toast');
         if (existing) existing.remove();
         var toast = document.createElement('div');
@@ -2884,7 +2915,7 @@
             && !!window.GameBridge && (window.GameBridge.platform !== 'toss' || !!_getAdApi());
         if (window.GameBridge && window.GameBridge.platform === 'toss' && !_premiumSpeedOwned) {
             // 부활 리워드 먼저(실패했으면 다시), 전면은 그 뒤에 순차로 미리 받아 둔다
-            _preloadReviveAd();
+            _adPreload(REVIVE_AD_ID);
             if (_restartAdDue) _adPreload(INTERSTITIAL_AD_ID);
         }
 
@@ -3064,7 +3095,7 @@
             },
             onDismissed: function() {
                 resumeAudio();
-                _preloadReviveAd(); // 가져간 광고 자리를 다시 채운다 (부활·2배속과 공유)
+                _adPreload(REVIVE_AD_ID); // 가져간 광고 자리를 다시 채운다 (부활·2배속과 공유)
                 // 보상 미획득 시에만 즉시 복구 (보상 획득 시엔 지급 콜백이 정리)
                 if (!rewarded) {
                     _endMissionFlight();
@@ -3074,7 +3105,7 @@
             onError: function(reason) {
                 console.warn('[Mission] rewarded ad error:', reason);
                 resumeAudio();
-                _preloadReviveAd();
+                _adPreload(REVIVE_AD_ID);
                 if (rewarded) return;
                 _endMissionFlight();
                 _showMissionToast(reason === 'load' && _adInFlight(MISSION.rewardedAdId)

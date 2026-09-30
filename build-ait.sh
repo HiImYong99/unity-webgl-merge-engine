@@ -79,16 +79,28 @@ fi
 echo ""
 echo "[2/3] 운영 번들 검증..."
 [ -f "$AIT_DIR/animal-pop.ait" ] || fail "ait-build/animal-pop.ait가 없어요"
+command -v brotli >/dev/null || fail "brotli CLI가 필요해요 (brew install brotli)"
 python3 - "$AIT_DIR/animal-pop.ait" "$TEMPLATE" <<'PY' || fail "운영 번들 검증 실패"
-import re, sys, zipfile
+import re, subprocess, sys, zipfile
 ait, template = sys.argv[1], sys.argv[2]
 z = zipfile.ZipFile(ait)
 html = z.read('sources/index.html').decode('utf-8-sig')
 js = [n for n in z.namelist() if n.startswith('sources/assets/') and n.endswith('.js')]
 bridge = ''.join(z.read(n).decode('utf-8', 'ignore') for n in js)
 tpl = open(template, encoding='utf-8-sig').read()
+# 테스트 ID는 jslib가 든 framework.js.br에도 들어갈 수 있다(테스트 번들 치환) → .br은 풀어서 번들 전체를 본다
+test_hits = {}
+for n in z.namelist():
+    if n.endswith('/'):
+        continue
+    b = z.read(n)
+    if n.endswith('.br'):
+        b = subprocess.run(['brotli', '-dc'], input=b, capture_output=True, check=True).stdout
+    c = b.count(b'ait-ad-test')
+    if c:
+        test_hits[n] = c
 checks = {
-    '테스트 광고 ID 없음': 'ait-ad-test' not in html,
+    f'테스트 광고 ID 없음(.br 포함 전체 파일) {test_hits or ""}': not test_hits,
     '운영 광고 ID 있음': 'ait.v2.live.' in html,
     '미션 LIVE 코드(test: false)': re.search(r"\btest: false,", html) is not None,
     'contactsViral 없음': 'contactsViral' not in html,
