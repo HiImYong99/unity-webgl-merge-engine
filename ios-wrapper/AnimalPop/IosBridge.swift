@@ -118,13 +118,19 @@ final class IosBridge: NSObject, WKScriptMessageHandler {
             playHaptic(kind: (body["kind"] as? String) ?? "light")
 
         case "requestReview":
-            // 신기록 모먼트 리뷰 요청 — 노출 빈도는 OS가 throttle (연 3회 상한)
+            // 별점 시트 — 언제 부를지(하한·고점·3회·60일)는 웹의 APReview가 정한다. 노출은 OS가 다시 throttle (연 3회 상한)
             if let scene = gameVC?.view.window?.windowScene {
                 if #available(iOS 16.0, *) {
                     AppStore.requestReview(in: scene)
                 } else {
                     SKStoreReviewController.requestReview(in: scene)
                 }
+            }
+
+        case "openStoreReview":
+            // 설정 '앱 평가하기' — 쿼터 없는 상시 경로: App Store 리뷰 작성 화면으로 바로
+            if let url = URL(string: "itms-apps://itunes.apple.com/app/id6782373454?action=write-review") {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
             }
 
         case "log":

@@ -455,17 +455,40 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** 신기록 모먼트 Google Play In-App Review — 노출 빈도는 Play가 throttle */
+        /** Google Play In-App Review — 언제 부를지(하한·고점·3회·60일)는 웹의 APReview가 정하고, 노출은 Play가 다시 throttle */
         @JavascriptInterface
         public void requestReview() {
             mainHandler.post(() -> {
-                com.google.android.play.core.review.ReviewManager rm =
-                        com.google.android.play.core.review.ReviewManagerFactory.create(MainActivity.this);
-                rm.requestReviewFlow().addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && !isFinishing()) {
-                        rm.launchReviewFlow(MainActivity.this, task.getResult());
+                try {
+                    com.google.android.play.core.review.ReviewManager rm =
+                            com.google.android.play.core.review.ReviewManagerFactory.create(MainActivity.this);
+                    rm.requestReviewFlow().addOnCompleteListener(task -> {
+                        if (task.isSuccessful() && !isFinishing()) {
+                            rm.launchReviewFlow(MainActivity.this, task.getResult());
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.w(TAG, "[Bridge] requestReview 실패 (무시): " + e);
+                }
+            });
+        }
+
+        /** 설정 '앱 평가하기' — 쿼터 없는 상시 경로: Play 스토어 상세, Play 스토어가 없으면 웹 상세 */
+        @JavascriptInterface
+        public void openStoreListing() {
+            mainHandler.post(() -> {
+                String pkg = "com.animalpop.app"; // 디버그 빌드의 .debug 접미사가 아닌 스토어 패키지
+                try {
+                    startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("market://details?id=" + pkg)));
+                } catch (Exception e) {
+                    try {
+                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)));
+                    } catch (Exception ignored) {
+                        Log.w(TAG, "[Bridge] openStoreListing 실패 (무시): " + ignored);
                     }
-                });
+                }
             });
         }
     }
