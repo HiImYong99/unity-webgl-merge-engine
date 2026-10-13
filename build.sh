@@ -352,6 +352,12 @@ build_ios() {
     [ -d "$WEBGL_BUILD_DIR/sprites" ]      && cp -R "$WEBGL_BUILD_DIR/sprites" "$IOS_WEB/sprites"
     [ -d "$WEBGL_BUILD_DIR/TemplateData" ] && cp -R "$WEBGL_BUILD_DIR/TemplateData" "$IOS_WEB/TemplateData"
 
+    # 토스 패키징 산출물(ait-build/dist/web — vite 번들 assets/index.js)은 iOS에 넣으면 안 된다.
+    # window.AppsInToss가 생겨 시작 시 IAP.getPendingOrders가 throw → Unity abort → 로딩 후 정지 (1.4.2 사고)
+    if [ -e "$IOS_WEB/assets/index.js" ] || grep -q 'assets/index\.js' "$IOS_WEB/index.html"; then
+        fail "iOS 웹 번들에 토스 브리지(assets/index.js)가 섞임: $WEBGL_BUILD_DIR — Unity 원본 출력(webgl/)을 써야 한다"
+    fi
+
     # WKWebView는 plain HTTP(루프백 서버)에서 Content-Encoding: br를 디코딩하지 않으므로
     # (HTTPS 전용) 토스용 Brotli(.br) 빌드를 그대로 쓰면 Unity 로더가 raw brotli를 받아
     # 파싱 실패 → 검정화면. .br 파일을 미리 해제(identity)하고 파일명(.br)은 유지한다.

@@ -269,21 +269,27 @@ mergeInto(LibraryManager.library, {
       return;
     }
 
-    window.AppsInToss.IAP.getPendingOrders().then(function(res) {
-      if (!res || !res.orders || res.orders.length === 0) return;
-      res.orders.forEach(function(order) {
-        var sku = order.sku || '';
-        console.log('[TossBridge] Restoring pending order:', order.orderId, sku);
-        SendMessage('BridgeManager', 'OnIAPRestored', sku);
-        if (typeof window.AppsInToss.IAP.completeProductGrant === 'function') {
-          // [MCP Guide] 파라미터 구조: { params: { orderId: '...' } }
-          window.AppsInToss.IAP.completeProductGrant({ params: { orderId: order.orderId } })
-            .catch(function(e) { console.error('[TossBridge] restore complete failed:', e); });
-        }
+    // 토스 웹뷰 밖(iOS·Android 래퍼에 토스 번들이 섞인 경우)에선 getPendingOrders가 동기 throw한다.
+    // jslib의 동기 예외는 Unity 메인 루프를 abort시켜 로딩 후 게임이 멈추므로 여기서 삼킨다.
+    try {
+      window.AppsInToss.IAP.getPendingOrders().then(function(res) {
+        if (!res || !res.orders || res.orders.length === 0) return;
+        res.orders.forEach(function(order) {
+          var sku = order.sku || '';
+          console.log('[TossBridge] Restoring pending order:', order.orderId, sku);
+          SendMessage('BridgeManager', 'OnIAPRestored', sku);
+          if (typeof window.AppsInToss.IAP.completeProductGrant === 'function') {
+            // [MCP Guide] 파라미터 구조: { params: { orderId: '...' } }
+            window.AppsInToss.IAP.completeProductGrant({ params: { orderId: order.orderId } })
+              .catch(function(e) { console.error('[TossBridge] restore complete failed:', e); });
+          }
+        });
+      }).catch(function(e) {
+        console.error('[TossBridge] getPendingOrders failed:', e);
       });
-    }).catch(function(e) {
-      console.error('[TossBridge] getPendingOrders failed:', e);
-    });
+    } catch (e) {
+      console.error('[TossBridge] getPendingOrders threw:', e);
+    }
   },
 
   // 상품 지급 완료 확인 브릿지 (Unity에서 호출)
