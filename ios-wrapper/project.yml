@@ -1,0 +1,37 @@
+name: AnimalPop
+options:
+  bundleIdPrefix: com.animalpop
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  knownRegions: [en, ko, ja, zh-Hans, zh-Hant, es, pt, de, fr, id]
+settings:
+  base:
+    MARKETING_VERSION: "1.4.3"
+    CURRENT_PROJECT_VERSION: "29"
+    DEVELOPMENT_TEAM: "A3NZTDWF42"                              # [USER ACTION] Apple Team ID
+    PRODUCT_BUNDLE_IDENTIFIER: com.animalpop.app
+    SWIFT_VERSION: "5.0"
+    ENABLE_ON_DEMAND_RESOURCES: NO   # 앱 미사용. Xcode 26.5 actool 버그(ODR thinned가 시뮬 런타임 조회→"No available simulator runtimes") 회피
+targets:
+  AnimalPop:
+    type: application
+    platform: iOS
+    sources:
+      # Swift 소스 (web/ 제외 — 컴파일 대상 아님)
+      - path: AnimalPop
+        excludes:
+          - "web/**"
+      # WebGL 빌드: 폴더 레퍼런스로 번들에 복사 (Build/ 등 하위 구조 보존)
+      - path: AnimalPop/web
+        type: folder
+        optional: true
+        buildPhase: resources
+    settings:
+      base:
+        INFOPLIST_FILE: AnimalPop/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AnimalPop/AnimalPop.entitlements
+        ENABLE_BITCODE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

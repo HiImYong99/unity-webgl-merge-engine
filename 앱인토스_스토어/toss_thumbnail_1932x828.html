@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  @font-face { font-family: 'BlackHanSans'; src: url('./fonts/BlackHanSans-Regular.ttf') format('truetype'); }
+  @font-face { font-family: 'Jua'; src: url('./fonts/Jua-Regular.ttf') format('truetype'); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1932px; height: 828px; overflow: hidden; }
+
+  .canvas {
+    width: 1932px; height: 828px; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    /* 밝은 파스텔 그라데이션 (장식 최소, 빈공간 블러 채움 X) */
+    background: linear-gradient(118deg, #FFF3E2 0%, #FFE7F1 44%, #E7F1FF 100%);
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+  }
+
+  /* 가장자리(크롭존)용 부드러운 원 — 핵심 정보 아님 */
+  .blob { position: absolute; border-radius: 50%; opacity: 0.5; }
+  .b1 { width: 360px; height: 360px; background: #FFD8AA; top: -120px; left: -90px; opacity: 0.45; }
+  .b2 { width: 300px; height: 300px; background: #Bcdcff; background: #C7E0FF; bottom: -110px; right: -70px; opacity: 0.5; }
+  .b3 { width: 150px; height: 150px; background: #FFC9DD; top: 90px; right: 120px; opacity: 0.4; }
+
+  /* ── 핵심 콘텐츠: 중앙에 모아 ~526~1406 (안전여백 60px) ── */
+  .wrap { display: flex; align-items: center; justify-content: center; gap: 46px; position: relative; z-index: 2; }
+
+  .left { width: 340px; flex-shrink: 0; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: rgba(49,130,246,0.12);
+    border: 1.5px solid rgba(49,130,246,0.28);
+    border-radius: 50px; padding: 7px 18px; margin-bottom: 22px;
+  }
+  .badge-dot { width: 9px; height: 9px; background: #3182F6; border-radius: 50%; }
+  .badge-text { font-family: 'Jua'; font-size: 19px; color: #2f74e0; letter-spacing: 0.2px; }
+
+  .title { font-family: 'BlackHanSans'; line-height: 0.96; letter-spacing: -1px; margin-bottom: 24px; }
+  .t1 { display: block; font-size: 108px; color: #2A2A3C; }
+  .t2 { display: block; font-size: 108px; color: #3182F6; text-shadow: 0 5px 0 rgba(49,130,246,0.16); }
+
+  .hook {
+    font-family: 'Jua'; font-size: 28px; color: #5b5b6b; line-height: 1.42; margin-bottom: 30px;
+  }
+  .hook b { color: #2A2A3C; }
+
+  .cta {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, #4d9bff, #3182F6);
+    color: #fff; border-radius: 999px; padding: 19px 44px;
+    font-family: 'BlackHanSans'; font-size: 30px; letter-spacing: 0.3px;
+    box-shadow: 0 12px 28px rgba(49,130,246,0.38);
+  }
+  .cta .arr { font-size: 26px; }
+
+  /* ── 진화 시각화 (오른쪽 ~496px) ── */
+  .evo { width: 496px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .bub {
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    position: relative; flex-shrink: 0;
+    background: radial-gradient(circle at 36% 32%, #ffffff, #f3f6ff);
+    box-shadow: 0 10px 26px rgba(80,90,140,0.16), inset 0 2px 4px rgba(255,255,255,0.9);
+    border: 2px solid rgba(255,255,255,0.9);
+  }
+  .bub img { width: 86%; height: 86%; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.16)); }
+  .chick { width: 70px; height: 70px; }
+  .shiba { width: 104px; height: 104px; }
+  .lion {
+    width: 220px; height: 220px;
+    background: radial-gradient(circle at 38% 32%, #FFF6DC, #FFE4A6);
+    box-shadow: 0 18px 44px rgba(255,170,40,0.34), 0 0 0 10px rgba(255,200,90,0.16), inset 0 2px 6px rgba(255,255,255,0.85);
+    border: 2.5px solid #ffd87a;
+  }
+  .nm { font-family: 'Jua'; font-size: 19px; color: #7a7a8a; }
+  .nm-gold { font-size: 25px; color: #e8920f; }
+
+  .pair { position: relative; width: 112px; height: 108px; }
+  .pair .bub { position: absolute; }
+  .pair .c-a { left: 0; top: 6px; }
+  .pair .c-b { right: 0; top: 6px; z-index: 2; }
+  .plus { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-60%); font-family:'BlackHanSans'; font-size: 34px; color:#ff8fb3; z-index: 3; }
+
+  .lv { position: absolute; bottom: -6px; right: -6px; background: linear-gradient(135deg,#ffd24d,#ff9f1a); color:#fff; font-family:'BlackHanSans'; font-size: 16px; border-radius: 20px; padding: 3px 12px; box-shadow: 0 4px 10px rgba(255,150,0,0.35); }
+
+  .arrow { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; margin: 0 6px 26px; }
+  .arrow .ev { font-family:'Jua'; font-size:16px; color:#f5a623; font-weight:700; }
+  .chev { width:0;height:0; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:18px solid #cbb4ff; }
+  .chev.gold { border-left-color:#ffb648; border-top-width:13px; border-bottom-width:13px; border-left-width:22px; }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+
+  <div class="wrap">
+    <!-- 왼쪽: 타이틀 -->
+    <div class="left">
+      <div class="badge"><span class="badge-dot"></span><span class="badge-text">토스 미니앱</span></div>
+      <div class="title"><span class="t1">애니멀</span><span class="t2">팝!</span></div>
+      <div class="hook">같은 동물을 <b>합쳐서</b><br>더 큰 동물로 <b>키워요</b></div>
+      <div class="cta">지금 플레이 <span class="arr">▶</span></div>
+    </div>
+
+    <!-- 오른쪽: 진화 -->
+    <div class="evo">
+      <!-- 병아리 + 병아리 -->
+      <div class="stage">
+        <div class="pair">
+          <div class="bub chick c-a"><img src="../Assets/WebGLTemplates/AnimalPop/sprites/Animal_1.png"></div>
+          <div class="bub chick c-b"><img src="../Assets/WebGLTemplates/AnimalPop/sprites/Animal_1.png"></div>
+          <div class="plus">+</div>
+        </div>
+        <div class="nm">병아리</div>
+      </div>
+
+      <div class="arrow"><div class="chev"></div></div>
+
+      <!-- 시바견 -->
+      <div class="stage">
+        <div class="bub shiba"><img src="../Assets/WebGLTemplates/AnimalPop/sprites/Animal_6.png"><div class="lv" style="font-size:13px;padding:2px 9px;">Lv.6</div></div>
+        <div class="nm">시바견</div>
+      </div>
+
+      <div class="arrow"><div class="ev">진화!</div><div class="chev gold"></div></div>
+
+      <!-- 사자 (최종) -->
+      <div class="stage">
+        <div class="bub lion"><img src="../Assets/WebGLTemplates/AnimalPop/sprites/Animal_11.png"><div class="lv">Lv.11</div></div>
+        <div class="nm nm-gold">사자</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: AITConfig
   m_EditorClassIdentifier: 
   appName: animal-pop
-  displayName: "\uC560\uB2C8\uBA40 \uD31D"
+  displayName: "\uC560\uB2C8\uBA40 \uD31D: \uB3D9\uBB3C \uD569\uCE58\uAE30"
   version: 0.0.1
   description: 
   primaryColor: '#3182F6'
-  iconUrl: 
+  iconUrl: https://static.toss.im/appsintoss/25373/13ee6c7f-08f9-42ef-8294-dafbb535be7f.png
   bridgeColorMode: 0
   webViewType: 0
   allowsInlineMediaPlayback: 0

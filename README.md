@@ -46,6 +46,46 @@
 
 ---
 
+## 🧩 멀티플랫폼 운영 (단일 브랜치)
+
+**하나의 코드베이스로 3개 플랫폼을 운영합니다.** Unity 프로젝트와 WebGL 빌드는 1개이며,
+`Assets/WebGLTemplates/AnimalPop/index.html`의 `GameBridge`가 **런타임에 플랫폼을 자동 감지**해
+광고·결제·리더보드·공유를 분기합니다. 브랜치를 플랫폼별로 나누지 않습니다.
+
+```
+window.AP_PLATFORM = AndroidBridge 있으면 'android'
+                   : iosBridge 있으면 'ios'
+                   : 그 외 'toss'
+```
+
+| 플랫폼 | 래퍼 | 광고/결제 |
+| :--- | :--- | :--- |
+| Toss (앱인토스) | `ait-build/` | Toss SDK (TossAds, TossPay) |
+| Google Play (Android) | `android-wrapper/` | AdMob + Play Billing |
+| App Store (iOS) | `ios-wrapper/` | AdMob + StoreKit 2 + Game Center |
+
+### 빌드 (`./build.sh <타깃>`)
+```bash
+./build.sh toss          # 앱인토스 (Unity Brotli + ait)
+./build.sh android       # Android APK (디버그)
+./build.sh android-aab   # Android AAB (릴리즈)
+./build.sh ios           # iOS WKWebView 래퍼 (xcodegen + pod)
+./build.sh all           # 전체 (toss + ios + android)
+```
+
+### 버전 단일 소스
+`VERSION` 파일 하나가 Android(`versionName`/`versionCode`)와 iOS(`MARKETING_VERSION`/
+`CURRENT_PROJECT_VERSION`)에 자동 주입됩니다. 빌드 시마다 동기화되며, 올릴 때:
+```bash
+./build.sh bump 1.2.2 16   # APP_VERSION=1.2.2, BUILD_NUMBER=16 → 양 플랫폼 반영
+```
+
+### 배포 전 체크 (ID 교체 등)
+플랫폼별 광고/결제 ID는 테스트 값이 들어 있습니다. 배포 전 `PRE_REVIEW_CHECKLIST.md`와
+각 래퍼 README(`ios-wrapper/README.md`)를 확인해 실제 값으로 교체하세요.
+
+---
+
 ## 💼 파트너십 및 프로젝트 관리
 이 프로젝트는 **1인 개발** 프로젝트로, 코드의 간결함과 확장성을 동시에 고려하여 설계되었습니다.
 

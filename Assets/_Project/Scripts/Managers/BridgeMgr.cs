@@ -37,11 +37,15 @@ public class BridgeMgr : MonoBehaviour
     [DllImport("__Internal")] private static extern void notifyDangerZoneFromUnity(bool active);
     [DllImport("__Internal")] private static extern void notifyNewHighScoreFromUnity(int score);
     [DllImport("__Internal")] private static extern void onMergeFromUnity(int level);
+    [DllImport("__Internal")] private static extern void notifyGamePlayedFromUnity();
     [DllImport("__Internal")] private static extern void TossIAPPurchase(string productId);
     [DllImport("__Internal")] private static extern void TossIAPRestorePendingOrders();
     [DllImport("__Internal")] private static extern void TossPayCheckout(string payToken);
     [DllImport("__Internal")] private static extern void notifyAdRemovedFromUnity();
     [DllImport("__Internal")] private static extern void TossIAPCompleteProductGrant(string orderId);
+    [DllImport("__Internal")] private static extern void RequestPurchase(string productId);
+    [DllImport("__Internal")] private static extern void RestorePurchases();
+    [DllImport("__Internal")] private static extern void TossOpenLeaderboard();
 #else
     private static void SyncSaveToLocalStorage(string k, string v) { }
     private static void _ShowHtmlLanding(int s) { }
@@ -71,6 +75,7 @@ public class BridgeMgr : MonoBehaviour
     private static void notifyDangerZoneFromUnity(bool a) { }
     private static void notifyNewHighScoreFromUnity(int s) { }
     private static void onMergeFromUnity(int l) { }
+    private static void notifyGamePlayedFromUnity() { }
     private static void TossIAPPurchase(string productId) {
         Debug.Log($"[BridgeMgr MOCK] IAP Purchase: {productId}");
         Instance.OnIAPSuccess(productId);
@@ -82,6 +87,12 @@ public class BridgeMgr : MonoBehaviour
     }
     private static void notifyAdRemovedFromUnity() { }
     private static void TossIAPCompleteProductGrant(string orderId) { Debug.Log($"[BridgeMgr MOCK] Complete Product Grant: {orderId}"); }
+    private static void RequestPurchase(string productId) {
+        Debug.Log($"[BridgeMgr MOCK] RequestPurchase: {productId}");
+        Instance.OnPurchaseSuccess(productId + "|mock_token_" + UnityEngine.Random.Range(1000, 9999));
+    }
+    private static void RestorePurchases() { Debug.Log("[BridgeMgr MOCK] RestorePurchases"); }
+    private static void TossOpenLeaderboard() { Debug.Log("[BridgeMgr MOCK] OpenLeaderboard"); }
 #endif
 
     private void Awake()
@@ -110,21 +121,41 @@ public class BridgeMgr : MonoBehaviour
     public void RequestLogin() => TossAppLogin();
     public void RequestSafeArea() => TossGetSafeArea();
     public void RequestShare(string msg) => TossShare(msg);
-    public void RequestShare(int score, int level, string base64) => TossShare("제 점수는 " + score + "점이에요! 함께 애니멀 팝 즐겨봐요!");
+    // 점수만 전달 → JS(jslib)가 기기 로케일에 맞는 공유 문구 생성 (글로벌 다국어)
+    public void RequestShare(int score, int level, string base64) => TossShare(score.ToString());
     public void RequestVibrate(string style = "medium") => TossVibrate(style);
     public void RequestExit() => TossExitApp();
     public void SubmitLeaderboardScore(int s) => TossSubmitLeaderboardScore(s);
+    public void OpenLeaderboard()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        TossOpenLeaderboard();
+#endif
+    }
     public void NotifySpeedBoost() => notifySpeedBoostActivatedFromUnity();
     public void NotifyDanger(bool active) => notifyDangerZoneFromUnity(active);
     public void NotifyNewRecord(int score) => notifyNewHighScoreFromUnity(score);
     public void NotifyMerge(int level) => onMergeFromUnity(level);
+    public void NotifyGamePlayed() => notifyGamePlayedFromUnity(); // 프로모션 미션: 한 판 완료(게임오버) 알림
     public void NotifyAdRemoved() => notifyAdRemovedFromUnity();
 
-    // 상품 ID 상수
-    public const string PRODUCT_ID = "ait.0000022018.560c8f2d.99adbacd5a.3325211470";
+    public void RequestIAPPurchase()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        RequestPurchase(IAPMgr.GOOGLE_PRODUCT_ID);
+#else
+        TossIAPPurchase(IAPMgr.TOSS_PRODUCT_ID);
+#endif
+    }
 
-    public void RequestIAPPurchase() => TossIAPPurchase(PRODUCT_ID);
-    public void RestorePendingOrders() => TossIAPRestorePendingOrders();
+    public void RestorePendingOrders()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        RestorePurchases();
+#else
+        TossIAPRestorePendingOrders();
+#endif
+    }
     
     // [추가] 토스페이 결제 요청 (payToken 기반)
     public void RequestTossPay(string payToken) => TossPayCheckout(payToken);
@@ -198,6 +229,7 @@ public class BridgeMgr : MonoBehaviour
         Debug.Log($"[BridgeMgr] IAP Success: {productId}");
         OnIAPSuccessEvent?.Invoke(productId);
         if (GameMgr.Instance != null) GameMgr.Instance.OnIAPPurchased(productId);
+        if (IAPMgr.Instance != null) IAPMgr.Instance.HandlePurchaseSuccess(productId, "toss_" + productId);
     }
 
     public void OnIAPFailed(string errorCode)
@@ -219,5 +251,52 @@ public class BridgeMgr : MonoBehaviour
     public void OnProductGrant(string orderId)
     {
         Debug.Log($"[BridgeMgr] OnProductGrant: {orderId} (processProductGrant 콜백에서 처리 완료)");
+    }
+
+    // ── Android (Google Play Billing) 콜백 ──
+    public void OnPurchaseSuccess(string payload)
+    {
+        var parts = payload.Split('|');
+        string productId = parts.Length > 0 ? parts[0] : "";
+        string token = parts.Length > 1 ? parts[1] : "";
+        Debug.Log($"[BridgeMgr] OnPurchaseSuccess: {productId}");
+        // IAPMgr 경유 + GameMgr 직접 호출 (IAPMgr 미초기화 방어)
+        if (IAPMgr.Instance != null)
+            IAPMgr.Instance.HandlePurchaseSuccess(productId, token);
+        else if (GameMgr.Instance != null)
+            GameMgr.Instance.OnIAPPurchased(productId);
+    }
+
+    public void OnPurchaseFailed(string payload)
+    {
+        var parts = payload.Split('|');
+        string productId = parts.Length > 0 ? parts[0] : "";
+        Debug.LogWarning($"[BridgeMgr] OnPurchaseFailed: {payload}");
+        if (IAPMgr.Instance != null)
+            IAPMgr.Instance.HandlePurchaseFailed(productId);
+    }
+
+    public void OnPurchaseCancelled(string productId)
+    {
+        Debug.Log($"[BridgeMgr] OnPurchaseCancelled: {productId}");
+        if (IAPMgr.Instance != null)
+            IAPMgr.Instance.HandlePurchaseCancelled(productId);
+    }
+
+    public void OnPurchaseRestored(string payload)
+    {
+        var parts = payload.Split('|');
+        string productId = parts.Length > 0 ? parts[0] : "";
+        string token = parts.Length > 1 ? parts[1] : "";
+        Debug.Log($"[BridgeMgr] OnPurchaseRestored: {productId}");
+        if (IAPMgr.Instance != null)
+            IAPMgr.Instance.HandlePurchaseRestored(productId, token);
+    }
+
+    // Android AdMob 보상형 광고 콜백
+    public void OnAdRewarded(string _)
+    {
+        OnAdCompleteEvent?.Invoke();
+        if (GameMgr.Instance != null) GameMgr.Instance.Revive();
     }
 }
