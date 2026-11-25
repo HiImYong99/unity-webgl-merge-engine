@@ -1,6 +1,6 @@
 # Project Overview
 - Unity 2022.3.62f3 dual-platform project: WebGL (Toss) + Android (Google Play)
-- Single codebase with platform-specific branches managed via `merge` branch
+- Single codebase, single branch: `main` (sdk-3x-v2 merged 2026-11-25; build every platform — Toss/Android/iOS — from main)
 
 # Game Core Logic Rules (DO NOT MODIFY)
 - Level-based fixed assets
